@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-
 import uvicorn
 
 from dataclasses import asdict, is_dataclass
@@ -10,8 +9,9 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
 
 from ..agents import AgentReference
-from ..nodes.message import GetConversationsRequest
+from ..nodes.message import GetConversationsRequest, ConversationMessage, AssistantMessage
 from ..ockam_in_rust_for_python import info, error
+
 
 """
     This class starts an HTTP server allowing a user to interact with a node and its agents.
@@ -89,7 +89,7 @@ class HttpServer:
                 raise HTTPException(status_code=500, detail="Failed to get the conversations for agent '{name}'")
 
         @self.app.post("/agents/{name}")
-        async def send_message_to_agent(name: str, message: Request, stream: bool = False, node=Depends(self.get_node)):
+        async def send_message_to_agent(name: str, message: Request, stream: bool = False, content_size: int = 50, node=Depends(self.get_node)):
             info(f"Sending a message to agent '{name}'")
             await find_agent(node, name)
 
@@ -104,10 +104,20 @@ class HttpServer:
                 conversation = message_json.get("conversation", None)
 
                 if stream:
-
                     async def stream_response():
+                        received_snippet = None
+
                         async for response in agent.send_stream(msg, scope, conversation):
-                            yield json.dumps(response.snippet, default=default) + "\n"
+                            received = response.snippet
+                            if not received_snippet:
+                                received_snippet = received
+                            else:
+                                received_snippet.messages += received.messages
+                            total_size = sum(len(m.content) for m in received_snippet.messages)
+                            if total_size > content_size or response.finished:
+                                received_snippet = received_snippet.compact_assistant_messages()
+                                yield json.dumps(received_snippet, default=default) + "\n"
+                                received_snippet = None
                             if response.finished:
                                 break
 
@@ -175,3 +185,5 @@ def default(obj):
     if isinstance(obj, Enum):
         return obj.value
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+
+
