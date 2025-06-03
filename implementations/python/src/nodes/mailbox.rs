@@ -7,6 +7,7 @@ use ockam::compat::asynchronous::RwLock;
 use ockam::compat::sync::Arc;
 use ockam::{Context, MessageReceiveOptions, MessageSendOptions};
 
+use ockam::access_control::AllowAll;
 use pyo3::prelude::*;
 use pyo3_async_runtimes::tokio::future_into_py;
 
@@ -55,7 +56,7 @@ impl PyMailbox {
     fn receive<'a>(
         &self,
         py: Python<'a>,
-        policy: Option<String>,
+        #[allow(unused_variables)] policy: Option<String>,
         timeout: Option<u64>,
     ) -> PyResult<Bound<'a, PyAny>> {
         // TODO: Currently there is no way to use return_route to send a response (if needed)
@@ -65,15 +66,10 @@ impl PyMailbox {
         //  to improve that, but tweaks to the ockam code are required. P.S. ockam itself behaves
         //  the same, but we usually don't wrap Context instances into Arc<RwLock> and don't try
         //  to send&receive from different places at the same time.
-        let policy = self.node.policy(policy).map_err(py_error)?;
         let self_clone = self.clone();
-        let node_manager = self.node.node_manager_clone();
 
         future_into_py(py, async move {
-            let (incoming_ac, _) = node_manager
-                .create_abac(node_manager.project_authority(), policy)
-                .await
-                .map_err(py_error)?;
+            let incoming_ac = Arc::new(AllowAll);
 
             let options = MessageReceiveOptions::new().with_incoming_access_control(incoming_ac);
 
@@ -101,19 +97,15 @@ impl PyMailbox {
         node: Option<String>,
         destination: String,
         message: String,
-        policy: Option<String>,
+        #[allow(unused_variables)] policy: Option<String>,
     ) -> PyResult<Bound<'a, PyAny>> {
-        let policy = self.node.policy(policy).map_err(py_error)?;
         let self_clone = self.clone();
         let node_clone = self.node.clone();
-        let node_manager = self.node.node_manager_clone();
 
         future_into_py(py, async move {
             node_clone
                 .with_route(node, destination, move |route| async move {
-                    let (_, outgoing_ac) = node_manager
-                        .create_abac(node_manager.project_authority(), policy)
-                        .await?;
+                    let outgoing_ac = Arc::new(AllowAll);
 
                     let ctx = self_clone.ctx.read().await;
                     ctx.send_extended(
