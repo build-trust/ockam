@@ -45,13 +45,17 @@ pub fn tool_schema() -> Arc<JsonObject> {
             let schema = json!({
                 "type": "object",
                 "properties": {
-                    "message": {
+                    "prompt": {
                         "type": "string",
-                        "description": "An explicit question to ask the tool",
-                        "example": "What's the weather like today?",
+                        "description": "An explicit prompt to the tool, similar to an AI chat.",
+                        "examples": [
+                            "What is the weather like today?",
+                            "Tell me a joke.",
+                            "How do I make a cup of coffee?",
+                        ],
                     },
                 },
-                "required": ["message"]
+                "required": ["prompt"],
             });
             if let Value::Object(object) = schema {
                 Arc::new(object)
@@ -148,8 +152,8 @@ impl ServerHandler for SseEntrypoint {
             ));
         }
 
-        let message = if let Some(mut arguments) = request.arguments {
-            if let Some(prompt) = arguments.remove("message") {
+        let prompt = if let Some(mut arguments) = request.arguments {
+            if let Some(prompt) = arguments.remove("prompt") {
                 if let Value::String(prompt) = prompt {
                     prompt
                 } else {
@@ -173,7 +177,7 @@ impl ServerHandler for SseEntrypoint {
         let message = json!({
             "messages": [{
                 "role": "user",
-                "content": message
+                "content": prompt
             }],
             "type": "conversation_snippet",
         })
