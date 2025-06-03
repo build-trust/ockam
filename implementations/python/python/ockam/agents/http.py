@@ -54,7 +54,7 @@ class HttpServer:
         @self.app.get("/agents/{name}")
         async def get_agent_by_name(name: str, node=Depends(self.get_node)):
             info(f"getting agent by name: {name}")
-            return find_agent(node, name)
+            return await find_agent(node, name)
 
         @self.app.get("/agents/{name}/conversations")
         async def get_conversations_by_agent_name(name: str, node=Depends(self.get_node)):
@@ -77,7 +77,7 @@ class HttpServer:
             name: str, scope: None | str, conversation: None | str, node
         ):
             # Check if the agent exists
-            find_agent(node, name)
+            await find_agent(node, name)
 
             try:
                 agent = AgentReference(name, node)
@@ -91,7 +91,7 @@ class HttpServer:
         @self.app.post("/agents/{name}")
         async def send_message_to_agent(name: str, message: Request, stream: bool = False, node=Depends(self.get_node)):
             info(f"Sending a message to agent '{name}'")
-            find_agent(node, name)
+            await find_agent(node, name)
 
             try:
                 agent = AgentReference(name, node)
@@ -133,15 +133,15 @@ class HttpServer:
             self.api.routes(self.node)
             self.app.mount("/", self.api.api)
 
-        def find_agent(node, name):
-            agents = node.list_agents()
+        async def find_agent(node, name):
+            agents = await node.list_agents()
             agent = next((a for a in agents if a.get("name") == name), None)
             if agent is None:
                 raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
             return agent
 
-        def find_tool(node, name):
-            tools = node.list_tools()
+        async def find_tool(node, name):
+            tools = await node.list_tools()
             tool = next((t for t in tools if t.get("name") == name), None)
             if tool is None:
                 raise HTTPException(status_code=404, detail=f"Tool '{name}' not found")
