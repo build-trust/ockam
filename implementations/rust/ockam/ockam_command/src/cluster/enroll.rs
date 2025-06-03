@@ -9,7 +9,7 @@ const LONG_ABOUT: &str = include_str!("./static/enroll/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/enroll/after_long_help.txt");
 
-/// Enroll your Ockam Identity with Ockam Orchestrator
+/// Enroll your identity with your cluster
 #[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),

@@ -1,2 +1,2 @@
-Orchestrate end-to-end encryption, mutual authentication, key management,
-credential management, and authorization policy enforcement — at scale.
+Build, Run, Connect, Secure, Manage, Scale to billions of agents that are interoperable with
+everything, everywhere, all-at-once — with one platform.
