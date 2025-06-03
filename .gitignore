@@ -19,3 +19,5 @@ vendor
 # nix build
 /result*
 .home
+pyvenv.cfg
+.venv

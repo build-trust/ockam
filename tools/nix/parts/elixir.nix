@@ -30,7 +30,7 @@
             # support pkgconfig without duplication of effort
             inherit (config.devShells.rust) nativeBuildInputs shellHook;
 
-            inherit (config.devShells.rust) OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS RUST_SRC_PATH LIBCLANG_PATH;
+            inherit (config.devShells.rust) RUSTFLAGS RUST_SRC_PATH LIBCLANG_PATH;
             inherit (config.devShells.tooling) BATS_LIB;
           };
         };

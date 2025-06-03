@@ -28,7 +28,6 @@ in {
       config,
       lib,
       pkgs,
-      system,
       ...
     }: {
       devShells = let
