@@ -176,7 +176,12 @@ impl CreateCommand {
         }
 
         // Push the images
-        self.push_local_images(opts, &images_data).await?;
+        let res = self.push_local_images(opts, &images_data).await;
+        for image_data in images_data.iter() {
+            self.delete_local_image(&image_data.image_name, &image_data.repository_uri_tag)
+                .await?;
+        }
+        res?;
 
         opts.terminal.write_line("")?;
 
@@ -305,7 +310,7 @@ impl CreateCommand {
                     &repository_uri_tag,
                     ".",
                 ],
-                vec![("DOCKER_BUILDKIT", "1")],
+                vec![("DOCKER_BUILDKIT", Some("1"))],
             ),
             // With buildkit disabled
             (
@@ -318,7 +323,7 @@ impl CreateCommand {
                     &repository_uri_tag,
                     ".",
                 ],
-                vec![("DOCKER_BUILDKIT", "0")],
+                vec![("DOCKER_BUILDKIT", None)],
             ),
         ];
 
@@ -334,7 +339,10 @@ impl CreateCommand {
                 command.arg("--no-cache");
             }
             for (env_name, env_value) in env_vars {
-                command.env(env_name, env_value);
+                match env_value {
+                    Some(value) => command.env(env_name, value),
+                    None => command.env_remove(env_name),
+                };
             }
 
             info!(
@@ -440,9 +448,6 @@ impl CreateCommand {
             set.spawn(async move {
                 _self
                     .push_local_image(&image_data.image_name, &image_data.repository_uri_tag)
-                    .await?;
-                _self
-                    .delete_local_image(&image_data.image_name, &image_data.repository_uri_tag)
                     .await?;
                 Ok(image_data.image_name)
             });
