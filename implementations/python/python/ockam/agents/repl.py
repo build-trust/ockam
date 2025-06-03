@@ -1,8 +1,10 @@
 import asyncio
 import secrets
 import re
+import os
 
 from ockam.nodes.message import StreamedConversationSnippet
+from ockam.agents.socket_address import parse_host_and_port
 
 from ..logging.logging import LOGGING_CONFIG
 import logging.config
@@ -10,13 +12,14 @@ import logging.config
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger("repl")
 
-HOST = "127.0.0.1"
-PORT = 7000
-
+DEFAULT_HOST = os.environ.get("DEFAULT_HOST_REPL", "127.0.0.1")
+DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_REPL", "7000"))
 
 class Repl:
-    def __init__(self, agent_reference, listen_address, functions=None, timeout=120, stream=True):
+    def __init__(self, agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=120, stream=True):
         self.functions = functions or {}
+        self.host = DEFAULT_HOST
+        self.port = DEFAULT_PORT
         self.set_host_and_port(listen_address)
         self.agent_reference = agent_reference
         self.server = None
@@ -38,7 +41,7 @@ class Repl:
 
     # TODO: should be on Reference class
     @staticmethod
-    async def start(agent_reference, listen_address=f"{HOST}:{PORT}", functions=None, timeout=None, stream=True):
+    async def start(agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=None, stream=True):
         logger.info("starting the REPL")
         repl = Repl(agent_reference, listen_address, functions, timeout, stream)
         # start the repl in a separate thread since we might also have a HTTP server running
@@ -46,16 +49,9 @@ class Repl:
 
     def set_host_and_port(self, listen_address):
         try:
-            if isinstance(listen_address, int):
-                self.host = HOST
-                self.port = listen_address
-            elif isinstance(listen_address, str) and ":" in listen_address:
-                host, port_str = listen_address.split(":", 1)
-                self.host = host
-                self.port = int(port_str)
-            else:
-                self.host = HOST
-                self.port = PORT
+            host, port = parse_host_and_port(listen_address)
+            self.host = host
+            self.port = port
         except ValueError:
             raise ValueError(f"Invalid listen_address: {listen_address}")
 

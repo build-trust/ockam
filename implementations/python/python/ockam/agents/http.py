@@ -9,8 +9,9 @@ from enum import Enum
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
 
+from .socket_address import parse_host_and_port
 from ..agents import AgentReference
-from ..nodes.message import GetConversationsRequest, ConversationMessage, AssistantMessage, StreamedConversationSnippet
+from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet
 from ..ockam_in_rust_for_python import info, error
 
 logger = logging.getLogger("http")
@@ -19,15 +20,15 @@ logger = logging.getLogger("http")
     This class starts an HTTP server allowing a user to interact with a node and its agents.
 """
 
-HOST = "0.0.0.0"
-PORT = int(os.environ.get("DEFAULT_PORT_HTTP", "8000"))
+DEFAULT_HOST = os.environ.get("DEFAULT_HOST_HTTP", "0.0.0.0")
+DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_HTTP", "8000"))
 
 
 class HttpServer:
-    def __init__(self, listen_address=f"{HOST}:{PORT}", log_level: str = "error", api=None):
+    def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", log_level: str = "error", api=None):
         self.node = None
-        self.host = HOST
-        self.port = PORT
+        self.host = DEFAULT_HOST
+        self.port = DEFAULT_PORT
         self.set_host_and_port(listen_address)
         self.log_level = log_level
         self.app = FastAPI()
@@ -184,12 +185,9 @@ class HttpServer:
 
     def set_host_and_port(self, listen_address):
         try:
-            if isinstance(listen_address, int):
-                self.port = listen_address
-            elif isinstance(listen_address, str) and ":" in listen_address:
-                host, port_str = listen_address.split(":", 1)
-                self.host = host
-                self.port = int(port_str)
+            host, port = parse_host_and_port(listen_address)
+            self.host = host
+            self.port = port
         except ValueError:
             raise ValueError(f"Invalid listen_address: {listen_address}")
 
