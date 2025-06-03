@@ -7,8 +7,14 @@ from typing import Awaitable, Callable, Optional
 from .local import LocalNode
 from .manager import RemoteManager
 
-from ..ockam_in_rust_for_python import Node as RustNode, info
+from ..ockam_in_rust_for_python import Node as RustNode, debug
 from ..nodes.protocol import LocalNodeProtocol
+
+from ..logging.logging import LOGGING_CONFIG
+import logging.config
+
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger("node")
 
 
 class Node:
@@ -23,6 +29,7 @@ class Node:
         cache_secure_channels: bool = False,
         use_local_db: bool = False,
         llm_debug: bool = False,
+        ockam_log_level: str = "WARN",
         **kwargs,
     ):
         # This will make the node use a local SQLite database instead of the Postgres database
@@ -33,14 +40,14 @@ class Node:
             os.environ["OCKAM_TELEMETRY_EXPORT"] = "false"
             os.environ["OCKAM_SQLITE_IN_MEMORY"] = "true"
 
+        os.environ["OCKAM_LOG_LEVEL"] = ockam_log_level
+
         if llm_debug:
             litellm._turn_on_debug()
 
         name = pick_name(name)
         ticket = pick_ticket(ticket)
         cluster = pick_cluster()
-
-        info(f"Starting node {name}")
 
         if allow is None and cluster:
             allow = f"message.is_local or cluster={cluster}"
@@ -65,8 +72,9 @@ class Node:
             RustNode.start(
                 start_node, name=name, ticket=ticket, allow=allow, cache_secure_channels=cache_secure_channels, **kwargs
             )
+
         except KeyboardInterrupt:
-            info(f"\nNode {name} shutting down")
+            debug(f"\nNode {name} shutting down")
 
 
 def wait_until_interrupted_decorator(func=None):
