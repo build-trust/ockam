@@ -135,21 +135,14 @@ impl BaseCommand {
     }
 
     async fn zone_init(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
-        let current_dir = std::env::current_dir()
-            .into_diagnostic()
-            .wrap_err("Failed to get current directory")?;
-        if current_dir.read_dir().into_diagnostic()?.next().is_some() {
-            return Ok(());
-        }
-
         use crate::zone::init::InitCommand;
         let cmd = InitCommand {
             repository: self.init_repository.clone(),
-            target_path: None,
+            ..Default::default()
         };
-        cmd.run(ctx, opts.clone()).await?;
-        opts.terminal.write_line("")?;
-
+        if cmd.run(ctx, opts.clone()).await?.is_some() {
+            opts.terminal.write_line("")?;
+        }
         Ok(())
     }
 

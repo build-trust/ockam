@@ -1,3 +1,4 @@
+use crate::zone::common_args::ZoneConfigArg;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
@@ -18,7 +19,7 @@ const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
 const AFTER_LONG_HELP: &str = include_str!("./static/init/after_long_help.txt");
 
 /// Download and initialize a template project
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Debug, Args, Default)]
 #[command(
 long_about = docs::about(LONG_ABOUT),
 before_help = docs::before_help(PREVIEW_TAG),
@@ -37,18 +38,24 @@ pub struct InitCommand {
 }
 
 #[async_trait]
-impl Command for InitCommand {
+impl Command<Option<PathBuf>> for InitCommand {
     const NAME: &'static str = "zone init";
 
-    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<Option<PathBuf>> {
         let spinner = opts.terminal.spinner();
 
-        // Check if the current directory can be used
-        let target_path = self.create_target_path()?;
+        // Check if the target directory can be used
+        let target_path = match self.create_target_path()? {
+            Some(path) => path,
+            None => {
+                return Ok(None);
+            }
+        };
         let target_path_str = target_path.display().to_string();
 
         // Clone repository in a temporary directory
-        let repository_downloader = RepositoryDownloader::new(&self.repository, target_path)?;
+        let repository_downloader =
+            RepositoryDownloader::new(&self.repository, target_path.clone())?;
         let repository_url = &repository_downloader.repository_url;
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
@@ -81,31 +88,79 @@ impl Command for InitCommand {
             ))
             .write_line()?;
 
-        Ok(())
+        Ok(Some(target_path))
     }
 }
 
 impl InitCommand {
-    fn create_target_path(&self) -> Result<PathBuf> {
-        let target_path = match &self.target_path {
-            None => std::env::current_dir()
+    pub fn create_target_path(&self) -> Result<Option<PathBuf>> {
+        let mut current_dir;
+        let create_target_path = |path: &PathBuf| {
+            if !path.exists() {
+                fs::create_dir_all(path)
+                    .into_diagnostic()
+                    .wrap_err_with(|| format!("Failed to create directory at {:?}", path))?;
+            }
+            std::env::set_current_dir(path)
                 .into_diagnostic()
-                .wrap_err("Failed to get current directory")?,
+                .wrap_err(format!("Failed to set current directory to {:?}", path))?;
+            Ok::<_, miette::Error>(path.clone())
+        };
+        let target_path = match &self.target_path {
+            None => {
+                current_dir = std::env::current_dir()
+                    .into_diagnostic()
+                    .wrap_err("Failed to get current directory")?;
+                current_dir
+            }
             Some(path) => path.clone(),
         };
-        if !target_path.exists() {
-            fs::create_dir_all(&target_path)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("Failed to create directory at {:?}", target_path))?;
-        } else if target_path.read_dir().into_diagnostic()?.next().is_some() {
-            return Err(
-                miette!("Target directory {:?} is not empty", target_path).wrap_err(format!(
-                    "Use the command from an empty directory or pass the path to an empty directory using {}",
-                    color_primary("--target-path")
-                )),
-            );
+        current_dir = create_target_path(&target_path)?;
+
+        if target_path.read_dir().into_diagnostic()?.next().is_some() {
+            // Target is not empty
+
+            // Check if it contains a valid zone config file
+            let zone_config_arg = ZoneConfigArg::default();
+            if zone_config_arg.zone_config().is_err() {
+                let target_path = current_dir.join(self.repository_name());
+                create_target_path(&target_path)?;
+                if target_path.read_dir().into_diagnostic()?.next().is_some() {
+                    if zone_config_arg.zone_config().is_err() {
+                        Err(miette!(
+                            "Target directory {:?} doesn't contain a valid zone config file",
+                            target_path
+                        )
+                        .wrap_err(format!(
+                            "Use the command from a valid directory or pass a directory using {}",
+                            color_primary("--target-path")
+                        )))
+                    } else {
+                        Ok(None)
+                    }
+                } else {
+                    Ok(Some(target_path))
+                }
+            } else {
+                // If the zone config is valid, we assume the directory is already initialized.
+                Ok(None)
+            }
+        } else {
+            Ok(Some(target_path.clone()))
         }
-        Ok(target_path)
+    }
+
+    fn repository_name(&self) -> String {
+        let name = self
+            .repository
+            .trim_end_matches(".git")
+            .trim_end_matches(".zip")
+            .trim_end_matches("/archive/refs/heads/main")
+            .trim_end_matches("/archive/refs/heads/master")
+            .trim_end_matches("/archive/refs/heads/develop")
+            .replace("ockam-cluster-template-", "");
+        let name = name.split('/').next_back().unwrap_or(&name);
+        name.to_string()
     }
 }
 
@@ -345,4 +400,121 @@ impl RepositoryDownloader {
 enum RepositoryType {
     Git,
     Zip,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use std::fs::{self, File};
+    use tempfile::TempDir;
+
+    #[test]
+    #[serial]
+    fn test_create_target_path_explicit_empty_dir() -> Result<()> {
+        let temp_dir = TempDir::new().into_diagnostic()?;
+        let target_dir = temp_dir.path().join("explicit-dir");
+        fs::create_dir_all(&target_dir).into_diagnostic()?;
+
+        let cmd = InitCommand {
+            repository: "test-repo".to_string(),
+            target_path: Some(target_dir.clone()),
+        };
+
+        let result = cmd.create_target_path()?;
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), target_dir);
+
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_target_path_non_empty_without_config_creates_subdir() -> Result<()> {
+        let temp_dir = TempDir::new().into_diagnostic()?;
+        std::env::set_current_dir(&temp_dir).into_diagnostic()?;
+
+        File::create("some-file.txt").into_diagnostic()?;
+
+        let repo_name = "test-repo";
+        let cmd = InitCommand {
+            repository: repo_name.to_string(),
+            target_path: None,
+        };
+
+        let result = cmd.create_target_path()?;
+        assert!(result.is_some());
+        assert_eq!(
+            result.unwrap().file_name().unwrap().to_str().unwrap(),
+            repo_name
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_create_target_path_non_empty_subdir_without_config() -> Result<()> {
+        let temp_dir = TempDir::new().into_diagnostic()?;
+        std::env::set_current_dir(&temp_dir).into_diagnostic()?;
+
+        // Create a subdirectory with the repository name but no valid config
+        let repo_name = "test-repo";
+        let subdir = temp_dir.path().join(repo_name);
+        fs::create_dir_all(&subdir).into_diagnostic()?;
+        File::create(subdir.join("some-file.txt")).into_diagnostic()?;
+
+        let cmd = InitCommand {
+            repository: repo_name.to_string(),
+            target_path: None,
+        };
+
+        // This should fail because both current dir and subdir are non-empty and without a config
+        let result = cmd.create_target_path();
+        assert!(result.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_repository_name_extraction() {
+        let test_cases = [
+            // Simple name
+            ("hello", "hello"),
+            // With .git extension
+            ("hello.git", "hello"),
+            // With .zip extension
+            ("hello.zip", "hello"),
+            // Full GitHub URL
+            ("https://github.com/build-trust/ockam-cluster-template-hello", "hello"),
+            // SSH URL
+            ("git@github.com:build-trust/ockam-cluster-template-hello.git", "hello"),
+            // URL with branch
+            ("repo/archive/refs/heads/main", "repo"),
+            ("repo/archive/refs/heads/master", "repo"),
+            ("repo/archive/refs/heads/develop", "repo"),
+            // Template name with prefix
+            ("ockam-cluster-template-example", "example"),
+            // GitHub path
+            ("user/repo", "repo"),
+            ("user/repo.git", "repo"),
+            ("org/team/repo", "repo"),
+            // Combined cases
+            ("build-trust/ockam-cluster-template-hello.git", "hello"),
+            ("https://github.com/build-trust/ockam-cluster-template-hello/archive/refs/heads/main", "hello"),
+        ];
+
+        for (input, expected) in test_cases {
+            let cmd = InitCommand {
+                repository: input.to_string(),
+                target_path: None,
+            };
+            assert_eq!(
+                cmd.repository_name(),
+                expected,
+                "Failed for input: {}",
+                input
+            );
+        }
+    }
 }
