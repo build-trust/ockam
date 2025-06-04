@@ -25,7 +25,7 @@ from ..nodes.message import (
     AssistantMessage,
     ToolCall,
     GetConversationsRequest,
-    GetConversationsResponse,
+    GetConversationsResponse, UserMessage, Phase,
 )
 
 from ..ockam_in_rust_for_python import info, warn, debug
@@ -105,6 +105,8 @@ class Agent:
     async def handle__conversation_snippet(
         self, snippet: StreamedConversationSnippet | ConversationSnippet
     ) -> AsyncGenerator[StreamedConversationSnippet | ConversationSnippet | Error, None]:
+        from ..agents import ConversationResponse
+
         stream = type(snippet) is StreamedConversationSnippet
         if stream:
             snippet = snippet.snippet
@@ -118,6 +120,7 @@ class Agent:
         if not conversation:
             conversation = secrets.token_hex(16)
 
+        response = ConversationResponse(scope, conversation, stream)
         messages = snippet.messages
 
         query = ""
@@ -133,7 +136,9 @@ class Agent:
         # If there is a planner, initialize a plan
         plan = None
         if self.planner is not None:
-            plan = await self.planner.plan(await self.get_messages_only(conversation, scope), contextual_knowledge)
+            plan = await self.planner.plan(
+                await self.get_messages_only(conversation, scope), contextual_knowledge, stream=stream
+            )
 
         reply = None
         iteration = 0
@@ -142,28 +147,25 @@ class Agent:
                 if reply is not None:
                     break
             else:
-                next_steps = await plan.next_step(
+                received_plan_steps = False
+                async for next_step in plan.next_step(
                     await self.get_messages_only(conversation, scope), contextual_knowledge
-                )
-                if reply and next_steps is None:
+                ):
+                    received_plan_steps = True
+                    contextual_knowledge = await self.add_knowledge_search(next_step.content)
+                    yield response.make_snippet(next_step, phase=Phase.PLANNING)
+                    await self.remember(scope, conversation, next_step)
+                if reply and not received_plan_steps:
                     break
-                if next_steps is not None:
-                    for next_step in next_steps:
-                        contextual_knowledge = await self.add_knowledge_search(next_step.content)
-                        await self.remember(scope, conversation, next_step)
 
             # Call the model
             model_response: AssistantMessage
-            async for error, part_nb, finished, model_response in self.complete_chat(
+            async for error, finished, model_response in self.complete_chat(
                 scope, conversation, contextual_knowledge, stream=stream
             ):
                 # Break the loop, if the model complete_chat call returned an error.
                 if error:
-                    response_snippet = ConversationSnippet(scope, conversation, [error])
-                    if stream:
-                        yield StreamedConversationSnippet(response_snippet, part_nb, finished=True)
-                    else:
-                        yield response_snippet
+                    yield response.make_snippet(error)
                     break
 
                 await self.remember(scope, conversation, model_response)
@@ -176,12 +178,9 @@ class Agent:
                         # remember the tool being called
                         await self.remember(scope, conversation, tool_call_response)
                 else:
-                    reply = model_response
-                    response_snippet = ConversationSnippet(scope, conversation, [reply])
-                    if stream:
-                        yield StreamedConversationSnippet(response_snippet, part_nb, finished=finished)
-                    else:
-                        yield response_snippet
+                    yield response.make_snippet(model_response, finished=finished)
+                    if not stream or finished:
+                        return
 
             # Move to the next iteration
             iteration += 1
@@ -247,19 +246,15 @@ class Agent:
 
         response = await self.model.complete_chat(tools=self.tool_specs, messages=message_history, stream=stream)
         if stream:
-            n = 0
             async for chunk in response:
-                n += 1
-                yield await self.send_response(chunk, n)
+                yield await self.send_response(chunk)
         else:
             yield await self.send_response(response)
 
-    async def send_response(self, response, part_nb=0) -> (Error | None, int, bool, AssistantMessage):
+    async def send_response(self, response) -> (Error | None, int, bool, AssistantMessage):
         """
         This function converts the model response into an AssistantMessage.
-        When streaming is used the function also returns:
-            - the current part number
-            - a boolean indicating if this is the last part of the response
+        When streaming is used the function also returns a boolean indicating if this is the last part of the response
         """
         if response is None or not hasattr(response, "choices") or not response.choices:
             e = ValueError(f"The model returned a response with an unexpected structure - {response}")
@@ -295,7 +290,7 @@ class Agent:
                 args = tool_call.function.arguments
                 response["tool_calls"].append({"id": id, "function": {"name": name, "arguments": args}})
 
-        return None, part_nb, finished, self.converter.conversation_message_from_dict(response)
+        return None, finished, self.converter.conversation_message_from_dict(response)
 
     async def call_tool(self, tool_call: ToolCall, scope: str, conversation: str):
         tools = self.tools
