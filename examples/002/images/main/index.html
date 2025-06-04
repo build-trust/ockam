@@ -3,32 +3,47 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title></title>
     <style>
       body {
         margin: 10% 15%;
+        line-height: 1.8;
+        overflow-y: scroll;
+        overflow-x: hidden;
+        font: 21px "Courier New", Courier, monospace;
+        padding: 0;
       }
 
-      #out {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        box-sizing: border-box;
-        line-height: 1.5;
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 3rem 1rem;
+      }
+
+      pre {
         padding-top: 30px;
+        box-sizing: border-box;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
       }
 
-      #in {
+      textarea {
         width: 100%;
+        max-width: 1080px;
         box-sizing: border-box;
-        line-height: 1.5;
+        border: 1px solid #e9e9e9;
+        border-radius: 5px;
+        box-shadow: 2px 2px 10px #f4f4f4;
+        font-size: inherit;
+        padding: 1rem;
+        display: block;
+        height: calc(3 * 1.8em + 14.8px);
       }
     </style>
+    <title></title>
   </head>
   <body>
     <main>
-      <textarea id="in"></textarea>
-      <button id="send">Send</button>
+      <textarea id="in" autofocus placeholder="How can I help you..."></textarea>
       <pre id="out"></pre>
     <main>
 
@@ -50,6 +65,12 @@
       }
 
       async function send(message) {
+        const input = document.getElementById("in");
+        input.disabled = true;
+
+        const out = document.getElementById("out");
+        out.textContent = "";
+
         const response = await fetch("/agents/henry?stream=true", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -57,8 +78,6 @@
         });
 
         const decoder = new TextDecoder();
-        const out = document.getElementById("out");
-        out.textContent = "";
         let buffer = "";
 
         for await (const chunk of response.body) {
@@ -66,19 +85,22 @@
           const lines = buffer.split('\n');
           buffer = lines.pop();
 
-          for (const line of lines) {
-            await processLine(line);
-          }
+          if (!out.textContent) input.value = "";
+          for (const line of lines) await processLine(line);
         }
 
         await processLine(buffer);
 
+        input.disabled = false;
+        input.focus();
       }
 
-      document.getElementById("send").onclick = () => {
-        const input = document.getElementById("in");
-        send(input.value);
-      };
+      document.getElementById("in").addEventListener("keydown", async e => {
+        if (e.key === "Enter" && !e.shiftKey && !e.target.disabled && e.target.value.trim()) {
+          e.preventDefault();
+          await send(e.target.value);
+        }
+      });
     </script>
   </body>
 </html>
