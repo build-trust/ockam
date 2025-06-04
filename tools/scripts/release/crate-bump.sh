@@ -74,6 +74,11 @@ while [[ "${updated_crates[*]}" != "${recently_updated_crates[*]}" ]]; do
       echo "Bumping transitive dependent crate $crate version to $version"
     fi
 
+    if [[ ! -f "$crate/Cargo.toml" ]]; then
+      echo "Skipping $crate as it is not a crate"
+      continue
+    fi
+
     name=$(eval "tomlq package.name -f $crate/Cargo.toml")
 
     # Check if crate version was specified manually
