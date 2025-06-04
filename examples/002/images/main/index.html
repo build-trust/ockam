@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title></title>
+    <style>
+      body {
+        margin: 10% 15%;
+      }
+
+      #out {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        box-sizing: border-box;
+        line-height: 1.5;
+        padding-top: 30px;
+      }
+
+      #in {
+        width: 100%;
+        box-sizing: border-box;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <textarea id="in"></textarea>
+      <button id="send">Send</button>
+      <pre id="out"></pre>
+    <main>
+
+    <script>
+      async function appendCharByChar(text, delay = 5) {
+        for (const char of text) {
+          out.textContent += char;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+
+      async function processLine(line) {
+        if (line.trim()) {
+          const parsed = JSON.parse(line);
+          for (const { content } of parsed.messages) {
+            if (content) await appendCharByChar(content);
+          }
+        }
+      }
+
+      async function send(message) {
+        const response = await fetch("/agents/henry?stream=true", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: message }),
+        });
+
+        const decoder = new TextDecoder();
+        const out = document.getElementById("out");
+        out.textContent = "";
+        let buffer = "";
+
+        for await (const chunk of response.body) {
+          buffer += decoder.decode(chunk, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            await processLine(line);
+          }
+        }
+
+        await processLine(buffer);
+
+      }
+
+      document.getElementById("send").onclick = () => {
+        const input = document.getElementById("in");
+        send(input.value);
+      };
+    </script>
+  </body>
+</html>
