@@ -21,6 +21,6 @@ popd &>/dev/null || exit
 while IFS= read -r FILE_NAME; do
   echo "==> $FILE_NAME"
   TMP=$(mktemp)
-  EXAMPLES_DIR="$OCKAM_HOME/examples/rust/get_started" example_blocks "$FILE_NAME" >"$TMP"
+  EXAMPLES_DIR="$OCKAM_HOME/implementations/rust/examples/get_started" example_blocks "$FILE_NAME" >"$TMP"
   cat "$TMP" >"$FILE_NAME"
 done < <(find "$DOCS_HOME" -type f -name "*.md")
