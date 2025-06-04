@@ -320,7 +320,7 @@ impl CreateCommand {
                     &repository_uri_tag,
                     ".",
                 ],
-                vec![("DOCKER_BUILDKIT", None)],
+                vec![("DOCKER_BUILDKIT", Some("0"))],
             ),
         ];
 
