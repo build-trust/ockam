@@ -45,7 +45,7 @@ impl ZoneCommand {
 
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
-            ZoneSubcommand::Init(c) => c.run(ctx, opts).await,
+            ZoneSubcommand::Init(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Secret(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Create(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Delete(c) => c.run(ctx, opts).await,

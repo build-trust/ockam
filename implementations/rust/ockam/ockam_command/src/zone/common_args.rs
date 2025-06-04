@@ -65,6 +65,13 @@ impl From<ZoneConfigArg> for ZoneNameOrConfigArg {
 }
 
 impl ZoneNameOrConfigArg {
+    pub fn from_zone_config(zone_config: ZoneConfigArg) -> Self {
+        Self {
+            zone_name: None,
+            zone_config,
+        }
+    }
+
     pub fn from_zone_name(zone_name: String) -> Self {
         Self {
             zone_name: Some(zone_name),

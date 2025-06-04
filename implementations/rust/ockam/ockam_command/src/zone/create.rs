@@ -34,10 +34,10 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     #[command(flatten)]
-    pub zone_config: ZoneConfigArg,
+    pub zone: ZoneConfigArg,
 
     #[command(flatten)]
-    pub secrets_config: SecretsConfigArg,
+    pub secrets: SecretsConfigArg,
 
     /// Whether to use a public AWS ECR
     #[arg(long)]
@@ -109,11 +109,7 @@ impl Command<ZoneConfig> for CreateCommand {
 
 impl CreateCommand {
     fn parse_zone_config(&self) -> Result<ZoneConfig> {
-        let zone_config_path = self
-            .zone_config
-            .zone_config
-            .as_deref()
-            .unwrap_or("./ockam.yaml");
+        let zone_config_path = self.zone.zone_config.as_deref().unwrap_or("./ockam.yaml");
         ZoneConfig::from_file(zone_config_path)
     }
 
@@ -524,8 +520,8 @@ impl CreateCommand {
             let mut opts = opts.clone();
             opts.terminal = opts.terminal.disable();
             SecretCommand {
-                secrets_config: self.secrets_config.clone(),
-                zone: self.zone_config.clone().into(),
+                secrets_config: self.secrets.clone(),
+                zone: self.zone.clone().into(),
                 http_api: self.http_api.clone(),
             }
             .push_secrets(ctx, &opts, api_client, cluster, &zone_config.name)
