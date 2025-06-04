@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.152.0 - 2025-06-04
+
+### Added
+
+- After deploying a zone, show public http server url
+- Updated dependencies
+
+### Fixed
+
+- Revert unsetting `DOCKER_BUILDKIT`
+
 ## 0.151.0 - 2025-06-03
 
 ### Added
