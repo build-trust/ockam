@@ -30,6 +30,7 @@ PROVIDER_ALIASES = {
         "titan-embed-text-v2": "litellm_proxy/amazon.titan-embed-text-v2:0",
         "titan-text-express-v1": "litellm_proxy/amazon.titan-text-express-v1",
         "titan-text-lite-v1": "litellm_proxy/amazon.titan-text-lite-v1",
+        "llama3.1-8b-instruct": "litellm_proxy/lambda_ai.llama3.1-8b-instruct",
     },
     "ollama": {
         "deepseek-r1": "ollama_chat/deepseek-r1",
@@ -196,6 +197,10 @@ class Model:
 
         # parameters provided in kwargs will override the default parameters
         kwargs = {**self.kwargs, **kwargs}
+
+        # sometimes an empty tools list is interpreted as "please hallucinate tools",
+        if "tools" in kwargs and len(kwargs["tools"]) == 0:
+            del kwargs["tools"]
 
         return await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
 
