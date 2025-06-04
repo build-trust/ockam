@@ -1,34 +1,35 @@
-from typing import Optional, List
+from logging import debug
+
+from typing import Optional, List, AsyncGenerator
 
 from .protocol import Planner, Plan
-from ..nodes.message import SystemMessage, ConversationMessage, UserMessage
+from ..nodes.message import SystemMessage, ConversationMessage, UserMessage, Error, ConversationRole
 from ..models import Model
 
 
 class ReActPlan(Plan):
-    def __init__(self, model):
+    def __init__(self, model, stream: bool = False):
         self.model = model
-        self.plan = None
-        self.step_index = 0
+        self.stream = stream
+        self.plan_steps: Optional[List[ConversationMessage]] = None
 
     async def next_step(
         self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
-    ) -> Optional[List[ConversationMessage]]:
-        if self.plan is None:
-            self.plan = await self._plan(messages, contextual_knowledge)
-            if self.plan is None:
-                print("Failed to create a plan")
-                return messages
+    ) -> AsyncGenerator[ConversationMessage, None]:
+        if self.plan_steps is None:
+            self.plan_steps = []
+            async for step in self._next_step(messages, contextual_knowledge):
+                self.plan_steps.append(step)
+                yield step
+        else:
+            for step in self.plan_steps:
+                yield step
 
-        if self.step_index >= len(self.plan):
-            return None
+        return
 
-        step = self.plan[self.step_index]
-        self.step_index += 1
-
-        return [UserMessage(step)]
-
-    async def _plan(self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]) -> list[str]:
+    async def _next_step(
+        self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
+    ) -> AsyncGenerator[ConversationMessage, None]:
         step_messages: list[ConversationMessage] = []
         if contextual_knowledge:
             step_messages.append(
@@ -52,30 +53,26 @@ class ReActPlan(Plan):
                 ),
             ]
         )
-        plan = await self.model.complete_chat(
+        async for response in await self.model.complete_chat(
             messages=step_messages,
             temperature=0,
-        )
-
-        text = plan.choices[0].message.content
-        if "</think>" in text:
-            # deepseek uses <think> and </think> tags to indicate the reasoning
-            plan = text.split("</think>")[1]
-
-        steps = ["Disregard previous query"]
-        for step in plan.split("<step>"):
-            step = step.replace("</step>", "")
-            step = step.strip()
-            if len(step) <= 1:
-                continue
-            steps.append(step)
-
-        return steps
+            stream=self.stream,
+        ):
+            step_content = response.message.content
+            if step_content is None:
+                return
+            if "</think>" in step_content:
+                # deepseek uses <think> and </think> tags to indicate the reasoning
+                yield step_content.replace("<think>", "").replace("</think>", "")
+            else:
+                yield step_content
 
 
 class ReActPlanner(Planner):
     def __init__(self, model=Model("deepseek-r1")):
         self.model = model
 
-    async def plan(self, _messages: list[ConversationMessage], _contextual_knowledge: Optional[str]) -> Plan:
-        return ReActPlan(self.model)
+    async def plan(
+        self, _messages: list[ConversationMessage], _contextual_knowledge: Optional[str], stream: bool = False
+    ) -> Plan:
+        return ReActPlan(self.model, stream=stream)

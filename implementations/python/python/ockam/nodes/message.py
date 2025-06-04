@@ -277,11 +277,18 @@ class Error:
     type: MessageType = MessageType.ERROR
 
 
+class Phase(Enum):
+    THINKING = "thinking"
+    PLANNING = "planning"
+    EXECUTING = "executing"
+
+
 @dataclass
 class ConversationSnippet:
     scope: str = ""
     conversation: str = ""
     messages: list[ConversationMessage] = field(default_factory=list)
+    phase: Phase = Phase.EXECUTING
     type: MessageType = MessageType.CONVERSATION_SNIPPET
 
     def compact_assistant_messages(self):

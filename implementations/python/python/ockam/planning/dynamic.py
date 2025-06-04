@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, AsyncGenerator
 from .protocol import Planner, Plan
 from ..nodes.message import ConversationMessage, SystemMessage, UserMessage
 from ..models import Model
@@ -14,21 +14,23 @@ class DynamicPlan(Plan):
 
     async def next_step(
         self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
-    ) -> Optional[List]:
+    ) -> AsyncGenerator[ConversationMessage, None]:
         if self.objective_completed:
-            return None
+            return
 
         self.step_counter += 1
         if self.step_counter > DynamicPlan.MAX_STEPS:
-            return None
+            return
 
-        step = await self._next_step(messages, contextual_knowledge)
-        if step is None:
-            return None
+        async for step in await self._next_step(messages, contextual_knowledge):
+            if step is None:
+                return
 
-        return [UserMessage(step)]
+            yield step
 
-    async def _next_step(self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]) -> str:
+    async def _next_step(
+        self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
+    ) -> AsyncGenerator[ConversationMessage, None]:
         step_messages: list[ConversationMessage] = []
         if contextual_knowledge:
             step_messages.append(
