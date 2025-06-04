@@ -18,6 +18,11 @@ declare -A bumped_crates
 
 # Get crates that were updated, this will be published.
 for crate in "${updated_crates[@]}"; do
+  if [[ ! -f "$crate/Cargo.toml" ]]; then
+    echo "$crate is not a rust crate, skipping."
+    continue
+  fi
+
   name=$(eval "tomlq package.name -f $crate/Cargo.toml")
   bumped_crates[$name]=true
 done
