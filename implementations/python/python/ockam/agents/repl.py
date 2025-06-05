@@ -2,6 +2,8 @@ import asyncio
 import secrets
 import re
 
+from ockam.nodes.message import StreamedConversationSnippet
+
 HOST = "127.0.0.1"
 PORT = 7000
 
@@ -153,13 +155,23 @@ class Repl:
                     async for response in self.agent_reference.send_stream(
                         message, scope=self.scope, conversation=self.conversation, timeout=self.timeout
                     ):
-                        received = response.snippet.messages[0].content
-                        buffer += received
-                        if len(buffer) > 20:
-                            await self.write(writer, buffer)
-                            buffer = ""
-                        if response.finished:
-                            await self.write(writer, buffer)
+                        # even if we make a streaming request, the response might not be streaming if the downstream
+                        # agent does not support streaming
+                        if type(response) is StreamedConversationSnippet:
+                            received = response.snippet.messages[0].content
+                            buffer += received
+                            if len(buffer) > 20:
+                                await self.write(writer, buffer)
+                                buffer = ""
+                            if response.finished:
+                                await self.write(writer, buffer)
+                                # indicate the end of the stream
+                                writer.write(b"0\n")
+                                await writer.drain()
+                                break
+                        else:
+                            received = response.messages[0].content
+                            await self.write(writer, received)
                             # indicate the end of the stream
                             writer.write(b"0\n")
                             await writer.drain()

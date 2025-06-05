@@ -24,7 +24,7 @@ class FlowEdge:
 
 def vertex_to_id(vertex: FlowVertex) -> str:
     if isinstance(vertex, Reference):
-        return f"{vertex.node.name}__{vertex.type.value}__{vertex.name}"
+        return f"{vertex.node.name}__{vertex.reference_type.value}__{vertex.name}"
 
     return vertex
 
