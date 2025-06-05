@@ -25,7 +25,9 @@ from ..nodes.message import (
     AssistantMessage,
     ToolCall,
     GetConversationsRequest,
-    GetConversationsResponse, UserMessage, Phase,
+    GetConversationsResponse,
+    UserMessage,
+    Phase,
 )
 
 from ..ockam_in_rust_for_python import info, warn, debug
@@ -128,7 +130,6 @@ class Agent:
         for message in messages:
             if message.role == ConversationRole.USER:
                 query = message.content
-            await self.remember(scope, conversation, message)
 
         contextual_knowledge = None
         if self.knowledge is not None:
@@ -137,27 +138,34 @@ class Agent:
         # If there is a planner, initialize a plan
         plan = None
         if self.planner is not None:
-            plan = await self.planner.plan(
-                await self.get_messages_only(conversation, scope), contextual_knowledge, stream=stream
-            )
+            plan = await self.planner.plan(messages, contextual_knowledge)
+        else:
+            for message in messages:
+                await self.remember(scope, conversation, message)
 
-        reply = None
+        whole_response_snippet = ConversationSnippet(scope, conversation, [])
         iteration = 0
         while True:
-            if plan is None:
-                if reply is not None:
-                    break
+            if plan is None and len(whole_response_snippet.conversation) > 0:
+                # no plan and we have a reply, so we can stop
+                break
             else:
-                received_plan_steps = False
-                async for next_step in plan.next_step(
-                    await self.get_messages_only(conversation, scope), contextual_knowledge
-                ):
-                    received_plan_steps = True
+                next_steps = plan.next_step(await self.get_messages_only(conversation, scope), contextual_knowledge)
+
+                plan_completed = True
+                async for next_step in next_steps:
+                    if next_step is None:
+                        break
+                    plan_completed = False
                     contextual_knowledge = await self.add_knowledge_search(next_step.content)
-                    if next_step != STEP_BY_STEP_EXECUTION:
-                        yield response.make_snippet(next_step, phase=Phase.PLANNING)
                     await self.remember(scope, conversation, next_step)
-                if reply and not received_plan_steps:
+                    if stream:
+                        if next_step != STEP_BY_STEP_EXECUTION:
+                            yield response.make_snippet(next_step, phase=Phase.PLANNING)
+                    else:
+                        whole_response_snippet.messages.append(next_step)
+                if plan_completed:
+                    # we executed the whole plan
                     break
 
             # Call the model
@@ -168,7 +176,7 @@ class Agent:
                 # Break the loop, if the model complete_chat call returned an error.
                 if error:
                     yield response.make_snippet(error)
-                    break
+                    return
 
                 await self.remember(scope, conversation, model_response)
 
@@ -180,9 +188,13 @@ class Agent:
                         # remember the tool being called
                         await self.remember(scope, conversation, tool_call_response)
                 else:
-                    yield response.make_snippet(model_response, finished=finished)
-                    if not stream or finished:
-                        return
+                    if stream:
+                        yield response.make_snippet(model_response)
+                        if finished:
+                            break
+                    else:
+                        whole_response_snippet.messages.append(model_response)
+                        break
 
             # Move to the next iteration
             iteration += 1
@@ -191,6 +203,9 @@ class Agent:
             # Send an error as a reply.
             if iteration == self.maximum_iterations:
                 yield Error(str(RuntimeError("Reached maximum_iterations")))
+
+        if not stream:
+            yield whole_response_snippet
 
     async def get_messages_only(self, conversation, scope) -> list[ConversationMessage]:
         messages: list[dict] = self.memory.get_messages_only(scope, conversation)

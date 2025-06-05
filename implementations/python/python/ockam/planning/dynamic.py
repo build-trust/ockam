@@ -95,5 +95,7 @@ class DynamicPlanner(Planner):
     def __init__(self, model=Model("deepseek-r1")):
         self.model = model
 
-    async def plan(self, messages: list[ConversationMessage], contextual_knowledge: Optional[str], stream: bool = False) -> Plan:
+    async def plan(
+        self, messages: list[ConversationMessage], contextual_knowledge: Optional[str], stream: bool = False
+    ) -> Plan:
         return DynamicPlan(self.model)
