@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use base64ct::Encoding;
 use clap::Args;
 use colorful::Colorful;
-use miette::{miette, IntoDiagnostic, WrapErr};
+use miette::{IntoDiagnostic, WrapErr};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
@@ -202,14 +202,14 @@ struct Secret {
 
 impl Secrets {
     fn from_contents(contents: &str) -> Result<Self> {
-        let _self = if contents.starts_with("{") {
+        let mut _self = if contents.starts_with("{") {
             serde_json::from_str::<Self>(contents)
                 .map_err(|e| miette::miette!(format!("Failed to parse JSON secrets: {}", e)))?
         } else {
             serde_yaml::from_str::<Self>(contents)
                 .map_err(|e| miette::miette!(format!("Failed to parse YAML secrets: {}", e)))?
         };
-        _self.validate()?;
+        _self.encode_secret_values()?;
         Ok(_self)
     }
 
@@ -223,17 +223,10 @@ impl Secrets {
         Self::from_contents(&content)
     }
 
-    fn validate(&self) -> Result<()> {
-        // Key values must be base64 encoded
-        for secret in &self.0 {
-            for (key, value) in &secret.fields {
-                if base64ct::Base64::decode_vec(value).is_err() {
-                    return Err(miette!(format!(
-                        "Invalid value for key '{}' in secret '{}'",
-                        key, secret.name
-                    ))
-                    .wrap_err("Key's value must be base64 encoded"));
-                }
+    fn encode_secret_values(&mut self) -> Result<()> {
+        for secret in &mut self.0 {
+            for value in secret.fields.values_mut() {
+                *value = base64ct::Base64::encode_string(value.as_bytes());
             }
         }
         Ok(())
@@ -256,11 +249,11 @@ mod tests {
     #[test]
     fn test_parse_yaml_direct_array() -> Result<()> {
         let yaml_content = r#"
-- name: pg
-  fields:
-    username: dQ==
-    password: cA==
-"#;
+        - name: pg
+          fields:
+            username: u
+            password: p
+        "#;
         let file = create_temp_file_with_content(yaml_content)?;
         let secrets = Secrets::from_file(file.path())?;
 
@@ -281,15 +274,15 @@ mod tests {
     #[test]
     fn test_parse_yaml_multiple_secrets() -> Result<()> {
         let yaml_content = r#"
-- name: pg
-  fields:
-    username: dQ==
-    password: cA==
-- name: redis
-  fields:
-    host: bG9jYWxob3N0
-    port: NjM3OQ==
-"#;
+        - name: pg
+          fields:
+            username: u
+            password: p
+        - name: redis
+          fields:
+            host: localhost
+            port: 6379
+        "#;
         let file = create_temp_file_with_content(yaml_content)?;
         let secrets = Secrets::from_file(file.path())?;
 
@@ -313,14 +306,14 @@ mod tests {
     #[test]
     fn test_parse_json_format() -> Result<()> {
         let json_content = r#"[
-  {
-    "name": "pg",
-    "fields": {
-      "username": "dQ==",
-      "password": "cA=="
-    }
-  }
-]"#;
+          {
+            "name": "pg",
+            "fields": {
+              "username": "u",
+              "password": "p"
+            }
+          }
+        ]"#;
         let file = create_temp_file_with_content(json_content)?;
         let secrets = Secrets::from_file(file.path())?;
 
@@ -344,70 +337,6 @@ mod tests {
         let file = create_temp_file_with_content(invalid_yaml)?;
         let result = Secrets::from_file(file.path());
         assert!(result.is_err());
-        Ok(())
-    }
-
-    #[test]
-    fn test_secrets_validation_valid() -> Result<()> {
-        // Use valid base64 encoded values
-        let yaml_content = r#"
-    - name: test-secret
-      fields:
-        key1: SGVsbG8gV29ybGQ=
-        key2: QkFTRTY0
-    "#;
-        let file = create_temp_file_with_content(yaml_content)?;
-        let secrets = Secrets::from_file(file.path())?;
-        let validation_result = secrets.validate();
-        assert!(validation_result.is_ok());
-        Ok(())
-    }
-
-    #[test]
-    fn test_secrets_validation_invalid() -> Result<()> {
-        // Use one valid and one invalid base64 value
-        let yaml_content = r#"
-    - name: test-secret
-      fields:
-        kye1: SGVsbG8gV29ybGQ=
-        key2: this-is-not-valid-base64!
-    "#;
-        let file = create_temp_file_with_content(yaml_content)?;
-        let secrets = Secrets::from_file(file.path());
-        assert!(secrets.is_err());
-        Ok(())
-    }
-
-    #[test]
-    fn test_secrets_validation_empty_value() -> Result<()> {
-        // Empty string is valid base64
-        let yaml_content = r#"
-    - name: test-secret
-      fields:
-        empty: ""
-    "#;
-        let file = create_temp_file_with_content(yaml_content)?;
-        let secrets = Secrets::from_file(file.path())?;
-        let validation_result = secrets.validate();
-        assert!(validation_result.is_ok());
-        Ok(())
-    }
-
-    #[test]
-    fn test_secrets_validation_multiple_secrets() -> Result<()> {
-        // Multiple secrets with one invalid value in the second secret
-        let yaml_content = r#"
-    - name: first-secret
-      fields:
-        key1: SGVsbG8=
-    - name: second-secret
-      fields:
-        key1: SGVsbG8=
-        key2: not-base64!
-    "#;
-        let file = create_temp_file_with_content(yaml_content)?;
-        let secrets = Secrets::from_file(file.path());
-        assert!(secrets.is_err());
         Ok(())
     }
 }
