@@ -557,12 +557,10 @@ impl CreateCommand {
                     fmt_log!(
                         "The http server on the {} is available at:\n",
                         color_primary(&zone_config.get_main_pod()?.name),
-                    ) + &fmt_log!("{}", color_primary(http_url)),
+                    ) + &fmt_log!("{}\n", color_primary(http_url)),
                 )?;
             }
         }
-
-        opts.terminal.write_line("")?;
 
         Ok(())
     }
