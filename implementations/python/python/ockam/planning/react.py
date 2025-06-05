@@ -2,8 +2,8 @@ from logging import debug
 
 from typing import Optional, List, AsyncGenerator
 
-from .protocol import Planner, Plan
-from ..nodes.message import SystemMessage, ConversationMessage, UserMessage, Error, ConversationRole
+from .protocol import Planner, Plan, STEP_BY_STEP_EXECUTION
+from ..nodes.message import SystemMessage, ConversationMessage, UserMessage, Error, ConversationRole, AssistantMessage
 from ..models import Model
 
 
@@ -27,7 +27,7 @@ class ReActPlan(Plan):
 
         return
 
-    async def _next_step(
+    def _next_step(
         self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
     ) -> AsyncGenerator[ConversationMessage, None]:
         step_messages: list[ConversationMessage] = []
@@ -53,19 +53,8 @@ class ReActPlan(Plan):
                 ),
             ]
         )
-        async for response in await self.model.complete_chat(
-            messages=step_messages,
-            temperature=0,
-            stream=self.stream,
-        ):
-            step_content = response.message.content
-            if step_content is None:
-                return
-            if "</think>" in step_content:
-                # deepseek uses <think> and </think> tags to indicate the reasoning
-                yield step_content.replace("<think>", "").replace("</think>", "")
-            else:
-                yield step_content
+
+        return self.process_step_messages(step_messages)
 
 
 class ReActPlanner(Planner):

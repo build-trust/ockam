@@ -133,7 +133,7 @@
           for (const line of lines) await processLine(line, planBuffer, executeBuffer);
         }
 
-        await processLine(decodingBuffer, outBuffer);
+        await processLine(decodingBuffer, executeBuffer);
 
         input.disabled = false;
         input.focus();

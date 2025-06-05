@@ -7,8 +7,9 @@ from ..models import Model
 class DynamicPlan(Plan):
     MAX_STEPS = 10
 
-    def __init__(self, model):
+    def __init__(self, model, stream: bool = False):
         self.model = model
+        self.stream = stream
         self.step_counter = 0
         self.objective_completed = False
 
@@ -22,10 +23,7 @@ class DynamicPlan(Plan):
         if self.step_counter > DynamicPlan.MAX_STEPS:
             return
 
-        async for step in await self._next_step(messages, contextual_knowledge):
-            if step is None:
-                return
-
+        async for step in self._next_step(messages, contextual_knowledge):
             yield step
 
     async def _next_step(
@@ -97,5 +95,5 @@ class DynamicPlanner(Planner):
     def __init__(self, model=Model("deepseek-r1")):
         self.model = model
 
-    async def plan(self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]) -> Plan:
+    async def plan(self, messages: list[ConversationMessage], contextual_knowledge: Optional[str], stream: bool = False) -> Plan:
         return DynamicPlan(self.model)
