@@ -115,14 +115,18 @@ class HttpServer:
                                 if not received_snippet:
                                     received_snippet = received
                                 else:
-                                    received_snippet.messages += received.messages
-                                total_size = sum(len(m.content) for m in received_snippet.messages)
-                                if total_size > content_size or response.finished:
-                                    received_snippet = received_snippet.compact_assistant_messages()
-                                    yield json.dumps(received_snippet, default=default) + "\n"
-                                    received_snippet = None
-                                if response.finished:
-                                    break
+                                    if received.phase == received_snippet:
+                                        received_snippet.messages += received.messages
+                                        total_size = sum(len(m.content) for m in received_snippet.messages)
+                                        if total_size > content_size or response.finished:
+                                            received_snippet = received_snippet.compact_assistant_messages()
+                                            yield json.dumps(received_snippet, default=default) + "\n"
+                                            received_snippet = None
+                                    else:
+                                        yield json.dumps(received_snippet, default=default) + "\n"
+                                        received_snippet = received
+                                    if response.finished:
+                                        break
                             else:
                                 yield json.dumps(received, default=default) + "\n"
                                 break
