@@ -5,6 +5,7 @@ from ..nodes.message import ConversationMessage, UserMessage, AssistantMessage
 
 STEP_BY_STEP_EXECUTION = UserMessage("Execute the plan step by step.")
 
+
 class Plan(Protocol):
     def __init__(self):
         self.stream = None
@@ -14,7 +15,9 @@ class Plan(Protocol):
         self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
     ) -> AsyncGenerator[ConversationMessage, None]: ...
 
-    async def process_step_messages(self, step_messages: List[ConversationMessage]) -> AsyncGenerator[ConversationMessage, None]:
+    async def process_step_messages(
+        self, step_messages: List[ConversationMessage]
+    ) -> AsyncGenerator[ConversationMessage, None]:
         start_of_thinking_section = False
         end_of_thinking_section = False
 

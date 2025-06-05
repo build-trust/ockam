@@ -1,4 +1,4 @@
-from ockam import Agent, Node, CoTPlanner
+from ockam import Agent, Node, ReActPlanner
 
 """
 Ask a question to this agent via HTTP:
@@ -12,7 +12,7 @@ async def main(node):
         node=node,
         name="henry",
         instructions="You are an assistant who solves complex tasks by planning them carefully before solving them.",
-        planner=CoTPlanner(),
+        planner=ReActPlanner(),
     )
 
 
