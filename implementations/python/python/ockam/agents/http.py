@@ -129,7 +129,7 @@ class HttpServer:
 
                     return StreamingResponse(stream_response(), media_type="application/json")
                 else:
-                    return await agent.send(msg, scope, conversation)
+                    return await agent.send(msg, scope, conversation, timeout=timeout)
             except Exception as e:
                 error(f"Failed to send message to agent '{name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to send message")
