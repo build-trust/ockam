@@ -99,6 +99,7 @@ tempfile = "3.17.1"
 thiserror = "2.0.9"
 tokio = { version = "1.43.1", features = ["full"] }
 tokio-retry = "0.3"
+tokio-util = { version = "0.7.15", features = ["rt"] }
 tracing = { version = "0.1", default-features = false }
 url = "2.5.2"
 which = "7.0.2"

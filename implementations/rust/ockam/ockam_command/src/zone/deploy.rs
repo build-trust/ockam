@@ -1,8 +1,9 @@
 use crate::cluster::common_args::HttpApiArgs;
 use crate::cluster::utils::{get_api_client, get_cluster};
 use crate::node_command::InMemoryNodeCommand;
-use crate::zone::common_args::{DockerBuildArgs, SecretsConfigArg, ZoneConfigArg, ZoneInletsArgs};
+use crate::zone::common_args::{DockerBuildArgs, SecretsConfigArg, ZoneConfigArg};
 use crate::zone::secret::SecretCommand;
+use crate::zone::watcher::DirectoryWatcher;
 use crate::zone::zone_config::ZoneConfig;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
@@ -19,6 +20,7 @@ use ockam_node::Context;
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::task::JoinSet;
+use tokio_util::task::AbortOnDropHandle;
 use tracing::{debug, info};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -48,9 +50,6 @@ pub struct DeployCommand {
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
-
-    #[command(flatten)]
-    pub inlets: ZoneInletsArgs,
 }
 
 #[derive(Clone)]
@@ -143,15 +142,31 @@ impl DeployCommand {
         let login_task = {
             let _self = self.clone();
             let ecr_cred = ecr_cred.clone();
-            tokio::task::spawn(async move {
+            AbortOnDropHandle::new(tokio::task::spawn(async move {
                 // The login operations can't be parallelized, but we can run it in a separate task
                 _self.docker_login(&ecr_cred).await
-            })
+            }))
         };
-        let build_task = self.build_docker_images(spinner.as_ref(), &ecr_cred);
-        let tasks_res = tokio::join!(login_task, build_task);
+        let build_task = {
+            let _self = self.clone();
+            let ecr_cred = ecr_cred.clone();
+            let spinner = spinner.as_ref().cloned();
+            AbortOnDropHandle::new(tokio::task::spawn(async move {
+                _self.build_docker_images(spinner.as_ref(), &ecr_cred).await
+            }))
+        };
+        let tasks_handle =
+            AbortOnDropHandle::new(tokio::spawn(
+                async move { (login_task.await, build_task.await) },
+            ));
+        let tasks_res = tokio::select! {
+            _ = DirectoryWatcher::wait_for_message() => {
+                return Ok(zone_config);
+            }
+            res = tasks_handle => res.into_diagnostic()?,
+        };
         tasks_res.0.into_diagnostic()??;
-        let (images_names_formatter, images_data_res) = tasks_res.1?;
+        let (images_names_formatter, images_data_res) = tasks_res.1.into_diagnostic()??;
         let mut images_data = vec![];
         for image_data_res in images_data_res {
             let image_data = image_data_res?;

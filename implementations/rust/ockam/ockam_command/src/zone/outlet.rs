@@ -7,6 +7,7 @@ use crate::node_command::InMemoryNodeCommand;
 use crate::util::foreground_args::ForegroundArgs;
 use crate::util::parsers::hostname_parser;
 use crate::zone::common_args::{EnrollmentTicketConfigArg, ZoneNameOrConfigArg};
+use crate::zone::watcher::DirectoryWatcher;
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
 use clap::Args;
@@ -14,7 +15,6 @@ use miette::IntoDiagnostic;
 use ockam::transport::SchemeHostnamePort;
 use ockam_abac::PolicyExpression;
 use ockam_api::address::extract_address_value;
-use ockam_api::cli_state::OCKAM_HOME;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::CliState;
 use ockam_node::Context;
@@ -46,7 +46,8 @@ pub struct OutletCommand {
     #[arg(long)]
     pub relay: String,
 
-    #[arg(long)]
+    /// Returns the tokio handle of task running the outlet.
+    #[arg(long, hide = true)]
     pub background: bool,
 
     #[command(flatten)]
@@ -141,11 +142,12 @@ impl InMemoryNodeCommand for OutletNodeCommand {
         };
         let mut opts = self.opts.clone();
         let handle = tokio::spawn(async move {
-            let tmp_dir = tempfile::tempdir().into_diagnostic()?;
-            std::env::set_var(OCKAM_HOME, tmp_dir.path());
             opts.state = Arc::new(CliState::new(in_memory).await?);
-            node_cmd.run(node.ctx(), opts).await?;
-            Ok(())
+            let res = tokio::select! {
+                _ = DirectoryWatcher::wait_for_message() => Ok(()),
+                res = node_cmd.run(node.ctx(), opts) => res,
+            };
+            res
         });
         if let Some(node_callback) = node_callback {
             wait_for_node_callback_future(handle, node_callback).await?;

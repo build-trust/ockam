@@ -4978,6 +4978,7 @@ dependencies = [
  "thiserror 2.0.9",
  "tokio",
  "tokio-retry",
+ "tokio-util",
  "tracing",
  "url",
  "which 7.0.2",
@@ -8228,6 +8229,8 @@ dependencies = [
  "bytes 1.9.0",
  "futures-core",
  "futures-sink",
+ "futures-util",
+ "hashbrown 0.15.2",
  "pin-project-lite",
  "tokio",
 ]

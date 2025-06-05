@@ -8,6 +8,7 @@ use crate::zone::common_args::{
 };
 use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::get_cluster_name::GetClusterName;
+use crate::zone::watcher::DirectoryWatcher;
 use crate::zone::zone_config::{Outlet, ZoneConfig};
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
@@ -62,24 +63,19 @@ pub struct ReplCommand {
 }
 
 #[async_trait]
-impl Command<ReplExitCondition> for ReplCommand {
+impl Command for ReplCommand {
     const NAME: &'static str = "zone repl";
 
-    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<ReplExitCondition> {
-        self.run_impl(opts, ctx, None).await
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        self.run_impl(opts, ctx).await
     }
 }
 
 impl ReplCommand {
-    pub async fn run_impl(
-        self,
-        opts: CommandGlobalOpts,
-        ctx: &Context,
-        restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
-    ) -> Result<ReplExitCondition> {
+    pub async fn run_impl(self, opts: CommandGlobalOpts, ctx: &Context) -> Result<()> {
         if let Some(address) = &self.to {
             // Open the repl to the given address without creating any inlets
-            self.open_repl(&opts, address.clone(), restart_tx).await
+            self.open_repl(&opts, address.clone()).await
         } else {
             let zone_config = self.zone.zone_config()?;
             let (executors, logs_address, repl_address) =
@@ -108,10 +104,9 @@ impl ReplCommand {
             }
 
             if let Some(address) = repl_address {
-                self.open_repl(&opts, address, restart_tx).await
+                self.open_repl(&opts, address).await
             } else {
                 // No repl outlet. Wait for ctrlc to exit the command
-                let mut quit_rx = ZoneCtrlcHandler::rx();
                 let portals_str = if executors.len() > 1 {
                     "all portals"
                 } else {
@@ -119,8 +114,8 @@ impl ReplCommand {
                 };
                 opts.terminal
                     .write_line(fmt_log!("Press Ctrl+C to stop {portals_str} and exit"))?;
-                let _ = quit_rx.recv().await;
-                Ok(ReplExitCondition::Exit)
+                let _ = ZoneCtrlcHandler::wait_for_message().await;
+                Ok(())
             }
         }
     }
@@ -254,33 +249,19 @@ impl ReplCommand {
         &self,
         opts: &CommandGlobalOpts,
         inlet_address: SchemeHostnamePort,
-        restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
-    ) -> miette::Result<ReplExitCondition> {
+    ) -> miette::Result<()> {
         use tokio::net::TcpStream;
         use tokio::time::sleep;
-
-        let restart_handle = match restart_tx {
-            Some(tx) => {
-                let mut rx = tx.subscribe();
-                tokio::spawn(async move {
-                    let _ = rx.recv().await;
-                    Ok(())
-                })
-            }
-            None => tokio::spawn(std::future::pending::<miette::Result<()>>()),
-        };
-
-        let mut quit_rx = ZoneCtrlcHandler::rx();
 
         let (next_tx, next_rx) = tokio::sync::mpsc::channel(16);
         let (lines_tx, lines_rx) = tokio::sync::mpsc::channel(16);
         let mut stdin = RustylineHandle { lines_rx, next_tx };
-        let stdin_handle: JoinHandle<Result<()>> = tokio::task::spawn(async move {
-            if let Err(e) = RustylineHandler::run_repl(next_rx, lines_tx, None).await {
-                eprintln!("{:?}", e);
-            }
-            Ok(())
-        });
+        let stdin_handle =
+            tokio_util::task::AbortOnDropHandle::new(tokio::task::spawn(async move {
+                if let Err(e) = RustylineHandler::run_repl(next_rx, lines_tx, None).await {
+                    eprintln!("{:?}", e);
+                }
+            }));
 
         // Start the interactive repl
         let mut initial_message_spinner = opts.terminal.spinner();
@@ -289,7 +270,7 @@ impl ReplCommand {
         }
         let mut _initial_message_spinner = initial_message_spinner.clone();
         let _opts = opts.clone();
-        let repl_handle = tokio::spawn(async move {
+        let repl_handle = tokio_util::task::AbortOnDropHandle::new(tokio::spawn(async move {
             async fn connect_to_inlet(addr: &SchemeHostnamePort) -> miette::Result<TcpStream> {
                 const MAX_RETRIES: u32 = 120; // Try for about 60 seconds (120 * 500ms)
                 let duration = Duration::from_millis(500);
@@ -405,27 +386,30 @@ impl ReplCommand {
             }
 
             Ok::<(), miette::Error>(())
-        });
+        }));
 
-        let status = tokio::select! {
-            _ = quit_rx.recv() => ReplExitCondition::Exit,
-            _ = restart_handle => ReplExitCondition::Restart,
+        tokio::select! {
+            _ = ZoneCtrlcHandler::wait_for_message() => {
+                ZoneCtrlcHandler::send();
+            },
+            _ = DirectoryWatcher::wait_for_message() => {},
             res = stdin_handle => {
-                res.into_diagnostic()??;
-                ReplExitCondition::Exit
+                res.into_diagnostic()?;
+                ZoneCtrlcHandler::send();
             },
             res = repl_handle => {
                 res.into_diagnostic()??;
-                ReplExitCondition::Exit
+                ZoneCtrlcHandler::send();
             },
-        };
+        }
 
         if let Some(spinner) = initial_message_spinner.take() {
             spinner.finish_and_clear();
         }
 
-        Ok(status)
+        Ok(())
     }
+
     async fn wait_until_server_is_ready(
         reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
         read_header_buffer: &mut String,
@@ -527,12 +511,6 @@ impl ReplCommand {
             Err(_) => ReadStatus::Timeout,
         }
     }
-}
-
-#[derive(Debug)]
-pub enum ReplExitCondition {
-    Exit,
-    Restart,
 }
 
 /// Models the possible outcomes when reading server responses
