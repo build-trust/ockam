@@ -174,23 +174,30 @@ class Reference:
             response = converter.message_from_json(response_json)
             if isinstance(response, Error):
                 raise Exception(response.message)
-            if response.part_nb > expected_part_nb:
-                bisect.insort(out_of_order_messages, response)
-            else:
-                expected_part_nb = response.part_nb + 1
-                finished = response.finished
-                yield response
 
-            if len(out_of_order_messages) > 0:
-                while len(out_of_order_messages) > 0:
-                    m = out_of_order_messages[0]
-                    if m.part_nb == expected_part_nb:
-                        del out_of_order_messages[0]
-                        expected_part_nb = m.part_nb + 1
-                        finished = m.finished
-                        yield m
-                    else:
-                        break
+            # even if we make a streaming request, the response might not be streaming if the downstream
+            # agent does not support streaming
+            if type(response) is StreamedConversationSnippet:
+                if response.part_nb > expected_part_nb:
+                    bisect.insort(out_of_order_messages, response)
+                else:
+                    expected_part_nb = response.part_nb + 1
+                    finished = response.finished
+                    yield response
+
+                if len(out_of_order_messages) > 0:
+                    while len(out_of_order_messages) > 0:
+                        m = out_of_order_messages[0]
+                        if m.part_nb == expected_part_nb:
+                            del out_of_order_messages[0]
+                            expected_part_nb = m.part_nb + 1
+                            finished = m.finished
+                            yield m
+                        else:
+                            break
+            else:
+                finished = True
+                yield response
 
     @property
     def node_name(self):

@@ -9,7 +9,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
 
 from ..agents import AgentReference
-from ..nodes.message import GetConversationsRequest, ConversationMessage, AssistantMessage
+from ..nodes.message import GetConversationsRequest, ConversationMessage, AssistantMessage, StreamedConversationSnippet
 from ..ockam_in_rust_for_python import info, error
 
 
@@ -109,16 +109,22 @@ class HttpServer:
 
                         async for response in agent.send_stream(msg, scope, conversation):
                             received = response.snippet
-                            if not received_snippet:
-                                received_snippet = received
+                            # even if we make a streaming request, the response might not be streaming if the downstream
+                            # agent does not support streaming
+                            if type(response) is StreamedConversationSnippet:
+                                if not received_snippet:
+                                    received_snippet = received
+                                else:
+                                    received_snippet.messages += received.messages
+                                total_size = sum(len(m.content) for m in received_snippet.messages)
+                                if total_size > content_size or response.finished:
+                                    received_snippet = received_snippet.compact_assistant_messages()
+                                    yield json.dumps(received_snippet, default=default) + "\n"
+                                    received_snippet = None
+                                if response.finished:
+                                    break
                             else:
-                                received_snippet.messages += received.messages
-                            total_size = sum(len(m.content) for m in received_snippet.messages)
-                            if total_size > content_size or response.finished:
-                                received_snippet = received_snippet.compact_assistant_messages()
-                                yield json.dumps(received_snippet, default=default) + "\n"
-                                received_snippet = None
-                            if response.finished:
+                                yield json.dumps(received, default=default) + "\n"
                                 break
 
                     return StreamingResponse(stream_response(), media_type="application/json")

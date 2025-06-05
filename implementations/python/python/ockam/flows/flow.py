@@ -12,7 +12,7 @@ from ..nodes.message import (
     FlowReference,
     Reference,
     AssistantMessage,
-    UserMessage,
+    UserMessage, StreamedConversationSnippet,
 )
 
 from ..ockam_in_rust_for_python import info, debug
@@ -63,6 +63,7 @@ class FlowWorker:
             message = self.converter.message_from_json(message)
             handlers = {
                 ConversationSnippet: self.handle__conversation_snippet,
+                StreamedConversationSnippet: self.handle__conversation_snippet,
                 GetIdentifierRequest: self.handle__get_identifier_request,
             }
 
@@ -85,6 +86,10 @@ class FlowWorker:
         return GetIdentifierResponse(message.scope, message.conversation, agent_identifier)
 
     async def handle__conversation_snippet(self, snippet: ConversationSnippet) -> ConversationSnippet:
+        stream = type(snippet) is StreamedConversationSnippet
+        if stream:
+            snippet = snippet.snippet
+
         if not snippet.scope:
             snippet.scope = secrets.token_hex(16)
 
