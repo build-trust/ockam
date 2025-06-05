@@ -9,6 +9,7 @@ pub(crate) mod inlet;
 mod outlet;
 pub(crate) mod repl;
 pub(crate) mod secret;
+pub mod watcher;
 pub mod zone_config;
 
 use clap::{Args, Subcommand};
