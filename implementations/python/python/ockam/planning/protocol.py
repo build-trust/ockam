@@ -1,8 +1,9 @@
 from typing import List, Protocol, AsyncGenerator
 
 from typing_extensions import Optional
-from ..nodes.message import ConversationMessage
+from ..nodes.message import ConversationMessage, UserMessage
 
+STEP_BY_STEP_EXECUTION = UserMessage("Execute the plan step by step.")
 
 class Plan(Protocol):
     async def next_step(
