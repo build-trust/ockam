@@ -29,6 +29,7 @@ from ..nodes.message import (
 )
 
 from ..ockam_in_rust_for_python import info, warn, debug
+from ..planning.protocol import STEP_BY_STEP_EXECUTION
 
 
 class Agent:
@@ -153,7 +154,8 @@ class Agent:
                 ):
                     received_plan_steps = True
                     contextual_knowledge = await self.add_knowledge_search(next_step.content)
-                    yield response.make_snippet(next_step, phase=Phase.PLANNING)
+                    if next_step != STEP_BY_STEP_EXECUTION:
+                        yield response.make_snippet(next_step, phase=Phase.PLANNING)
                     await self.remember(scope, conversation, next_step)
                 if reply and not received_plan_steps:
                     break

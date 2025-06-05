@@ -2,7 +2,7 @@ from typing import Optional, AsyncGenerator
 
 from ockam.nodes.message import UserMessage
 
-from .protocol import Planner, Plan
+from .protocol import Planner, Plan, STEP_BY_STEP_EXECUTION
 from ..nodes.message import ConversationMessage, SystemMessage, AssistantMessage
 from ..models import Model
 
@@ -71,7 +71,7 @@ class CotPlan(Plan):
                     if step_content.strip() != "":
                         yield AssistantMessage(step_content)
         finally:
-            yield UserMessage("Execute the plan step by step.")
+            yield STEP_BY_STEP_EXECUTION
 
     async def complete_chat(self, messages: list[ConversationMessage], temperature: float = 0.0, stream: bool = False):
         response = await self.model.complete_chat(messages=messages, temperature=temperature, stream=stream)
