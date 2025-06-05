@@ -89,7 +89,7 @@ class HttpServer:
                 raise HTTPException(status_code=500, detail="Failed to get the conversations for agent '{name}'")
 
         @self.app.post("/agents/{name}")
-        async def send_message_to_agent(name: str, message: Request, stream: bool = False, content_size: int = 50, node=Depends(self.get_node)):
+        async def send_message_to_agent(name: str, message: Request, stream: bool = False, content_size: int = 50, timeout: int = 60, node=Depends(self.get_node)):
             info(f"Sending a message to agent '{name}'")
             await find_agent(node, name)
 
@@ -107,7 +107,7 @@ class HttpServer:
                     async def stream_response():
                         received_snippet = None
 
-                        async for response in agent.send_stream(msg, scope, conversation):
+                        async for response in agent.send_stream(msg, scope, conversation, timeout=timeout):
                             received = response.snippet
                             # even if we make a streaming request, the response might not be streaming if the downstream
                             # agent does not support streaming
