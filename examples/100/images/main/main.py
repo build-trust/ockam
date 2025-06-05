@@ -195,4 +195,4 @@ class Api:
             return JSONResponse(content={"runners": [r.name for r in runners]})
 
 
-Node.start(http_server=HttpServer(listen_address=argv[1], api=Api()))
+Node.start(http_server=HttpServer(api=Api()))
