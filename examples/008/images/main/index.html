@@ -20,6 +20,13 @@
       padding: 3rem 1rem;
     }
 
+    #plan_execute_container {
+      display: flex;
+      justify-content: space-between;
+      gap: 2rem;
+      margin-top: 1rem;
+    }
+
     .monospace-block {
       margin-top: 0;
       margin-bottom: 0;
@@ -29,6 +36,10 @@
       line-height: 1.2;
       font: inherit;
       font-family: monospace;
+      width: 50%;
+      min-width: 0;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     .plan {
@@ -71,8 +82,10 @@
 <body>
 <main>
   <textarea id="in" autofocus placeholder="How can I help you..."></textarea>
-  <div id="plan" class="plan monospace-block"></div>
-  <div id="execute" class="execute monospace-block"></div>
+  <div id="plan_execute_container">
+    <div id="plan" class="plan monospace-block"></div>
+    <div id="execute" class="execute monospace-block"></div>
+  </div>
   <main>
 
     <script>
