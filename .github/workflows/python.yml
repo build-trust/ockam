@@ -1,0 +1,107 @@
+name: Python
+
+permissions:
+  contents: read
+
+on:
+  merge_group:
+  pull_request:
+    # TODO: Also add the Python bats tests to this workflow
+    paths:
+    - ".github/workflows/python.yml"
+    - ".github/actions/**"
+    - "**.rs"
+    - "**.py"
+    - "**.toml"
+    - "**/Cargo.lock"
+    - "implementations/rust/ockam/ockam_command/tests/**"
+    - "**/Makefile"
+    - "tools/nix/**"
+  push:
+    paths:
+    - ".github/workflows/python.yml"
+    - ".github/actions/**"
+    - "**.rs"
+    - "**.py"
+    - "**.toml"
+    - "**/Cargo.lock"
+    - "implementations/rust/ockam/ockam_command/tests/**"
+    - "**/Makefile"
+    - "tools/nix/**"
+    branches:
+    - develop
+  schedule:
+  # We only save cache when a cron job is started, this is to ensure
+  # that we don't save cache on every push causing excessive caching
+  # and github deleting useful caches we use in our workflows, we now
+  # run a cron job every 2 hours so as to update the cache store with the
+  # latest data so that we don't have stale cache.
+  - cron: "0 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Commit SHA, to run workflow
+      ockam_command_cli_version:
+        description: SHA to build Ockam command CLI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  OCKAM_DATABASE_MAX_POOL_SIZE: 1
+
+jobs:
+  lint:
+    name: Python
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "lint"
+            cache_rust: false
+          - name: "format"
+            cache_rust: false
+          - name: "build"
+            cache_rust: true
+          - name: "test"
+            cache_rust: true
+
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: nix develop ../../tools/nix#rust --keep CI --ignore-environment --command bash {0}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        ref: ${{ github.event.inputs.commit_sha }}
+
+    - name: Install Nix
+      uses: ./.github/actions/cache_nix
+      with:
+        cache-unique-id: python
+      id: nix-installer
+
+    - uses: ./.github/actions/cache_rust
+      if: ${{ matrix.cache_rust }}
+      with:
+        job_name: "${{ github.job }}-python"
+
+    - name: Cache Python Virtual Environment
+      uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
+      if: ${{ matrix.cache_rust }}
+      with:
+        path: implementations/python/.venv
+        key: cache-python-venv-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: cache-python-venv-
+
+    - name: Run Python ${{ matrix.name }}
+      working-directory: implementations/python
+      run: make ${{ matrix.name }}
+
+    - name: Nix Upload Store
+      uses: ./.github/actions/nix_upload_store
+      if: ${{ steps.nix-installer.outputs.cache-hit != 'true' }}

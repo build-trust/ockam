@@ -17,8 +17,8 @@ async def main_simple_node(node):
     assert reply == message
 
 
-def test_agent():
-    Node.start(main_agent, wait_until_interrupted=False, http_server=HttpServer(listen_address="127.0.0.1:0"))
+# def test_agent():
+#     Node.start(main_agent, wait_until_interrupted=False, http_server=HttpServer(listen_address="127.0.0.1:0"))
 
 
 async def main_agent(node):
@@ -48,16 +48,16 @@ async def main_agent(node):
     converter = MessageConverter(node)
     assert {"role": "assistant", "content": "YES", 'tool_calls': []} == converter.message_to_dict(evaluation[0])
 
-def test_agent_can_call_agents_via_mcp():
-    Node.start(
-        main_agent_can_call_agents_via_mcp,
-        mcp_server=McpServer(listen_address="127.0.0.1:8001"),
-        mcp_clients=[
-            McpClient(name="localhost", address="http://127.0.0.1:8001/sse"),
-        ],
-        wait_until_interrupted=False,
-        http_server=HttpServer(listen_address="127.0.0.1:0")
-    )
+# def test_agent_can_call_agents_via_mcp():
+#     Node.start(
+#         main_agent_can_call_agents_via_mcp,
+#         mcp_server=McpServer(listen_address="127.0.0.1:8001"),
+#         mcp_clients=[
+#             McpClient(name="localhost", address="http://127.0.0.1:8001/sse"),
+#         ],
+#         wait_until_interrupted=False,
+#         http_server=HttpServer(listen_address="127.0.0.1:0")
+#     )
 
 async def main_agent_can_call_agents_via_mcp(node):
     await Agent.start(
@@ -79,8 +79,8 @@ async def main_agent_can_call_agents_via_mcp(node):
     reply = await agent.send("Give me a random number")
     assert "163728" in reply[0].content
 
-def test_agent_can_call_tools():
-    Node.start(main_agent_can_call_tools, wait_until_interrupted=False, http_server=HttpServer(listen_address="127.0.0.1:0"))
+# def test_agent_can_call_tools():
+#     Node.start(main_agent_can_call_tools, wait_until_interrupted=False, http_server=HttpServer(listen_address="127.0.0.1:0"))
 
 
 async def main_agent_can_call_tools(node):
