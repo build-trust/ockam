@@ -84,8 +84,20 @@ impl PyMailbox {
                 .receive_extended::<String>(options)
                 .await
                 .map_err(py_error)?;
-
             result.into_body().map_err(py_error)
+        })
+    }
+
+    #[pyo3(signature = (node))]
+    fn close_remote_connection<'a>(
+        &self,
+        py: Python<'a>,
+        node: String,
+    ) -> PyResult<Bound<'a, PyAny>> {
+        let node_clone = self.node.clone();
+
+        future_into_py(py, async move {
+            node_clone.close_remote_route(node).await.map_err(py_error)
         })
     }
 }
@@ -104,7 +116,7 @@ impl PyMailbox {
 
         future_into_py(py, async move {
             node_clone
-                .with_route(node, destination, move |route| async move {
+                .with_route(node, destination, false, move |route| async move {
                     let outgoing_ac = Arc::new(AllowAll);
 
                     let ctx = self_clone.ctx.read().await;

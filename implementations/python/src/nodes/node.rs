@@ -18,6 +18,7 @@ use ockam::{
 use ockam_api::cli_state::{EnrollmentTicket, ExportedEnrollmentTicket, NamedIdentity};
 use ockam_api::enroll::enrollment::{EnrollStatus, Enrollment};
 use ockam_api::multiaddr::MultiAddr;
+use ockam_api::nodes::connection::Connection;
 use ockam_api::nodes::models::relay::ReturnTiming;
 use ockam_api::nodes::service::{
     NodeManager, NodeManagerGeneralOptions, NodeManagerTransport, NodeManagerTransportOptions,
@@ -64,6 +65,7 @@ pub struct PyNode {
 struct CachedRemoteRoute {
     last_used: Instant,
     route: Route,
+    connection: Connection,
 }
 
 impl PyNode {
@@ -834,6 +836,7 @@ impl PyNode {
         &self,
         node_name: Option<String>,
         destination: String,
+        close_on_completion: bool,
         fut: F,
     ) -> Result<R>
     where
@@ -870,16 +873,28 @@ impl PyNode {
                     .await?;
                 let route = connection.route()?;
 
-                // FIXME
-                // let result = fut(route).await;
-                // _ = connection.close(&self.node_manager);
-                // result
-
-                fut(route).await
+                if close_on_completion {
+                    let result = fut(route).await;
+                    _ = connection.close(&self.node_manager);
+                    result
+                } else {
+                    fut(route).await
+                }
             }
         } else {
             fut(destination.into()).await
         }
+    }
+
+    /// Close a route to a remote node if a project is specified.
+    pub(crate) async fn close_remote_route(&self, node_name: String) -> Result<()> {
+        if let Some(project) = &self.project {
+            if let Some(cache) = &self.remote_connection_cache {
+                self.remove_cached_connection(cache, project.name().to_string(), node_name)
+                    .await;
+            }
+        };
+        Ok(())
     }
 
     async fn get_remote_route_to_node(
@@ -917,6 +932,7 @@ impl PyNode {
             CachedRemoteRoute {
                 last_used: now,
                 route: route.clone(),
+                connection,
             },
         );
         Ok(route)
@@ -930,7 +946,9 @@ impl PyNode {
     ) {
         let key = &(project_name, node_name);
         let mut cache = cache.write().await;
-        cache.remove(key);
+        if let Some(cached) = cache.remove(key) {
+            _ = cached.connection.close(&self.node_manager);
+        };
     }
 
     fn send_and_receive_impl<'a>(
@@ -947,7 +965,7 @@ impl PyNode {
 
         future_into_py(py, async move {
             self_clone
-                .with_route(node, destination, move |route| async move {
+                .with_route(node, destination, true, move |route| async move {
                     let (incoming_ac, outgoing_ac) = (Arc::new(AllowAll), Arc::new(AllowAll));
 
                     let options = MessageSendReceiveOptions::new()

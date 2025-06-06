@@ -10,6 +10,8 @@ class MailboxProtocol(Protocol):
 
     async def receive(self, policy: Optional[str] = None, timeout: Optional[int] = None) -> str: ...
 
+    async def close_remote_connection(self, node: str) -> str: ...
+
 
 @runtime_checkable
 class ContextProtocol(Protocol):
