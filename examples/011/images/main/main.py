@@ -37,7 +37,9 @@ class FoldersAnalyzer:
 
                 while attempt < max_attempts:
                     try:
-                        content = await to_thread(box_file_text_extract, self.box_client, file_id)
+                        content = await to_thread(
+                            box_file_text_extract, self.box_client, file_id
+                        )
                         break
                     except Exception:
                         attempt += 1
@@ -84,12 +86,16 @@ class FoldersAnalyzer:
 
             async def start_file_analysis(file):
                 worker_name = secrets.token_hex(6)
-                await self.node.start_worker(worker_name, self.__class__.FileAnalyzer(self.node, self.box_client))
+                await self.node.start_worker(
+                    worker_name, self.__class__.FileAnalyzer(self.node, self.box_client)
+                )
                 mailbox_name = secrets.token_hex(6)
                 mailbox = await self.node.create_mailbox(mailbox_name)
 
-                await mailbox.send(destination=worker_name,
-                                   message=json.dumps({"filename": file.name, "file_id": file.id}))
+                await mailbox.send(
+                    destination=worker_name,
+                    message=json.dumps({"filename": file.name, "file_id": file.id}),
+                )
                 return worker_name, mailbox
 
             futures = [start_file_analysis(file) for file in files]
@@ -100,8 +106,10 @@ class FoldersAnalyzer:
                 await self.node.stop_worker(name)
                 return analysis
 
-            futures = [finish_file_analysis(worker_name, mailbox) for worker_name, mailbox in
-                       handles]
+            futures = [
+                finish_file_analysis(worker_name, mailbox)
+                for worker_name, mailbox in handles
+            ]
             analyses = await ockam.gather(*futures, batch_size=100)
 
             await context.reply(json.dumps({"folder": folder, "analyses": analyses}))
@@ -132,7 +140,9 @@ class FoldersAnalyzer:
 
         async def start_folder_analysis(folder):
             worker_name = secrets.token_hex(6)
-            await self.node.start_worker(worker_name, self.__class__.FolderAnalyzer(self.node, box_client))
+            await self.node.start_worker(
+                worker_name, self.__class__.FolderAnalyzer(self.node, box_client)
+            )
             mailbox_name = secrets.token_hex(6)
             mailbox = await self.node.create_mailbox(mailbox_name)
 
@@ -148,8 +158,10 @@ class FoldersAnalyzer:
             await self.node.stop_worker(worker_name)
             return analysis
 
-        futures = [finish_folder_analysis(worker_name, mailbox) for worker_name, mailbox in
-                   handles]
+        futures = [
+            finish_folder_analysis(worker_name, mailbox)
+            for worker_name, mailbox in handles
+        ]
         analyses = await ockam.gather(*futures, batch_size=100)
 
         await context.reply(json.dumps(analyses))
@@ -190,7 +202,7 @@ async def analyze(node):
 
 def split_list_into_n_parts(lst, n):
     q, r = divmod(len(lst), n)
-    return [lst[i * q + min(i, r): (i + 1) * q + min(i + 1, r)] for i in range(n)]
+    return [lst[i * q + min(i, r) : (i + 1) * q + min(i + 1, r)] for i in range(n)]
 
 
 async def list_folders():

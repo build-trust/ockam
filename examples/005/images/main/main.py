@@ -6,7 +6,7 @@ async def main(node):
     await pioneer_docs.add_document(
         "Ownership in Pioneer.ai",
         "http://localhost:5555/ownership.md",
-        content_type="text/markdown"
+        content_type="text/markdown",
     )
 
     await Agent.start(
