@@ -60,7 +60,7 @@ class CodeAnalyzer:
 
                 Don't say anything else. Only output one upper case word YES or NO.
             """,
-            model=Model("nova-micro-v1"),
+            model=Model("llama3.1-8b-instruct"),
         )
 
         message = f"Filename: {filename}\nContent:\n\n{content}"
@@ -180,6 +180,12 @@ class Api:
                 "pandas-dev/pandas",
                 "simonw/files-to-prompt",
                 "simonw/sqlite-utils",
+                "pytest-dev/pytest",
+                "celery/celery",
+                "psf/black",
+                "jazzband/pip-tools",
+                "python-pillow/Pillow",
+                "python-poetry/poetry",
             ]
             response = await analyze(node, repos)
             return JSONResponse(content=response)
@@ -195,4 +201,4 @@ class Api:
             return JSONResponse(content={"runners": [r.name for r in runners]})
 
 
-Node.start(http_server=HttpServer(api=Api()))
+Node.start(http_server=HttpServer(api=Api()), cache_secure_channels=True)
