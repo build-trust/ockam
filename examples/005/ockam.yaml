@@ -1,0 +1,11 @@
+name: example005
+pods:
+  - name: main-pod
+    public: true
+    containers:
+      - name: main
+        image: main
+    portals:
+      inlets:
+        - from: 5555
+          name: files
