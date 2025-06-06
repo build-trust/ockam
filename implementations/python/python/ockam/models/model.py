@@ -156,41 +156,13 @@ class Model:
             return False
         return True
 
+    def support_forced_assistant_answer(self):
+        if "bedrock" in self.name or "litellm_proxy" in self.name:
+            return False
+        return True
+
     async def complete_chat(self, messages: List[dict] | List[ConversationMessage], stream: bool = False, **kwargs):
-        # convert if the messages are typed as ConversationMessage
-        if len(messages) > 0:
-            if not isinstance(messages[0], dict):
-                messages = [
-                    {
-                        "role": message.role.value,
-                        "content": message.content,
-                    }
-                    for message in messages
-                ]
-
-        # change type to list[dict]
-        messages: List[dict]
-
-        # remove any empty text content
-        for message in messages:
-            if "content" in message and len(message["content"]) == 0:
-                del message["content"]
-
-        if self.support_tools():
-            for message in messages:
-                # remove any tool calls when empty; this avoids litellm workarounds when they are not needed
-                if "tool_calls" in message:
-                    if len(message["tool_calls"]) == 0:
-                        del message["tool_calls"]
-        else:
-            for message in messages:
-                # convert any tool role to assistant
-                if message["role"] == "tool":
-                    message["role"] = "assistant"
-
-                # remove any tool calls
-                if "tool_calls" in message:
-                    del message["tool_calls"]
+        messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())
 
         # slightly modify the parameters to accommodate services
         litellm.modify_params = True
@@ -210,3 +182,91 @@ class Model:
 
         embedding = await litellm.aembedding(self.name, text, **kwargs)
         return [embedding["embedding"] for embedding in embedding.data]
+
+
+def normalize_messages(
+    messages: List[dict] | List[ConversationMessage], tools_supported: bool, forced_assistant_answer_supported: bool
+) -> List[dict]:
+    # convert if the messages are typed as ConversationMessage
+    if len(messages) > 0:
+        if not isinstance(messages[0], dict):
+            messages = [
+                {
+                    "role": message.role.value,
+                    "content": message.content,
+                }
+                for message in messages
+            ]
+
+    # change type to list[dict]
+    messages: List[dict]
+
+    # remove any empty text content
+    for message in messages:
+        if "content" in message and len(message["content"]) == 0:
+            del message["content"]
+
+    if tools_supported:
+        for message in messages:
+            # remove any tool calls when empty; this avoids litellm workarounds when they are not needed
+            if "tool_calls" in message:
+                if len(message["tool_calls"]) == 0:
+                    del message["tool_calls"]
+    else:
+        for message in messages:
+            # convert any tool role to assistant
+            if message["role"] == "tool":
+                message["role"] = "assistant"
+
+            # remove any tool calls
+            if "tool_calls" in message:
+                del message["tool_calls"]
+
+    # remove scope and conversation from messages before sending them over litellm
+    for message in messages:
+        if "scope" in message:
+            del message["scope"]
+        if "conversation" in message:
+            del message["conversation"]
+
+    # compact messages with the same fields except 'content'
+    if len(messages) > 0:
+        compacted = [messages[0]]
+        for msg in messages[1:]:
+            last = compacted[-1]
+            # Compare all keys except 'content' and merge if equal
+            keys_to_compare = set(msg.keys()) | set(last.keys())
+            keys_to_compare.discard("content")
+            if all(msg.get(k) == last.get(k) for k in keys_to_compare):
+                # Merge content if both have it
+                if "content" in last and "content" in msg:
+                    last["content"] += msg["content"]
+                elif "content" in msg:
+                    last["content"] = msg["content"]
+                else:
+                    # neither has content
+                    pass
+            else:
+                compacted.append(msg)
+        messages = compacted
+
+    # delete messages without useful information
+    new_messages = []
+    for message in messages:
+        match message.get("role"):
+            case "system" | "user" if not message.get("content", None):
+                continue
+            case "assistant" if not message.get("content", None) and not message.get("tool_calls", None):
+                continue
+            case "tool" if not message.get("name", None):
+                continue
+            case _:
+                new_messages.append(message)
+    messages = new_messages
+
+    # if the last message is an assistant message, we need to change it to user when
+    # force_assistant_answer is not supported
+    if not forced_assistant_answer_supported and len(messages) > 0 and messages[-1]["role"] == "assistant":
+        messages[-1]["role"] = "user"
+
+    return messages

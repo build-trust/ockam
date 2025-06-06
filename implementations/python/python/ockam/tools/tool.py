@@ -24,7 +24,10 @@ class Tool(InvokableTool):
 
     async def invoke(self, json_argument: Optional[str]) -> str:
         try:
-            args = json.loads(json_argument)
+            if json_argument is None or json_argument == "":
+                args = {}
+            else:
+                args = json.loads(json_argument)
             tool_response = str(await self.func(**args))
         except Exception as e:
             tool_response = f"tool call failed with error: {e}"

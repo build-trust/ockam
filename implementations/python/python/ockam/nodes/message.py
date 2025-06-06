@@ -1,6 +1,7 @@
 import cattr
 import json
 import bisect
+import secrets
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -32,9 +33,16 @@ class ToolCall:
     type: str = "function"
 
 
+class Phase(Enum):
+    THINKING = "thinking"
+    PLANNING = "planning"
+    EXECUTING = "executing"
+
+
 @dataclass
 class UserMessage:
-    content: str
+    content: str = ""
+    phase: Phase = Phase.EXECUTING
     role: ConversationRole = ConversationRole.USER
 
 
@@ -47,6 +55,7 @@ class SystemMessage:
 @dataclass
 class AssistantMessage:
     content: str = ""
+    phase: Phase = Phase.EXECUTING
     role: ConversationRole = ConversationRole.ASSISTANT
     tool_calls: list[ToolCall] = field(default_factory=list)
 
@@ -56,6 +65,7 @@ class ToolCallResponseMessage:
     content: str
     tool_call_id: str
     name: str
+    phase: Phase = Phase.EXECUTING
     role: ConversationRole = ConversationRole.TOOL
 
 
@@ -159,7 +169,9 @@ class Reference:
         if converter is None:
             converter = MessageConverter(self.node)
         message_json = converter.message_to_json(message)
-        mailbox = await self.node.create_mailbox("message")
+
+        random_address = f"message_{secrets.token_hex(16)}"
+        mailbox = await self.node.create_mailbox(random_address)
 
         if self.name_of_remote_node:
             await mailbox.send_to_remote(self.name_of_remote_node, self.name, message_json)
@@ -277,18 +289,11 @@ class Error:
     type: MessageType = MessageType.ERROR
 
 
-class Phase(Enum):
-    THINKING = "thinking"
-    PLANNING = "planning"
-    EXECUTING = "executing"
-
-
 @dataclass
 class ConversationSnippet:
     scope: str = ""
     conversation: str = ""
     messages: list[ConversationMessage] = field(default_factory=list)
-    phase: Phase = Phase.EXECUTING
     type: MessageType = MessageType.CONVERSATION_SNIPPET
 
     def compact_assistant_messages(self):
