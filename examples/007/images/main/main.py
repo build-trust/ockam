@@ -22,7 +22,7 @@ async def main(node):
         model=Model("claude-3-7-sonnet-v1"),
         tools=[
             McpTool("brave_search", "brave_web_search"),
-            Tool(current_iso8601_utc_time)
+            Tool(current_iso8601_utc_time),
         ],
     )
 

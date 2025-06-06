@@ -9,7 +9,6 @@ async def main(node):
         "sec-330c": "https://raw.githubusercontent.com/AlextheYounga/us-federal-code/refs/heads/master/usc/title-15-commerce-and-trade/chapter-9a-weather-modification-activities-or-attempts%3B-reporting-requirement/sec-330c.md",
         "sec-330d": "https://raw.githubusercontent.com/AlextheYounga/us-federal-code/refs/heads/master/usc/title-15-commerce-and-trade/chapter-9a-weather-modification-activities-or-attempts%3B-reporting-requirement/sec-330d.md",
         "sec-330e": "https://raw.githubusercontent.com/AlextheYounga/us-federal-code/refs/heads/master/usc/title-15-commerce-and-trade/chapter-9a-weather-modification-activities-or-attempts%3B-reporting-requirement/sec-330e.md",
-
     }
 
     us_fedral_code = Knowledge("us_fedral_code")

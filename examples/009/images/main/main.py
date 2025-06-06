@@ -2,6 +2,7 @@ from ockam import Agent, Flow, FlowOperation, Node, START, END, Repl, Model
 
 from sys import argv
 
+
 async def main(node):
     triage = await Agent.start(
         node=node,
@@ -65,7 +66,7 @@ async def main(node):
             Only print the fixed code snippet.
             Under no circumstances print anything else except the changed code snippet.
             """,
-        )
+    )
 
     code_evaluator = await Agent.start(
         node=node,
@@ -179,7 +180,7 @@ async def main(node):
                     ```
                 Answer: `safe`
                 ```
-            """
+            """,
     )
 
     flow = Flow()
@@ -198,5 +199,6 @@ async def main(node):
     flow = await Flow.start(node, flow)
 
     await Repl.start(flow, "localhost:7000")
+
 
 Node.start(main)
