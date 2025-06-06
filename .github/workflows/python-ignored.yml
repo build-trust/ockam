@@ -1,0 +1,37 @@
+name: Python
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths-ignore:
+    - ".github/workflows/python.yml"
+    - ".github/actions/**"
+    - "**.rs"
+    - "**.py"
+    - "**.toml"
+    - "**/Cargo.lock"
+    - "implementations/rust/ockam/ockam_command/tests/**"
+    - "**/Makefile"
+    - "tools/nix/**"
+
+jobs:
+  lint:
+    name: Python
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "lint"
+            cache_rust: false
+          - name: "format"
+            cache_rust: false
+          - name: "build"
+            cache_rust: true
+          - name: "test"
+            cache_rust: true
+
+    runs-on: ubuntu-22.04
+    steps:
+    - run: 'echo "Python - ${{ matrix.name }} - Ignored"'
