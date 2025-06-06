@@ -15,7 +15,7 @@ def create_extractor() -> TextExtractor:
 
         debug("Using markitdown for text extraction")
         return MarkItDownTextExtractor()
-    except:
+    except ImportError:
         pass
 
     debug("Using internal text extraction")

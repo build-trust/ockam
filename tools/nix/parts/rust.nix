@@ -94,6 +94,7 @@ in {
           RUSTFLAGS = "--cfg tokio_unstable -Cdebuginfo=0 -Dwarnings";
           CARGO_INCREMENTAL = 0;
           LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:${pkgs.stdenv.cc.cc.lib}/lib";
         };
       in {
         rust = pkgs.mkShell {
@@ -107,7 +108,7 @@ in {
 
           inherit (config.devShells.tooling) BATS_LIB;
 
-          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS CARGO_INCREMENTAL LIBCLANG_PATH;
+          inherit (envVars) CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER OCKAM_DISABLE_UPGRADE_CHECK RUSTFLAGS CARGO_INCREMENTAL LIBCLANG_PATH LD_LIBRARY_PATH;
 
           DYLD_FALLBACK_LIBRARY_PATH = "${toolchain}/lib";
           RUST_SRC_PATH = lib.optional cfg.rustAnalyzer "${toolchain}/lib/rustlib/src/rust/library";
