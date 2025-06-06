@@ -1,0 +1,3 @@
+box-sdk-gen
+box-sdk-gen[jwt]
+box_ai_agents_toolkit

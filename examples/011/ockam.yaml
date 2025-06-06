@@ -1,0 +1,47 @@
+name: example011
+pods:
+  - name: main-pod
+    size: big
+    public: true
+    containers:
+      - name: main
+        image: main
+        env:
+          - name: BOX_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_id
+          - name: BOX_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_secret
+          - name: BOX_ENTERPRISE_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: enterprise_id
+
+  - name: runner-pod
+    size: big
+    clones: 5
+    containers:
+      - name: runner
+        image: runner
+        env:
+          - name: BOX_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_id
+          - name: BOX_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: client_secret
+          - name: BOX_ENTERPRISE_ID
+            valueFrom:
+              secretKeyRef:
+                name: box
+                key: enterprise_id
