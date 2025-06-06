@@ -1,4 +1,4 @@
-name: example100
+name: example010
 pods:
   - name: main-pod
     size: big
