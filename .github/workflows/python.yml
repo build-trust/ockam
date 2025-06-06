@@ -85,18 +85,26 @@ jobs:
         cache-unique-id: python
       id: nix-installer
 
-    - uses: ./.github/actions/cache_rust
+    - name: Cache Rust Dependencies
+      uses: ./.github/actions/cache_rust
       if: ${{ matrix.cache_rust }}
       with:
         job_name: "${{ github.job }}-python"
 
+    # We only upload cache when CI is running on a schedule (on develop)
     - name: Cache Python Virtual Environment
-      uses: actions/cache@67b839edb68371cc5014f6cea11c9aa77238de78
-      if: ${{ matrix.cache_rust }}
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
+      if: ${{ github.event_name == 'schedule' && matrix.cache_rust }}
       with:
         path: implementations/python/.venv
         key: cache-python-venv-${{ hashFiles('**/pyproject.toml') }}
-        restore-keys: cache-python-venv-
+
+    - name: Restore Cache Of Python Virtual Environment
+      if: ${{ github.event_name != 'schedule' && matrix.cache_rust }}
+      uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684
+      with:
+        path: implementations/python/.venv
+        key: cache-python-venv-${{ hashFiles('**/pyproject.toml') }}
 
     - name: Run Python ${{ matrix.name }}
       working-directory: implementations/python

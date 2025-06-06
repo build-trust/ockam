@@ -17,7 +17,7 @@ runs:
     - name: Restore and Save Cache
       id: nix-restore-and-save
       if: ${{ github.event_name == 'schedule' }}
-      uses: actions/cache@v4
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
       with:
         path: |
           /tmp/nix-cache
@@ -26,7 +26,7 @@ runs:
     - name: Restore Cache
       id: nix-restore
       if: ${{ github.event_name != 'schedule' }}
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684
       with:
         path: |
           /tmp/nix-cache
