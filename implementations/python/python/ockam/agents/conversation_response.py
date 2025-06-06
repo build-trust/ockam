@@ -8,11 +8,11 @@ class ConversationResponse:
         self.stream = stream
         self.counter = 0
 
-    def make_snippet(self, message: ConversationMessage, phase: Phase = Phase.EXECUTING, finished: bool = False):
+    def make_snippet(self, message: ConversationMessage, finished: bool = False):
         if self.stream:
             self.counter += 1
             return StreamedConversationSnippet(
-                ConversationSnippet(self.scope, self.conversation, [message], phase), self.counter, finished
+                ConversationSnippet(self.scope, self.conversation, [message]), self.counter, finished
             )
         else:
             return ConversationSnippet(self.scope, self.conversation, [message])

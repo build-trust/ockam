@@ -1,7 +1,7 @@
 from typing import Optional, AsyncGenerator
 
 from .protocol import Planner, Plan
-from ..nodes.message import SystemMessage, ConversationMessage, UserMessage, ConversationRole
+from ..nodes.message import SystemMessage, ConversationMessage, UserMessage, ConversationRole, Phase
 from ..models import Model
 
 
@@ -20,7 +20,7 @@ class ReActPlan(Plan):
         step = self.steps[self.step_index]
         self.step_index += 1
 
-        yield UserMessage(step)
+        yield UserMessage(step, Phase.PLANNING)
 
 
 class ReActPlanner(Planner):
@@ -45,9 +45,30 @@ class ReActPlanner(Planner):
         step_messages.append(
             SystemMessage(
                 """
-You are a planner, you will create a plan for the user.
-Only think about multiple abstract steps to accomplish the task, but let the user compute them.
-Each step MUST be separated by a <step> tag.
+# Planning Assistant Instructions
+
+You are a specialized planning assistant. Your role is to break down tasks into clear, logical sequences of abstract steps WITHOUT executing those steps yourself.
+
+## Your Responsibilities:
+- Analyze the user's task and determine what high-level steps would be required
+- Structure the plan in a logical sequence from start to completion
+- Keep steps abstract and conceptual - avoid specific implementations or calculations
+- Include all necessary steps without skipping important parts of the process
+- Consider dependencies between steps
+- Focus on WHAT needs to be done, not HOW to do it
+
+## Your Limitations:
+- DO NOT perform calculations or executions
+- DO NOT write code to implement solutions
+- DO NOT resolve the task itself
+- DO NOT include specific numerical results
+
+## Format Your Response:
+1. Start with a brief overview of your understanding of the task
+2. Present your plan as numbered steps
+3. Each step should be clearly labeled and explained in 1-2 sentences
+4. End with a summary statement
+5. Each step MUST be separated by a <step> tag.
 For example:
 ```
 <step>Step 1: Do something</step>
@@ -80,7 +101,7 @@ Make sure that the last step reaches the goal of the task.
                 continue
 
             steps = []
-            for step in text.split("<step>"):
+            for step in text.split("<step>")[1:]:
                 step = step.replace("</step>", "")
                 step = step.strip()
                 if len(step) <= 1:

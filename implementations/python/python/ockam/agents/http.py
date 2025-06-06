@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 
 from .socket_address import parse_host_and_port
 from ..agents import AgentReference
-from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet
+from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet, Phase
 
 logger = logging.getLogger("http")
 
@@ -122,19 +122,14 @@ class HttpServer:
                             # even if we make a streaming request, the response might not be streaming if the downstream
                             # agent does not support streaming
                             if type(response) is StreamedConversationSnippet:
+                                # if phase is missing or None, set "executing" phase
+                                if not hasattr(received, "phase") or received.phase is None:
+                                    received.phase = Phase.EXECUTING
                                 if not received_snippet:
                                     received_snippet = received
                                 else:
-                                    if received.phase == received_snippet:
-                                        received_snippet.messages += received.messages
-                                        total_size = sum(len(m.content) for m in received_snippet.messages)
-                                        if total_size > content_size or response.finished:
-                                            received_snippet = received_snippet.compact_assistant_messages()
-                                            yield json.dumps(received_snippet, default=default) + "\n"
-                                            received_snippet = None
-                                    else:
-                                        yield json.dumps(received_snippet, default=default) + "\n"
-                                        received_snippet = received
+                                    yield json.dumps(received_snippet, default=default) + "\n"
+                                    received_snippet = received
                                     if response.finished:
                                         break
                             else:

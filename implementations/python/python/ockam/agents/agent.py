@@ -30,7 +30,6 @@ from ..nodes.message import (
 )
 
 from ..ockam_in_rust_for_python import info, warn, debug
-from ..planning.protocol import STEP_BY_STEP_EXECUTION
 
 from ..logging.logging import get_logging_config
 import logging.config
@@ -148,7 +147,7 @@ class Agent:
         # If there is a planner, initialize a plan
         plan = None
         if self.planner is not None:
-            plan = await self.planner.plan(messages, contextual_knowledge)
+            plan = await self.planner.plan(messages, contextual_knowledge, stream)
         else:
             for message in messages:
                 await self.remember(scope, conversation, message)
@@ -170,10 +169,10 @@ class Agent:
                         break
                     plan_completed = False
                     contextual_knowledge = await self.add_knowledge_search(next_step.content)
-                    await self.remember(scope, conversation, next_step)
+                    if next_step.phase == Phase.PLANNING:
+                        await self.remember(scope, conversation, next_step)
                     if stream:
-                        if next_step != STEP_BY_STEP_EXECUTION:
-                            yield response.make_snippet(next_step, phase=Phase.PLANNING)
+                        yield response.make_snippet(next_step)
                     else:
                         whole_response_snippet.messages.append(next_step)
                 if plan_completed:
