@@ -1,3 +1,4 @@
+from typing import Union, Optional
 from .protocol import TextExtractor
 from .pypdfium2 import PdfTextExtractor
 from .plain import PlainTextExtractor
@@ -7,6 +8,8 @@ from ...ockam_in_rust_for_python import warn
 
 
 class MultiDocumentExtractor(TextExtractor):
+    fail_on_error: bool
+
     def __init__(self, fail_on_error: bool = False):
         """
         Initializes the MultiDocumentExtractor.
@@ -14,26 +17,32 @@ class MultiDocumentExtractor(TextExtractor):
         """
         self.fail_on_error = fail_on_error
 
-    def guess_content_type(self, input_data: str | bytes) -> str | None:
+    def guess_content_type(self, input_data: Union[str, bytes]) -> Optional[str]:
+        """
+        Guess the content type of the input data.
+
+        :param input_data: The input data to guess the content type for.
+        :return: The guessed content type, or None if it couldn't be determined.
+        """
         if isinstance(input_data, str):
             # a string would be considered as a file path
-            raw_bytes = input_data.encode("utf-8")
+            raw_bytes: bytes = input_data.encode("utf-8")
         else:
             raw_bytes = input_data
 
-        content_type = None
+        content_type: Optional[str] = None
         try:
             content_type = filetype.guess_mime(raw_bytes)
         except Exception:
             pass
 
         if content_type is None:
-            text_sample = None
+            text_sample: Optional[str] = None
 
             if isinstance(input_data, bytes):
                 try:
                     # If all the content is valid utf-8, we can assume its plain text
-                    text = input_data.decode("utf-8", errors="strict")
+                    text: str = input_data.decode("utf-8", errors="strict")
                     text_sample = text.strip()[:20].lower()
                 except UnicodeDecodeError:
                     content_type = None
@@ -52,10 +61,19 @@ class MultiDocumentExtractor(TextExtractor):
                     content_type = "text/plain"
         return content_type
 
-    async def extract_text(self, input_data: str | bytes, content_type: str = None) -> str:
+    async def extract_text(self, input_data: Union[str, bytes], content_type: Optional[str] = None) -> str:
+        """
+        Extract text from the input data.
+
+        :param input_data: The input data to extract text from.
+        :param content_type: The content type of the input data, or None to guess it.
+        :return: The extracted text.
+        :raises ValueError: If fail_on_error is True, and the content type is unsupported or couldn't be determined.
+        """
         if content_type is None:
             content_type = self.guess_content_type(input_data)
 
+        extractor: TextExtractor
         match content_type:
             case "application/pdf":
                 extractor = PdfTextExtractor()

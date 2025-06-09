@@ -1,7 +1,11 @@
+from typing import List
 from .protocol import Chunker
 
 
 class NaiveChunker(Chunker):
+    overlap: int
+    max_characters: int
+
     def __init__(self, max_characters: int = 256, overlap: int = 16):
         """
         Initialize the NaiveChunker with an optional overlap.
@@ -12,14 +16,20 @@ class NaiveChunker(Chunker):
         self.overlap = overlap
         self.max_characters = max_characters
 
-    def chunk(self, text: str) -> list[str]:
-        pieces = []
-        start = 0
+    def chunk(self, text: str) -> List[str]:
+        """
+        Chunk the given text into smaller pieces.
+
+        :param text: The text to be chunked.
+        :return: A list of text chunks.
+        """
+        pieces: List[str] = []
+        start: int = 0
 
         while start < len(text):
-            end = start + min(self.max_characters, len(text))
+            end: int = start + min(self.max_characters, len(text))
 
-            piece = text[start:end]
+            piece: str = text[start:end]
             pieces.append(piece)
 
             start = end - self.overlap

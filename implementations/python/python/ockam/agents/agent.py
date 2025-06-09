@@ -5,12 +5,13 @@ from enum import Enum
 
 import secrets
 
+from ..knowledge import Memory
 from .conversation_response import ConversationResponse
 from ..nodes import RemoteNode, LocalNodeProtocol
 from ..planning import Planner
+
+from ..history import ConversationHistory
 from ..tools.protocol import InvokableTool
-from ..knowledge import SearchResults, KnowledgeProvider
-from ..memory import Memory
 from ..models import Model
 from ..nodes import NodeProtocol
 from ..nodes.message import (
@@ -274,9 +275,8 @@ class Agent:
         tool_specs: List[dict],
         tools: Dict[str, InvokableTool],
         planner: Planner,
-        memory: Memory,
-        knowledge: KnowledgeProvider,
-        max_knowledge_size: int,
+        conversation_history: ConversationHistory,
+        memory: Optional[Memory],
     ):
         self.logger = Agent.logger()
         self.logger.info(f"start agent '{name}'")
@@ -288,15 +288,13 @@ class Agent:
         self.name = name
         self.model = model
 
-        self.memory = memory
-        memory.set_instructions(system_message(instructions))
+        self.conversation_history = conversation_history
+        conversation_history.set_instructions(system_message(instructions))
 
         self.planner = planner
         self.maximum_iterations = 14
 
-        self.knowledge = knowledge
-        self.max_knowledge_size = max_knowledge_size
-        self.search_results = SearchResults()
+        self.memory = memory
 
         self.converter = MessageConverter.create(node)
 
@@ -338,7 +336,7 @@ class Agent:
         return GetIdentifierResponse(message.scope, message.conversation, agent_identifier)
 
     async def handle__get_conversations_request(self, message: GetConversationsRequest) -> GetConversationsResponse:
-        return GetConversationsResponse(self.memory.get_messages_only(message.scope, message.conversation))
+        return GetConversationsResponse(self.conversation_history.get_messages_only(message.scope, message.conversation))
 
     async def handle__conversation_snippet(
         self, snippet: StreamedConversationSnippet | ConversationSnippet
@@ -364,7 +362,7 @@ class Agent:
                 query = message.content
 
         contextual_knowledge = None
-        if self.knowledge is not None:
+        if self.memory is not None:
             contextual_knowledge = await self.add_knowledge_search(query)
 
         # Create and initialize the state machine
@@ -385,43 +383,27 @@ class Agent:
             yield result
 
     async def get_messages_only(self, conversation, scope) -> list[ConversationMessage]:
-        messages: list[dict] = self.memory.get_messages_only(scope, conversation)
+        messages: list[dict] = self.conversation_history.get_messages_only(scope, conversation)
         return [self.converter.conversation_message_from_dict(m) for m in messages]
 
     async def add_knowledge_search(self, query: str) -> Optional[str]:
         """
         Search the knowledge base for relevant information and adds it to the search results.
         """
-        # Check if knowledge is None or query is empty
-        if self.knowledge is None or not query or len(query) == 0:
+        # Check if memory is None or query is empty
+        if self.memory is None or not query or len(query) == 0:
             return None
 
-        hits = await self.knowledge.search(query)
-        self.search_results.add(hits)
-        while True:
-            view = self.search_results.view()
-            if len(view) > 0:
-                contextual_knowledge = ""
-                for document_name, text_pieces in view.items():
-                    contextual_knowledge += f"Document name: {document_name}\n"
-                    for text_piece in text_pieces:
-                        contextual_knowledge += f"- {text_piece}\n"
-                    contextual_knowledge += "\n"
-                if len(contextual_knowledge) <= self.max_knowledge_size:
-                    break
-            else:
-                contextual_knowledge = None
-                break
-            self.search_results.reduce_size()
-        return contextual_knowledge
+        await self.memory.add_query(query)
+        return self.memory.render_text()
 
     async def remember(self, scope: str, conversation: str, message: ConversationMessage):
         if not isinstance(message, dict):
             message = self.converter.message_to_dict(message)
-        self.memory.add_message(scope, conversation, message)
+        self.conversation_history.add_message(scope, conversation, message)
 
     async def message_history(self, scope: str, conversation: str) -> list[dict]:
-        return self.memory.get_messages(scope, conversation)
+        return self.conversation_history.get_messages(scope, conversation)
 
     async def complete_chat(
         self, scope, conversation, contextual_knowledge, stream: bool = False
@@ -531,8 +513,7 @@ class Agent:
         tools: Optional[List[InvokableTool]] = None,
         planner: Planner = None,
         exposed_as: Optional[str] = None,
-        knowledge: Optional[KnowledgeProvider] = None,
-        max_knowledge_size: int = 4096,
+        memory: Optional[Memory] = None,
     ):
         if name is None:
             name = secrets.token_hex(12)
@@ -545,11 +526,11 @@ class Agent:
         match node:
             case node if isinstance(node, LocalNodeProtocol):
                 await Agent.start_agent_impl(
-                    node, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+                    node, instructions, name, model, tools, planner, exposed_as, memory,
                 )
             case node if isinstance(node, RemoteNode):
                 await node.start_agent(
-                    instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+                    instructions, name, model, tools, planner, exposed_as, memory,
                 )
                 Agent.logger().info(f"Successfully started agent {name} on a remote node")
             case _:
@@ -569,8 +550,7 @@ class Agent:
         model: Model = None,
         tools: Optional[list] = None,
         planner=None,
-        knowledge: Optional[KnowledgeProvider] = None,
-        max_knowledge_size: int = 4096,
+        memory: Optional[Memory] = None,
     ):
         if model is None:
             model = Model(name="llama3.2")
@@ -582,12 +562,12 @@ class Agent:
                 for i in range(number_of_agents):
                     name = secrets.token_hex(12)
                     await Agent.start_agent_impl(
-                        node, instructions, name, model, tools, planner, None, knowledge, max_knowledge_size
+                        node, instructions, name, model, tools, planner, None, memory
                     )
                     agents.append(AgentReference(name, node))
             case node if isinstance(node, RemoteNode):
                 names = await node.start_agents(
-                    instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size
+                    instructions, number_of_agents, model, tools, planner, memory
                 )
 
                 for name in names:
@@ -608,16 +588,15 @@ class Agent:
         tools: Optional[List[InvokableTool]],
         planner: Planner,
         exposed_as: Optional[str],
-        knowledge: Optional[KnowledgeProvider],
-        max_knowledge_size: int,
+        memory: Optional[Memory],
     ):
         tools_specs, tools = await prepare_tools(node, tools)
-        # the memory is shared between all the agent workers
-        memory = Memory()
+        # the history is shared between all the agent workers
+        conversation_history = ConversationHistory()
 
         def agent_creator():
             return Agent(
-                node, name, instructions, model, tools_specs, tools, planner, memory, knowledge, max_knowledge_size
+                node, name, instructions, model, tools_specs, tools, planner, conversation_history, memory
             )
 
         await node.start_spawner(name, agent_creator, key_extractor, None, exposed_as)

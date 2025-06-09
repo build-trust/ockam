@@ -1,23 +1,27 @@
-from .knowledge import SearchableKnowledge, Knowledge, KnowledgeAggregator
+from .memory import Memory, Retrieval
+from .providers import KnowledgeProviderAggregator, SearchableKnowledgeProvider, SimpleKnowledgeProvider
 from .protocol import KnowledgeProvider
 from .search import SearchHit, SearchResults, TextPiece
-from .in_memory import InMemory
-from .database import Database
+from .storage.in_memory import InMemory
+from .storage.database import Database
+from .storage import create_storage
 from .extractors import TextExtractor
 from .chunkers import Chunker, NaiveChunker
 
 __all__ = [
     "Database",
     "InMemory",
-    "Knowledge",
+    "SimpleKnowledgeProvider",
+    "Memory",
+    "Retrieval",
     "KnowledgeProvider",
-    "KnowledgeAggregator",
-    "SearchableKnowledge",
+    "KnowledgeProviderAggregator",
+    "SearchableKnowledgeProvider",
     "SearchHit",
     "SearchResults",
-    "SearchableKnowledge",
     "TextPiece",
     "TextExtractor",
     "Chunker",
     "NaiveChunker",
+    "create_storage",
 ]

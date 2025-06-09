@@ -2,7 +2,7 @@ from collections import defaultdict
 import threading
 
 
-class Memory:
+class ConversationHistory:
     def __init__(self):
         self.instructions = []
         self.conversations = defaultdict(lambda: defaultdict(list[dict]))

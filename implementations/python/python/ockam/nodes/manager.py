@@ -64,7 +64,6 @@ class RemoteManager:
             request.planner,
             request.exposed_as,
             request.knowledge,
-            request.max_knowledge_size,
         )
 
         return StartAgentResponse("ok")
@@ -79,6 +78,7 @@ class RemoteManager:
             request.model,
             request.tools,
             request.planner,
+            request.knowledge,
         )
 
         names = [agent.name for agent in agents]
@@ -128,14 +128,14 @@ class RemoteManagerClient:
 
         return response.identifier
 
-    async def start_agent(self, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size):
+    async def start_agent(self, instructions, name, model, tools, planner, exposed_as, knowledge):
         await self.send_request(
-            StartAgentRequest(instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size)
+            StartAgentRequest(instructions, name, model, tools, planner, exposed_as, knowledge)
         )
 
-    async def start_agents(self, instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size):
+    async def start_agents(self, instructions, number_of_agents, model, tools, planner, knowledge):
         response = await self.send_request(
-            StartAgentsRequest(instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size)
+            StartAgentsRequest(instructions, number_of_agents, model, tools, planner, knowledge)
         )
 
         return response.names

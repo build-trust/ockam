@@ -44,15 +44,15 @@ class RemoteNode(NodeProtocol):
 
     # TODO: Maybe replace with start_spawner
     async def start_agent(
-        self, instructions: str, name: str, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+        self, instructions: str, name: str, model, tools, planner, exposed_as, knowledge
     ):
         client = RemoteManagerClient(self)
-        await client.start_agent(instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size)
+        await client.start_agent(instructions, name, model, tools, planner, exposed_as, knowledge)
 
-    async def start_agents(self, instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size):
+    async def start_agents(self, instructions, number_of_agents, model, tools, planner, knowledge):
         client = RemoteManagerClient(self)
         return await client.start_agents(
-            instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size
+            instructions, number_of_agents, model, tools, planner, knowledge
         )
 
     async def list_agents(self):

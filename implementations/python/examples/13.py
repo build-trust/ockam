@@ -1,4 +1,5 @@
-from ockam import Agent, Model, Node, SearchableKnowledge
+from ockam import Agent, Model, Node, Memory
+from ockam.knowledge.protocol import Document
 
 """
     This example shows how a model can be enriched with knowledge coming from inlined documents.
@@ -6,30 +7,34 @@ from ockam import Agent, Model, Node, SearchableKnowledge
 
 
 async def main(node):
-    restaurants = SearchableKnowledge(
-        "restaurants",
-        model=Model("ollama/nomic-embed-text"),
-    )
-    await restaurants.add_text(
-        "Tony's Pizzeria Menu",
-        """
-        1. Margherita - $10
-        2. Pepperoni - $12
-        3. Hawaiian - $11
-        4. Veggie - $9
-        5. Four Cheese - $13
-    """,
+    restaurants = Memory("restaurants")
+
+    await restaurants.add_document(
+        Document.inline(
+            "Tony's Pizzeria Menu",
+            """
+            1. Margherita - $10
+            2. Pepperoni - $12
+            3. Hawaiian - $11
+            4. Veggie - $9
+            5. Four Cheese - $13
+            """,
+            content_type="text/plain",
+        )
     )
 
-    await restaurants.add_text(
-        "Diner Menu",
-        """
-        1. Caesar Salad - $8
-        2. Vegan Burger - $14
-        3. Chicken - $15
-        4. Shrimp Tacos - $16
-        5. Chocolate Lava Cake - $7
-    """,
+    await restaurants.add_document(
+        Document.inline(
+            "Diner Menu",
+            """
+            1. Caesar Salad - $8
+            2. Vegan Burger - $14
+            3. Chicken - $15
+            4. Shrimp Tacos - $16
+            5. Chocolate Lava Cake - $7
+            """,
+            content_type="text/plain",
+        )
     )
 
     agent = await Agent.start(
@@ -37,8 +42,7 @@ async def main(node):
         name="Assistant",
         instructions="Assistant to solve some complex task ...",
         model=Model(name="ollama_chat/llama3.2"),
-        knowledge=restaurants,
-        max_knowledge_size=4096,
+        memory=restaurants,
     )
 
     reply = await agent.send("What's the price of a pepperoni pizza?", scope="a", conversation="1")

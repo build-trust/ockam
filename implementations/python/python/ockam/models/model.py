@@ -236,6 +236,19 @@ class Model:
                             f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly."
                         )
 
+    @staticmethod
+    def default_embedding_model() -> 'Model':
+        """
+        Returns the default embedding model based on the environment.
+        """
+        if os.environ.get("LITELLM_PROXY_API_BASE"):
+            return Model("litellm_proxy/titan-embed-text-v2")
+        elif os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE"):
+            return Model("bedrock/titan-embed-text-v2")
+        else:
+            return Model("ollama/nomic-embed-text")
+
+
     def support_tools(self):
         if "deepseek" in self.name:
             return False

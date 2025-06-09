@@ -1,8 +1,8 @@
-from typing import Protocol
+from typing import Protocol, Union, Optional
 
 
 class TextExtractor(Protocol):
-    async def extract_text(self, input_data: str | bytes, content_type: str = None) -> str:
+    async def extract_text(self, input_data: Union[str, bytes], content_type: Optional[str] = None) -> str:
         """
         Extract text from a PDF file.
 

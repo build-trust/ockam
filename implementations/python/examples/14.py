@@ -1,4 +1,5 @@
-from ockam import Agent, Model, Node, SearchableKnowledge
+from ockam import Agent, Model, Node, Memory, Retrieval
+from ockam.knowledge.protocol import Document
 
 """
     This example shows how a model can be enriched with knowledge coming from documents retrieved online.
@@ -6,10 +7,7 @@ from ockam import Agent, Model, Node, SearchableKnowledge
 
 
 async def main(node):
-    ockam_documentation = SearchableKnowledge(
-        "ockam_documentation",
-        model=Model("ollama/nomic-embed-text"),
-    )
+    ockam_documentation = Memory("ockam_documentation")
 
     base_url = "https://raw.githubusercontent.com/build-trust/ockam-documentation/refs/heads/main"
     documents = [
@@ -23,9 +21,12 @@ async def main(node):
 
     for document in documents:
         await ockam_documentation.add_document(
-            document,
-            f"{base_url}/{document}",
-            content_type="text/markdown",
+            Document.url(
+                document,
+                f"{base_url}/{document}",
+                content_type="text/markdown",
+            ),
+            retrieval=Retrieval.SEARCHABLE_PIECES
         )
 
     agent = await Agent.start(
@@ -33,8 +34,7 @@ async def main(node):
         name="Assistant",
         instructions="Assistant to solve some complex task ...",
         model=Model(name="ollama_chat/llama3.2"),
-        knowledge=ockam_documentation,
-        max_knowledge_size=4096,
+        memory=ockam_documentation,
     )
 
     reply = await agent.send("What's ockam?", scope="a", conversation="1")

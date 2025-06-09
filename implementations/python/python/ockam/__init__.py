@@ -2,7 +2,8 @@ from .agents import Agent, AgentReference, HttpServer, Repl
 from .clusters import Cluster, Zone
 from .flows import Flow, FlowOperation, START, END
 from .nodes.message import FlowReference
-from .memory import Memory
+from .history import ConversationHistory
+from .logging import get_logging_config, info, warning, error, debug, set_log_level
 from .logging import info, warning, error, debug, set_log_levels, get_logger
 from .models import Model
 from .nodes import Node, RemoteNode, LocalNode, LocalNodeProtocol, MailboxProtocol, WorkerProtocol, ContextProtocol
@@ -12,18 +13,8 @@ from .planning import CoTPlanner, ReActPlanner, DynamicPlanner
 from .squads import Squad
 from .tools import McpTool, Tool
 from .knowledge import (
-    TextPiece,
-    SearchHit,
-    SearchResults,
-    Knowledge,
-    SearchableKnowledge,
-    InMemory,
-    Database,
-    KnowledgeProvider,
-    KnowledgeAggregator,
-    TextExtractor,
-    Chunker,
-    NaiveChunker,
+    Memory,
+    Retrieval,
 )
 from .gather import gather
 
@@ -60,7 +51,7 @@ __all__ = [
     "McpTool",
     "Tool",
     # from .memory
-    "Memory",
+    "ConversationHistory",
     # from .models
     "Model",
     # from .nodes
@@ -81,21 +72,8 @@ __all__ = [
     # from .squads
     "Squad",
     # from .knowledge
-    "RemoteManager",
-    "Node",
-    "Tool",
-    "KnowledgeProvider",
-    "KnowledgeAggregator",
-    "Knowledge",
-    "SearchableKnowledge",
-    "TextPiece",
-    "SearchHit",
-    "SearchResults",
-    "InMemory",
-    "Database",
-    "TextExtractor",
-    "Chunker",
-    "NaiveChunker",
+    "Memory",
+    "Retrieval",
     # from .gather
     "gather",
 ]

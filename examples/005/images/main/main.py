@@ -1,8 +1,8 @@
-from ockam import Agent, Knowledge, Model, Node
+from ockam import Agent, Memory, Model, Node
 
 
 async def main(node):
-    pioneer_docs = Knowledge("pioneer_ai_documents")
+    pioneer_docs = Memory("pioneer_ai_documents")
     await pioneer_docs.add_document(
         "Ownership in Pioneer.ai",
         "http://localhost:5555/ownership.md",

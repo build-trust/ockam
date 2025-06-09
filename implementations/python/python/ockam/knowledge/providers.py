@@ -5,14 +5,14 @@ from typing import Optional, List
 
 from .chunkers import Chunker, NaiveChunker
 from .extractors import TextExtractor, create_extractor
-from .protocol import KnowledgeProvider, Storage
-from .in_memory import InMemory
+from .protocol import KnowledgeProvider, Document
+from .storage import Storage, create_storage
 from .search import TextPiece, SearchHit
 from ..models import Model
 from ..ockam_in_rust_for_python import debug
 
 
-class KnowledgeAggregator(KnowledgeProvider):
+class KnowledgeProviderAggregator(KnowledgeProvider):
     """
     This class aggregates multiple knowledge providers and allows searching across all of them.
     """
@@ -27,68 +27,70 @@ class KnowledgeAggregator(KnowledgeProvider):
         return results
 
 
-class Knowledge(KnowledgeProvider):
+class SimpleKnowledgeProvider(KnowledgeProvider):
     """
     This class serves as a basic knowledge provider that can store and retrieve whole documents.
     All the documents within the specified knowledge are returned when a search is performed.
-    A document name can be specified to retrieve only a specific document.
+    A document id can be specified to retrieve only a specific document.
     """
 
     def __init__(
         self,
-        name: str,
-        storage: Storage = InMemory(),
+        namespace: str,
+        storage: Optional[Storage] = None,
         text_extractor: TextExtractor = None,
-        document_name: Optional[str] = None,
+        document_id: Optional[str] = None,
     ):
         """
         Initializes a Knowledge instance.
 
-        :param name: A string representing the unique name or identifier for the instance.
+        :param namespace: A string representing the unique name or identifier for the instance.
         :param storage: An optional instance of Storage, defaulting to InMemory, which
             defines the storage mechanism for the object.
         :param text_extractor: An optional instance of TextExtractor for extracting text,
             defaulting to None. If None, a default text extractor is created.
-        :param document_name: An optional string specifying the name of a document to
+        :param document_id: An optional string specifying the name of a document to
             associate with the instance, defaulting to None.
         """
+
+        if storage is None:
+            storage = create_storage()
+
         if text_extractor is None:
             text_extractor = create_extractor()
-        self.name = name
+
+        self.namespace = namespace
         self.storage = storage
-        self.document_name = document_name
+        self.document_id = document_id
         self.text_extractor = text_extractor
 
     async def search(self, _query: str) -> List[SearchHit]:
         return await self.storage.documents(
-            self.name,
-            document_name=self.document_name,
+            self.namespace,
+            self.document_id,
         )
 
-    async def add_document(self, document_name: str, document_url: str, content_type: Optional[str] = None):
-        content = await download_url(document_url)
-        whole_document = await self.text_extractor.extract_text(content, content_type)
+    async def add_document(self, document: Document):
+        if document.url is not None:
+            content = await download_url(document.url)
+            whole_document = await self.text_extractor.extract_text(content, document.content_type)
+        else:
+            whole_document = await self.text_extractor.extract_text(document.content, document.content_type)
+
         await self.storage.store_document(
-            self.name,
-            document_name,
+            self.namespace,
+            document.id,
+            document.name,
             whole_document,
         )
 
-    async def add_text(self, document_name: str, text: str):
-        await self.storage.store_document(
-            self.name,
-            document_name,
-            text,
-        )
-
-
-class SearchableKnowledge(KnowledgeProvider):
+class SearchableKnowledgeProvider(KnowledgeProvider):
     def __init__(
         self,
-        name: str,
+        namespace: str,
         model: Model = None,
-        storage: Storage = InMemory(),
-        text_extractor: TextExtractor = None,
+        storage: Optional[Storage] = None,
+        text_extractor: Optional[TextExtractor] = None,
         chunker: Chunker = NaiveChunker(),
         max_results: int = 10,
         max_distance: float = 0.2,
@@ -96,11 +98,12 @@ class SearchableKnowledge(KnowledgeProvider):
         """
         This class allows to store and search for text documents using vector search.
 
-        :param name: The name of the system instance.
-        :type name: str
+        :param namespace: The name of the system instance.
+        :type namespace: str
         :param model: The model being utilized for processing operations.
         :type model: Model
-        :param storage: Mechanism to store data. Defaults to an in-memory storage.
+        :param storage: Mechanism to store data.
+        Defaults is run-time dependent.
         :type storage: Storage
         :param text_extractor: An optional text extractor to process text from documents.
         If not provided, a default extractor will be created based on available libraries.
@@ -114,10 +117,13 @@ class SearchableKnowledge(KnowledgeProvider):
         if model is None:
             model = Model("ollama/nomic-embed-text")
 
+        if storage is None:
+            storage = create_storage()
+
         if text_extractor is None:
             text_extractor = create_extractor()
 
-        self.name = name
+        self.namespace = namespace
         self.model = model
         self.storage = storage
         self.text_extractor = text_extractor
@@ -125,33 +131,19 @@ class SearchableKnowledge(KnowledgeProvider):
         self.max_results = max_results
         self.max_distance = max_distance
 
-    async def add_text(self, document_name: str, text: str, content_type: Optional[str] = None):
-        whole_document = await self.text_extractor.extract_text(text, content_type)
-        text_pieces = self.chunker.chunk(whole_document)
-
-        # A single call is much faster than calling the model for each text piece
-        embeddings = await self.model.embeddings(text_pieces)
-
-        text_pieces = [TextPiece(text, embedding) for text, embedding in zip(text_pieces, embeddings)]
-        await self.storage.store_text_piece(
-            self.name,
-            document_name,
-            text_pieces,
-        )
-
-    async def add_document(self, document_name: str, document_url: str, content_type: Optional[str] = None):
+    async def add_document(self, document: Document):
         """
         Read a document using the unstructured library and add it to the knowledge base.
 
-        :param content_type: The content type of the document.
-        If not provided, it will be inferred.
-        :param document_name: A name to identify the document in the knowledge base
-        :type document_name: str
-        :param document_url: Url to the document to be processed
-        :type document_url: str
+        :param document: The document to add.
         """
-        content = await download_url(document_url)
-        whole_document = await self.text_extractor.extract_text(content, content_type)
+
+        if document.url is not None:
+            content = await download_url(document.url)
+        else:
+            content = document.content
+
+        whole_document = await self.text_extractor.extract_text(content, document.content_type)
         text_pieces = self.chunker.chunk(whole_document)
 
         # A single call is much faster than calling the model for each text piece
@@ -159,27 +151,16 @@ class SearchableKnowledge(KnowledgeProvider):
 
         text_pieces = [TextPiece(text, embedding) for text, embedding in zip(text_pieces, embeddings)]
         await self.storage.store_text_piece(
-            self.name,
-            document_name,
+            self.namespace,
+            document.id,
+            document.name,
             text_pieces,
         )
 
     async def search(self, query: str) -> List[SearchHit]:
-        """
-        Asynchronously searches for results that are most relevant to the provided query.
-        It uses an embedding model to convert the query into an embedding vector for efficient
-        searching within the backend storage. The results are then filtered based on the given
-        maximum number of results and maximum distance.
-
-        :param query: The query string to search for.
-        :type query: str
-        :return: A list of search results that match the criteria.
-        :rtype: list
-        """
-
         embeddings = await self.model.embeddings([query])
-        hits = await self.storage.search_text(self.name, embeddings[0], self.max_results, self.max_distance)
-        debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.name}'")
+        hits = await self.storage.search_text(self.namespace, embeddings[0], self.max_results, self.max_distance)
+        debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.namespace}'")
         return hits
 
 
