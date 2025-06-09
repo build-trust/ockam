@@ -146,9 +146,10 @@ class Agent:
         whole_response_snippet = ConversationSnippet(scope, conversation, [])
         iteration = 0
         while True:
-            if plan is None and len(whole_response_snippet.conversation) > 0:
-                # no plan and we have a reply, so we can stop
-                break
+            if plan is None:
+                if len(whole_response_snippet.messages) > 0:
+                    # no plan and we have a reply, so we can stop
+                    break
             else:
                 next_steps = plan.next_step(await self.get_messages_only(conversation, scope), contextual_knowledge)
 
