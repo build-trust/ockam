@@ -46,8 +46,8 @@ release-image-amd64-hash:
 
 release-image-amd64-latest:
 	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
-	docker tag "ghcr.io/ockam-network/ockam-python:$current_sha" ghcr.io/ockam-network/ockam-python:latest
-	docker tag "ghcr.io/ockam-network/ockam-python-dev:$current_sha" ghcr.io/ockam-network/ockam-python-dev:latest
+	docker tag ghcr.io/build-trust/ockam-python:$(SHORT_COMMIT_HASH) ghcr.io/build-trust/ockam-python:latest
+	docker tag ghcr.io/build-trust/ockam-python-dev:$(SHORT_COMMIT_HASH) ghcr.io/build-trust/ockam-python-dev:latest
 
 	docker push ghcr.io/build-trust/ockam-python-dev:latest
 	docker push ghcr.io/build-trust/ockam-python:latest
