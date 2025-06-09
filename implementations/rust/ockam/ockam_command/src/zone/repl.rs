@@ -8,6 +8,7 @@ use crate::zone::common_args::{
 };
 use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::get_cluster_name::GetClusterName;
+use crate::zone::services_addresses::ServicesAddresses;
 use crate::zone::watcher::DirectoryWatcher;
 use crate::zone::zone_config::{Outlet, ZoneConfig};
 use crate::{docs, Command, CommandGlobalOpts, Result};
@@ -78,8 +79,7 @@ impl ReplCommand {
             self.open_repl(&opts, address.clone()).await
         } else {
             let zone_config = self.zone.zone_config()?;
-            let (executors, logs_address, repl_address) =
-                self.zone_inlets(&opts, &zone_config).await?;
+            let (executors, services_addresses) = self.zone_inlets(&opts, &zone_config).await?;
 
             opts.terminal.write_line(fmt_separator!())?;
 
@@ -87,23 +87,31 @@ impl ReplCommand {
             if !self.inlets.no_http {
                 let cluster = GetClusterName.execute(ctx, opts.state.clone()).await?;
                 if let Some(http_url) = zone_config.get_http_url(&cluster) {
+                    let http_local_address = if let Some(http_address) = services_addresses.http {
+                        let local = format!("http://localhost:{}\n", http_address.port());
+                        &fmt_log!("{}", color_primary(local))
+                    } else {
+                        ""
+                    };
                     opts.terminal.write_line(
                         fmt_log!(
                             "The http server on the {} is available at:\n",
                             color_primary(&zone_config.get_main_pod()?.name),
-                        ) + &fmt_log!("{}\n", color_primary(http_url)),
+                        ) + &fmt_log!("{}\n", color_primary(http_url))
+                            + http_local_address,
                     )?;
                 }
             }
 
-            if let Some(logs_address) = logs_address {
+            if let Some(logs_address) = services_addresses.logs {
+                let local_logs = format!("http://localhost:{}\n", logs_address.port());
                 opts.terminal.write_line(
-                    fmt_log!("Browse the zone logs at:\n",)
-                        + &fmt_log!("{}\n", color_primary(logs_address)),
+                    fmt_log!("Logs for this zone are available at:\n")
+                        + &fmt_log!("{}\n", color_primary(local_logs)),
                 )?;
             }
 
-            if let Some(address) = repl_address {
+            if let Some(address) = services_addresses.repl {
                 self.open_repl(&opts, address).await
             } else {
                 // No repl outlet. Wait for ctrlc to exit the command
@@ -124,11 +132,7 @@ impl ReplCommand {
         &self,
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
-    ) -> miette::Result<(
-        Vec<Executor>,
-        Option<SchemeHostnamePort>,
-        Option<SchemeHostnamePort>,
-    )> {
+    ) -> miette::Result<(Vec<Executor>, ServicesAddresses)> {
         let mut executors = Vec::new();
         let main_pod = zone_config.get_main_pod()?;
         let main_pod_outlets = main_pod.get_outlets();
@@ -151,20 +155,28 @@ impl ReplCommand {
         };
         let mut rest = main_pod_outlets.rest;
         if !self.inlets.no_http {
-            rest.push(main_pod_outlets.http);
+            rest.push(main_pod_outlets.http.clone());
         }
         if !self.inlets.no_logs {
             rest.push(main_pod_outlets.logs.clone());
         }
+        let mut http_address = None;
         let mut logs_address = None;
         for outlet in rest {
             let (executor, inlet_address) = create_inlet(outlet.clone()).await?;
-            if outlet == main_pod_outlets.logs {
+            if outlet == main_pod_outlets.http {
+                http_address = inlet_address
+            } else if outlet == main_pod_outlets.logs {
                 logs_address = inlet_address
             }
             executors.push(executor);
         }
-        Ok((executors, logs_address, repl_address))
+        let services = ServicesAddresses {
+            http: http_address,
+            logs: logs_address,
+            repl: repl_address,
+        };
+        Ok((executors, services))
     }
 
     fn get_address_for_inlet(outlet: &Outlet) -> miette::Result<SchemeHostnamePort> {

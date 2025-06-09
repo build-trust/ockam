@@ -10,6 +10,7 @@ pub mod list;
 mod outlet;
 pub(crate) mod repl;
 pub(crate) mod secret;
+mod services_addresses;
 pub mod watcher;
 pub mod zone_config;
 
