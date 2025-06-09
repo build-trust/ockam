@@ -16,7 +16,9 @@ DEFAULT_HOST = os.environ.get("DEFAULT_HOST_REPL", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_REPL", "7000"))
 
 class Repl:
-    def __init__(self, agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=120, stream=True):
+    def __init__(
+        self, agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=120, stream=True
+    ):
         self.functions = functions or {}
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT

@@ -26,7 +26,6 @@ from ..nodes.message import (
     ToolCall,
     GetConversationsRequest,
     GetConversationsResponse,
-    UserMessage,
     Phase,
 )
 

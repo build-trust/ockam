@@ -37,6 +37,15 @@ LOGGING_CONFIG = {
 }
 
 
+def get_logging_config():
+    config = LOGGING_CONFIG
+    if os.environ.get("OCKAM_LOGGING", "0") == "0":
+        return {
+            "version": 1,
+        }
+    return config
+
+
 def info(msg, *args, **kwargs):
     logger = logging.getLogger("node")
     logger.info(msg, *args, **kwargs)
@@ -64,8 +73,9 @@ def error(msg, *args, **kwargs):
 
 
 def set_log_level(logger_name, level):
-    if logger_name in LOGGING_CONFIG["loggers"]:
-        LOGGING_CONFIG["loggers"][logger_name]["level"] = level
+    logging_config = get_logging_config()
+    if logger_name in logging_config.get("loggers", {}):
+        logging_config["loggers"][logger_name]["level"] = level
         import logging.config
 
-        logging.config.dictConfig(LOGGING_CONFIG)
+        logging.config.dictConfig(logging_config)
