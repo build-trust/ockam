@@ -1,4 +1,4 @@
-from typing import Optional, List, AsyncGenerator
+from typing import Optional, AsyncGenerator
 
 from .protocol import Planner, Plan
 from ..nodes.message import SystemMessage, ConversationMessage, UserMessage, ConversationRole

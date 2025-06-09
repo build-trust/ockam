@@ -2,8 +2,8 @@ from typing import Optional, AsyncGenerator
 
 from ockam.nodes.message import UserMessage
 
-from .protocol import Planner, Plan, STEP_BY_STEP_EXECUTION
-from ..nodes.message import ConversationMessage, SystemMessage, AssistantMessage
+from .protocol import Planner, Plan
+from ..nodes.message import ConversationMessage, SystemMessage
 from ..models import Model
 
 

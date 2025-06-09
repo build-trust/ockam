@@ -7,6 +7,10 @@ build_release:
 test: build
 	uv run pytest -vv
 
+fmt: format
+format:
+	uv run ruff format python examples tests
+
 lint:
 	uv run pylint python
 	uv run ruff check examples python --fix
