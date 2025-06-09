@@ -26,7 +26,7 @@ release-linux:
 
 build-image-amd64:
 	docker run --rm -v "$(shell pwd)/..":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
-	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short HEAD))
+	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
 
 	docker pull cgr.dev/chainguard/python:latest-dev
 	docker pull cgr.dev/chainguard/python:latest
@@ -40,20 +40,20 @@ build-image-amd64:
 		-t ghcr.io/build-trust/ockam-python:$(SHORT_COMMIT_HASH) .
 
 release-image-amd64-hash:
-	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short HEAD))
+	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
 	docker push ghcr.io/build-trust/ockam-python-dev:$(SHORT_COMMIT_HASH)
 	docker push ghcr.io/build-trust/ockam-python:$(SHORT_COMMIT_HASH)
 
 release-image-amd64-latest:
-	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short HEAD))
-	docker tag ghcr.io/ockam-network/ockam-python:$(SHORT_COMMIT_HASH) ghcr.io/ockam-network/ockam-python:latest
-	docker tag ghcr.io/ockam-network/ockam-python-dev:$(SHORT_COMMIT_HASH) ghcr.io/ockam-network/ockam-python-dev:latest
+	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
+	docker tag "ghcr.io/ockam-network/ockam-python:$current_sha" ghcr.io/ockam-network/ockam-python:latest
+	docker tag "ghcr.io/ockam-network/ockam-python-dev:$current_sha" ghcr.io/ockam-network/ockam-python-dev:latest
 
 	docker push ghcr.io/build-trust/ockam-python-dev:latest
 	docker push ghcr.io/build-trust/ockam-python:latest
 
 build-logs-server-image-amd64:
-	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short HEAD))
+	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
 	docker build -t ockam-python-logs-server \
 		--file python/kubernetes/logs_server/Dockerfile python/kubernetes/logs_server
 
@@ -63,7 +63,7 @@ build-logs-server-image-amd64:
 
 release-logs-server-image-amd64:
 	make build-logs-server-image-amd64
-	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short HEAD))
+	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
 	docker push ghcr.io/build-trust/ockam-python-logs-server:$(SHORT_COMMIT_HASH)
 
 .PHONY: \
