@@ -1,5 +1,5 @@
 from datetime import datetime
-from ockam import Agent, Model, Node, McpTool, McpClient, Tool
+from ockam import Agent, Model, Node, McpTool, McpClient, Tool, Repl
 
 
 def current_iso8601_utc_time():
@@ -10,7 +10,7 @@ def current_iso8601_utc_time():
 
 
 async def main(node):
-    await Agent.start(
+    agent = await Agent.start(
         node=node,
         name="henry",
         instructions="""
@@ -25,6 +25,7 @@ async def main(node):
             Tool(current_iso8601_utc_time),
         ],
     )
+    await Repl.start(agent, timeout=300)
 
 
 Node.start(
