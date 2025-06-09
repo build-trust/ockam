@@ -11,16 +11,16 @@ async def main(node):
         "sec-330e": "https://raw.githubusercontent.com/AlextheYounga/us-federal-code/refs/heads/master/usc/title-15-commerce-and-trade/chapter-9a-weather-modification-activities-or-attempts%3B-reporting-requirement/sec-330e.md",
     }
 
-    us_fedral_code = Knowledge("us_fedral_code")
+    us_federal_code = Knowledge("us_federal_code")
     for name, url in docs.items():
-        await us_fedral_code.add_document(name, url, content_type="text/markdown")
+        await us_federal_code.add_document(name, url, content_type="text/markdown")
 
     await Agent.start(
         node=node,
         name="henry",
         instructions="You are Henry, an expert legal assistant",
         model=Model("nova-micro-v1"),
-        knowledge=us_fedral_code,
+        knowledge=us_federal_code,
     )
 
 
