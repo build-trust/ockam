@@ -545,19 +545,6 @@ impl CreateCommand {
             color_primary(cluster)
         ))?;
         info!("Deployed zone {} in cluster {}", zone_config.name, cluster);
-
-        // Print the http server URL, if enabled
-        if !self.inlets.no_http {
-            if let Some(http_url) = zone_config.get_http_url(cluster) {
-                opts.terminal.write_line(
-                    fmt_log!(
-                        "The http server on the {} is available at:\n",
-                        color_primary(&zone_config.get_main_pod()?.name),
-                    ) + &fmt_log!("{}\n", color_primary(http_url)),
-                )?;
-            }
-        }
-
         Ok(())
     }
 }

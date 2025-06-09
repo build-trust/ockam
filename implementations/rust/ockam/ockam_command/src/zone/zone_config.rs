@@ -48,7 +48,7 @@ pub struct Inlet {
     pub other_fields: HashMap<String, Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct Outlet {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
