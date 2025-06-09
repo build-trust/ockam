@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.153.0 - 2025-06-09
+
+### Added
+
+- In "zone init", set the working directory to the template directory
+- Display the url of the logs server
+- Add bats tests for python
+- Updated dependencies
+
+### Changed
+
+- In `zone secret`, encode secrets values before sending the `create` request
+
+### Removed
+
+- Remove unnecessary empty line after deploying a zone
+
 ## 0.152.0 - 2025-06-04
 
 ### Added
