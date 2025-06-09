@@ -1,11 +1,13 @@
 use crate::cluster::common_args::HttpApiArgs;
 use crate::entry_point::RUNTIME;
+use crate::node_command::InMemoryNodeCommand;
 use crate::util::parsers::hostname_parser;
 use crate::util::port_is_free_guard;
 use crate::zone::common_args::{
     EnrollmentTicketConfigArg, ZoneConfigArg, ZoneInletsArgs, ZoneNameOrConfigArg,
 };
 use crate::zone::ctrlc::ZoneCtrlcHandler;
+use crate::zone::get_cluster_name::GetClusterName;
 use crate::zone::zone_config::{Outlet, ZoneConfig};
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
@@ -22,6 +24,7 @@ use rustyline::config::Configurer;
 use rustyline::error::ReadlineError;
 use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 use rustyline::{Completer, Editor, Helper, Highlighter, Hinter};
+use std::cmp::PartialEq;
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -62,8 +65,8 @@ pub struct ReplCommand {
 impl Command<ReplExitCondition> for ReplCommand {
     const NAME: &'static str = "zone repl";
 
-    async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<ReplExitCondition> {
-        self.run_impl(opts, None).await
+    async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<ReplExitCondition> {
+        self.run_impl(opts, ctx, None).await
     }
 }
 
@@ -71,6 +74,7 @@ impl ReplCommand {
     pub async fn run_impl(
         self,
         opts: CommandGlobalOpts,
+        ctx: &Context,
         restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
     ) -> Result<ReplExitCondition> {
         if let Some(address) = &self.to {
@@ -78,9 +82,31 @@ impl ReplCommand {
             self.open_repl(&opts, address.clone(), restart_tx).await
         } else {
             let zone_config = self.zone.zone_config()?;
-            let (executors, repl_address) = self.zone_inlets(&opts, &zone_config).await?;
-            // let (repl_data, rest_inlet_handles) = cmd.dummy_inlet(&opts).await?;
+            let (executors, logs_address, repl_address) =
+                self.zone_inlets(&opts, &zone_config).await?;
+
             opts.terminal.write_line(fmt_separator!())?;
+
+            // Print the http server URL, if enabled
+            if !self.inlets.no_http {
+                let cluster = GetClusterName.execute(ctx, opts.state.clone()).await?;
+                if let Some(http_url) = zone_config.get_http_url(&cluster) {
+                    opts.terminal.write_line(
+                        fmt_log!(
+                            "The http server on the {} is available at:\n",
+                            color_primary(&zone_config.get_main_pod()?.name),
+                        ) + &fmt_log!("{}\n", color_primary(http_url)),
+                    )?;
+                }
+            }
+
+            if let Some(logs_address) = logs_address {
+                opts.terminal.write_line(
+                    fmt_log!("Browse the zone logs at:\n",)
+                        + &fmt_log!("{}\n", color_primary(logs_address)),
+                )?;
+            }
+
             if let Some(address) = repl_address {
                 self.open_repl(&opts, address, restart_tx).await
             } else {
@@ -103,7 +129,11 @@ impl ReplCommand {
         &self,
         opts: &CommandGlobalOpts,
         zone_config: &ZoneConfig,
-    ) -> miette::Result<(Vec<Executor>, Option<SchemeHostnamePort>)> {
+    ) -> miette::Result<(
+        Vec<Executor>,
+        Option<SchemeHostnamePort>,
+        Option<SchemeHostnamePort>,
+    )> {
         let mut executors = Vec::new();
         let main_pod = zone_config.get_main_pod()?;
         let main_pod_outlets = main_pod.get_outlets();
@@ -129,13 +159,17 @@ impl ReplCommand {
             rest.push(main_pod_outlets.http);
         }
         if !self.inlets.no_logs {
-            rest.push(main_pod_outlets.logs);
+            rest.push(main_pod_outlets.logs.clone());
         }
+        let mut logs_address = None;
         for outlet in rest {
-            let (executor, _) = create_inlet(outlet).await?;
+            let (executor, inlet_address) = create_inlet(outlet.clone()).await?;
+            if outlet == main_pod_outlets.logs {
+                logs_address = inlet_address
+            }
             executors.push(executor);
         }
-        Ok((executors, repl_address))
+        Ok((executors, logs_address, repl_address))
     }
 
     fn get_address_for_inlet(outlet: &Outlet) -> miette::Result<SchemeHostnamePort> {

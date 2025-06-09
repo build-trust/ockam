@@ -2,6 +2,7 @@ pub(crate) mod common_args;
 pub(crate) mod create;
 pub(crate) mod ctrlc;
 pub mod delete;
+pub mod get_cluster_name;
 pub(crate) mod init;
 pub(crate) mod inlet;
 mod outlet;

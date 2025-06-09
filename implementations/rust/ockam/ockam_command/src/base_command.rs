@@ -80,7 +80,7 @@ impl BaseCommand {
                     _self.enroll(&_ctx, &_opts).await?;
                     _self.zone_init(&_ctx, &_opts).await?;
                     _self.zone_create(&_ctx, &_opts).await?;
-                    let res = _self.zone_repl(&_opts, Some(restart_tx)).await?;
+                    let res = _self.zone_repl(&_opts, &_ctx, Some(restart_tx)).await?;
                     Ok::<ReplExitCondition, miette::Error>(res)
                 });
                 tokio::select! {
@@ -108,7 +108,7 @@ impl BaseCommand {
             self.enroll(ctx, opts).await?;
             self.zone_init(ctx, opts).await?;
             self.zone_create(ctx, opts).await?;
-            self.zone_repl(opts, None).await?;
+            self.zone_repl(opts, ctx, None).await?;
         }
         Ok(())
     }
@@ -166,6 +166,7 @@ impl BaseCommand {
     async fn zone_repl(
         &self,
         opts: &CommandGlobalOpts,
+        ctx: &Context,
         restart_tx: Option<tokio::sync::broadcast::Sender<String>>,
     ) -> Result<ReplExitCondition> {
         use crate::zone::repl::ReplCommand;
@@ -174,7 +175,7 @@ impl BaseCommand {
             inlets: self.inlets.clone(),
             ..Default::default()
         };
-        cmd.run_impl(opts.clone(), restart_tx).await
+        cmd.run_impl(opts.clone(), ctx, restart_tx).await
     }
 
     async fn delete_zone(&self, ctx: &Context, opts: &CommandGlobalOpts) -> miette::Result<()> {
