@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node
+from ockam import Agent, Model, Node, info
 
 """
     This example shows how to start an agent locally given a node.
@@ -19,9 +19,9 @@ async def main(node):
         model=Model(name="ollama_chat/llama3.2"),
     )
     identifier = await agent.identifier()
-    print(identifier)
+    info(identifier)
     reply = await agent.send("Who was Gandhi?")
-    print(reply)
+    info(reply)
 
 
 Node.start(main, wait_until_interrupted=False)

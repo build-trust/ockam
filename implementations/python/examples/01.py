@@ -1,4 +1,6 @@
-from ockam import Node, info
+from ockam import Node, info, LOGGING_CONFIG, set_log_level
+
+set_log_level("node", "DEBUG")
 
 """
     This example shows that it is possible to start a worker written in Python,

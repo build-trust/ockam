@@ -17,7 +17,7 @@ async def main(node):
     response = await model.complete_chat(
         [{"content": "respond in 20 words. who are you?", "role": "user"}],
     )
-    print(response)
+    info(f"the model response is {response}")
 
     await node.start_worker("echoer", Echoer())
     reply = await node.send_and_receive("echoer", "hello")

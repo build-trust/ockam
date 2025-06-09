@@ -3,6 +3,7 @@ from .clusters import Cluster, Zone
 from .flows import Flow, FlowOperation, START, END
 from .nodes.message import FlowReference
 from .memory import Memory
+from .logging import LOGGING_CONFIG, info, warning, error, debug, set_log_level
 from .models import Model
 from .nodes import Node, RemoteNode, LocalNode, LocalNodeProtocol, MailboxProtocol, WorkerProtocol, ContextProtocol
 from .nodes.manager import RemoteManager
@@ -26,7 +27,7 @@ from .knowledge import (
 )
 from .gather import gather
 
-from .ockam_in_rust_for_python import Mailbox, McpClient, McpServer, info, warn, error, debug
+from .ockam_in_rust_for_python import Mailbox, McpClient, McpServer
 
 __doc__ = ""
 __all__ = [
@@ -44,14 +45,17 @@ __all__ = [
     "FlowOperation",
     "START",
     "END",
+    # from .logging
+    "LOGGING_CONFIG",
+    "info",
+    "warning",
+    "error",
+    "debug",
+    "set_log_level",
     # from .ockam_in_rust_for_python
     "Mailbox",
     "McpClient",
     "McpServer",
-    "info",
-    "warn",
-    "error",
-    "debug",
     # from .tools
     "McpTool",
     "Tool",

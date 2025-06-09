@@ -7,14 +7,15 @@ http --stream -b POST ':8000/agents/henry?timeout=60' message="Estimate how many
 ```
 
 """
+
+
 async def main(node):
     await Agent.start(
         node=node,
         name="henry",
         instructions="You are an assistant who solves complex tasks by planning them carefully before solving them.",
-        planner=CoTPlanner(model=Model(name="deepseek-r1")),
+        planner=CoTPlanner(model=Model(name="llama3.2")),
     )
-
 
 
 Node.start(main)

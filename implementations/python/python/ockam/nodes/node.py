@@ -13,9 +13,6 @@ from ..nodes.protocol import LocalNodeProtocol
 from ..logging.logging import LOGGING_CONFIG
 import logging.config
 
-logging.config.dictConfig(LOGGING_CONFIG)
-logger = logging.getLogger("node")
-
 
 class Node:
     @staticmethod
@@ -32,6 +29,9 @@ class Node:
         ockam_log_level: str = "WARN",
         **kwargs,
     ):
+        logging.config.dictConfig(LOGGING_CONFIG)
+        logger = logging.getLogger("node")
+
         # This will make the node use a local SQLite database instead of the Postgres database
         if use_local_db:
             os.environ.pop("OCKAM_DATABASE_INSTANCE", None)
@@ -69,11 +69,12 @@ class Node:
             await main(node)
 
         try:
+            logger.info("starting node")
             RustNode.start(
                 start_node, name=name, ticket=ticket, allow=allow, cache_secure_channels=cache_secure_channels, **kwargs
             )
-
         except KeyboardInterrupt:
+            logger.debug("shutting down node due to KeyboardInterrupt")
             debug(f"\nNode {name} shutting down")
 
 

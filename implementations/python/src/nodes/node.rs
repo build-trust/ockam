@@ -32,6 +32,7 @@ use pyo3_async_runtimes::tokio::future_into_py;
 
 use miette::{IntoDiagnostic, miette};
 
+use crate::nodes::logging::py_debug;
 use crate::nodes::runtime::PythonAsyncExecutor;
 use ockam::access_control::AllowAll;
 use serde::Serialize;
@@ -748,6 +749,8 @@ impl PyNode {
         exposed_as: Option<String>,
     ) -> PyResult<Bound<'a, PyAny>> {
         let name = name.to_string();
+        py_debug(py, format!("starting worker '{name}'"))?;
+
         let address: Address = name.clone().into();
         if let Some(api_sc_listener) = self.node_manager.api_sc_listener() {
             self.ctx()
