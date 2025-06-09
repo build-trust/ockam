@@ -91,8 +91,15 @@ class HttpServer:
                 raise HTTPException(status_code=500, detail="Failed to get the conversations for agent '{name}'")
 
         @self.app.post("/agents/{name}")
-        async def send_message_to_agent(name: str, message: Request, stream: bool = False, node=Depends(self.get_node)):
-            logger.info(f"Send a message to agent '{name}'")
+        async def send_message_to_agent(
+            name: str,
+            message: Request,
+            stream: bool = False,
+            content_size: int = 50,
+            timeout: int = 60,
+            node=Depends(self.get_node),
+        ):
+            logger.info(f"send a message to agent '{name}'")
             await find_agent(node, name)
 
             try:
@@ -106,6 +113,7 @@ class HttpServer:
                 conversation = message_json.get("conversation", None)
 
                 if stream:
+
                     async def stream_response():
                         received_snippet = None
 
@@ -137,7 +145,7 @@ class HttpServer:
                 else:
                     return await agent.send(msg, scope, conversation, timeout=timeout)
             except Exception as e:
-                logger.error(f"Failed to send message to agent '{name}': {e}")
+                logger.error(f"failed to send message to agent '{name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to send message")
 
         @self.app.get("/tools")
@@ -197,5 +205,3 @@ def default(obj):
     if isinstance(obj, Enum):
         return obj.value
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
-
-

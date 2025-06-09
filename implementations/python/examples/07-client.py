@@ -1,4 +1,4 @@
-from ockam import Agent, McpClient, McpTool, Model, Node, RemoteNode
+from ockam import Agent, McpClient, McpTool, Model, Node, RemoteNode, info, HttpServer
 
 import sys
 
@@ -49,9 +49,9 @@ async def main(node):
     )
 
     reply = await agent.send("Who was Gandhi?")
-    print(reply)
+    info(f"Who was Gandhi?\n\n{reply}")
     reply = await agent.send("What is dark matter?")
-    print(reply)
+    info(f"What is dark matter?\n\n{reply}")
 
 
 Node.start(
@@ -60,6 +60,7 @@ Node.start(
         McpClient(name="server-one", address="http://127.0.0.1:8000/sse"),
     ],
     wait_until_interrupted=False,
+    http_server=HttpServer(listen_address="localhost:9001"),
 )
 
 # OCKAM_SQLITE_IN_MEMORY=1 CLUSTER=acme NODE=node1 ENROLLMENT_TICKET="$(ockam project ticket --relay node1 --attribute cluster=acme)" uv run examples/07-client.py node2

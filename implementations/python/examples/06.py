@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, Tool
+from ockam import Agent, Model, Node, Tool, info
 
 """
     This example shows how to add tools to an agent.
@@ -27,9 +27,9 @@ async def main(node):
         tools=[Tool(divide), Tool(multiply)],
     )
     reply = await agent.send("What is 56 divided by 27?")
-    print(reply)
+    info(reply)
     reply = await agent.send("What is 214 multiplied by 63?")
-    print(reply)
+    info(reply)
 
 
 Node.start(main, wait_until_interrupted=False)

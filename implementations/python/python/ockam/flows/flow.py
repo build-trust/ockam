@@ -12,7 +12,8 @@ from ..nodes.message import (
     FlowReference,
     Reference,
     AssistantMessage,
-    UserMessage, StreamedConversationSnippet,
+    UserMessage,
+    StreamedConversationSnippet,
 )
 
 from ..ockam_in_rust_for_python import info, debug

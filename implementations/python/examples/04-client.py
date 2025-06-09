@@ -1,6 +1,6 @@
 import sys
 
-from ockam import Node, RemoteNode
+from ockam import Node, RemoteNode, info, HttpServer
 
 """
     This example shows how an enrolled node can send messages to a remote node:
@@ -17,9 +17,9 @@ async def main(node):
     remote_node = RemoteNode(node, sys.argv[1])
     for i in range(5):
         reply = await remote_node.send_and_receive("echoer", "hello")
-        print(f"{i}> {reply}")
+        info(f"{i}> {reply}")
 
 
-Node.start(main, wait_until_interrupted=False)
+Node.start(main, wait_until_interrupted=False, http_server=HttpServer(listen_address="localhost:8001"))
 
 # OCKAM_SQLITE_IN_MEMORY=1 CLUSTER=acme NODE=node1 ENROLLMENT_TICKET="$(ockam project ticket --relay node1 --attribute cluster=acme)" uv run examples/04-client.py node2

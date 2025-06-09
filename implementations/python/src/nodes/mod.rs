@@ -13,5 +13,7 @@ use worker::*;
 mod started_agents;
 use started_agents::*;
 
+mod logging;
 mod started_workers;
+
 use started_workers::*;

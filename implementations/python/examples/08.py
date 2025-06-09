@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, CoTPlanner
+from ockam import Agent, Model, Node, CoTPlanner, info
 
 """
     This example shows how to use a planning strategy ("Chain of Thought" or COT) to solve a complex task.
@@ -15,7 +15,7 @@ async def main(node):
         planner=CoTPlanner(),
     )
     reply = await agent.send("Estimate how many violins are in the world", timeout=60 * 2)
-    print(reply)
+    info(reply)
 
 
 Node.start(main, wait_until_interrupted=False)

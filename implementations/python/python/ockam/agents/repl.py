@@ -4,6 +4,12 @@ import re
 
 from ockam.nodes.message import StreamedConversationSnippet
 
+from ..logging.logging import LOGGING_CONFIG
+import logging.config
+
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger("repl")
+
 HOST = "127.0.0.1"
 PORT = 7000
 
@@ -33,6 +39,7 @@ class Repl:
     # TODO: should be on Reference class
     @staticmethod
     async def start(agent_reference, listen_address=f"{HOST}:{PORT}", functions=None, timeout=None, stream=True):
+        logger.info("starting the REPL")
         repl = Repl(agent_reference, listen_address, functions, timeout, stream)
         # start the repl in a separate thread since we might also have a HTTP server running
         asyncio.create_task(repl.start_impl())
@@ -53,6 +60,7 @@ class Repl:
             raise ValueError(f"Invalid listen_address: {listen_address}")
 
     async def list_functions(self, writer):
+        logger.debug("list functions")
         functions_list = "\n".join([f"{name}" for name in self.functions.keys()])
         await self.write_repl_message(writer, functions_list)
 
@@ -187,6 +195,7 @@ class Repl:
                     await writer.drain()
 
         except Exception as e:
+            logger.error(f"Error: {e}")
             print(f"Error: {e}", flush=True)
         finally:
             writer.close()
@@ -198,6 +207,7 @@ class Repl:
             await self.server.serve_forever()
 
     async def stop(self):
+        logger.info("stop the REPL")
         if self.server:
             self.server.close()
             await self.server.wait_closed()

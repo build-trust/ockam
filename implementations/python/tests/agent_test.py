@@ -41,12 +41,10 @@ async def main_agent(node):
         """),
         model=Model(name="ollama_chat/llama3.2"),
     )
-    evaluation = await evaluator.send(
-        "Article:\n" + reply[0].content +
-        "\n\n\nQuestion: Is this article about Gandhi?"
-    )
+    evaluation = await evaluator.send("Article:\n" + reply[0].content + "\n\n\nQuestion: Is this article about Gandhi?")
     converter = MessageConverter(node)
-    assert {"role": "assistant", "content": "YES", 'tool_calls': []} == converter.message_to_dict(evaluation[0])
+    assert {"role": "assistant", "content": "YES", "tool_calls": []} == converter.message_to_dict(evaluation[0])
+
 
 # def test_agent_can_call_agents_via_mcp():
 #     Node.start(
@@ -58,6 +56,7 @@ async def main_agent(node):
 #         wait_until_interrupted=False,
 #         http_server=HttpServer(listen_address="127.0.0.1:0")
 #     )
+
 
 async def main_agent_can_call_agents_via_mcp(node):
     await Agent.start(
@@ -78,6 +77,7 @@ async def main_agent_can_call_agents_via_mcp(node):
 
     reply = await agent.send("Give me a random number")
     assert "163728" in reply[0].content
+
 
 # def test_agent_can_call_tools():
 #     Node.start(main_agent_can_call_tools, wait_until_interrupted=False, http_server=HttpServer(listen_address="127.0.0.1:0"))

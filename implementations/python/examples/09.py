@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, Tool
+from ockam import Agent, Model, Node, Tool, info
 
 """
     This example shows the difference between querying a model using local tools and
@@ -27,21 +27,25 @@ async def main(node):
         tools=[Tool(divide), Tool(multiply)],
     )
     reply = await agent.send("What is 56 divided by 27?", scope="a", conversation="1")
-    print(reply)
+    info(f"What is 56 divided by 27? {reply}")
+
     reply = await agent.send("What is 214 multiplied by 63?", scope="a", conversation="1")
-    print(reply)
+    info(f"What is 214 multiplied by 63? {reply}")
+
     reply = await agent.send(
         "Answer only yes or no: have I asked you what is 56 divided by 27?", scope="a", conversation="1"
     )
-    print(reply)
+    info(f"Answer only yes or no: have I asked you what is 56 divided by 27? {reply}")
+
     reply = await agent.send(
         "Answer only yes or no: have I asked you what is 56 divided by 3?", scope="a", conversation="1"
     )
-    print(reply)
+    info(f"Answer only yes or no: have I asked you what is 56 divided by 3? {reply}")
+
     reply = await agent.send(
         "Answer only yes or no: have I asked you what is 56 divided by 27?", scope="a", conversation="2"
     )
-    print(reply)
+    info(f"Answer only yes or no: have I asked you what is 56 divided by 27? {reply}")
 
 
 Node.start(main, wait_until_interrupted=False)

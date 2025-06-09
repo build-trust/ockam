@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::errors::ockam_error;
 use crate::nodes::started_agents::StartedAgents;
 
+use crate::nodes::logging::py_debug;
 use ockam::access_control::{AllowAll, IncomingAccessControl, OutgoingAccessControl};
 use ockam::{Address, Context, ContextRouter, Result, Routed, Worker, WorkerBuilder, route};
 use pyo3::{PyObject, Python};
@@ -94,12 +95,20 @@ impl Spawner {
 
     async fn create_worker(&self, ctx: &mut Context) -> ockam::Result<Address> {
         let address = Address::random_tagged(&self.agent_name);
+        let agent_name = self.agent_name.clone();
 
         let worker_constructor = self.worker_constructor.clone();
         let worker = ctx
             .runtime()
             .spawn_blocking(move || {
-                Python::with_gil(|py| worker_constructor.call0(py)).map_err(ockam_error)
+                Python::with_gil(|py| {
+                    py_debug(
+                        py,
+                        format!("create a new worker for agent '{}'", agent_name),
+                    )?;
+                    worker_constructor.call0(py)
+                })
+                .map_err(ockam_error)
             })
             .await
             .unwrap()?;

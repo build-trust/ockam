@@ -33,6 +33,12 @@ from ..nodes.message import (
 from ..ockam_in_rust_for_python import info, warn, debug
 from ..planning.protocol import STEP_BY_STEP_EXECUTION
 
+from ..logging.logging import LOGGING_CONFIG
+import logging.config
+
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger("agent")
+
 
 class Agent:
     def __init__(
@@ -48,6 +54,7 @@ class Agent:
         knowledge: KnowledgeProvider,
         max_knowledge_size: int,
     ):
+        logger.info("starting agent")
         self.node = node
 
         self.tools = tools
@@ -70,6 +77,9 @@ class Agent:
 
     async def handle_message(self, context, message):
         try:
+            logger.info("received a message")
+            logger.debug(f"the message is {message}")
+
             message = self.converter.message_from_json(message)
             handlers = {
                 ConversationSnippet: self.handle__conversation_snippet,
@@ -87,6 +97,7 @@ class Agent:
                 if handler is not None:
                     reply = await handler(message)
                 else:
+                    logger.error(f"unexpected message: {message}")
                     reply = Error(f"Unexpected Message: {message}")
 
                 if reply is not None:

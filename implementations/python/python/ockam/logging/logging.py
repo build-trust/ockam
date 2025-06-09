@@ -1,4 +1,4 @@
-from ..logging.colored_formatter import OckamColoredFormatter
+import logging.config
 
 LOGGING_CONFIG = {
     "version": 1,
@@ -6,7 +6,7 @@ LOGGING_CONFIG = {
     "formatters": {
         "default": {
             "()": "ockam.logging.colored_formatter.OckamColoredFormatter",
-            "format": "[%(asctime)s] %(log_color)s[%(levelname)s]%(reset)s %(name)s: %(message)s",
+            "format": "%(asctime)s %(log_color)s%(levelname)s%(reset)s %(name)s: %(message)s",
             "log_colors": {
                 "DEBUG": "cyan",
                 "INFO": "green",
@@ -18,7 +18,7 @@ LOGGING_CONFIG = {
     },
     "handlers": {
         "default": {
-            "level": "INFO",
+            "level": "DEBUG",
             "formatter": "default",
             "class": "logging.StreamHandler",
         },
@@ -27,9 +27,45 @@ LOGGING_CONFIG = {
         "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
-        "node": {"handlers": ["default"], "level": "INFO", "propagate": False},
         "http": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "httpx": {"handlers": ["default"], "level": "WARNING", "propagate": False},
+        "LiteLLM": {"handlers": ["default"], "level": "WARNING", "propagate": False},
+        "agent": {"handlers": ["default"], "level": "DEBUG", "propagate": False},
+        "node": {"handlers": ["default"], "level": "DEBUG", "propagate": False},
     },
     "root": {"level": "INFO", "handlers": ["default"]},
 }
 
+
+def info(msg, *args, **kwargs):
+    logger = logging.getLogger("node")
+    logger.info(msg, *args, **kwargs)
+
+
+def warning(msg, *args, **kwargs):
+    import logging.config
+
+    logger = logging.getLogger("node")
+    logger.warning(msg, *args, **kwargs)
+
+
+def debug(msg, *args, **kwargs):
+    import logging.config
+
+    logger = logging.getLogger("node")
+    logger.debug(msg, *args, **kwargs)
+
+
+def error(msg, *args, **kwargs):
+    import logging.config
+
+    logger = logging.getLogger("node")
+    logger.error(msg, *args, **kwargs)
+
+
+def set_log_level(logger_name, level):
+    if logger_name in LOGGING_CONFIG["loggers"]:
+        LOGGING_CONFIG["loggers"][logger_name]["level"] = level
+        import logging.config
+
+        logging.config.dictConfig(LOGGING_CONFIG)
