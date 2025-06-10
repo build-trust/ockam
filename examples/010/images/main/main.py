@@ -200,5 +200,27 @@ class Api:
             runners = await Zone.nodes(node, filter="runner")
             return JSONResponse(content={"runners": [r.name for r in runners]})
 
+        @self.api.get("/stats")
+        async def get_stats():
+            runners = await Zone.nodes(node, filter="runner")
+            csv = "node_name, model_name,request_type,start_time,end_time\n"
+            for runner in runners:
+                current = await runner.send_and_receive("stats", "", timeout=1000)
+                for line in current.split("\n"):
+                    if line.strip():
+                        csv += f"{runner.name},{line}\n"
+            return csv
 
-Node.start(http_server=HttpServer(api=Api()), cache_secure_channels=True)
+
+import asyncio
+async def stats_loop():
+    from ockam.models.model import print_requests_stats_by_model
+    while True:
+        await asyncio.sleep(10)
+        print_requests_stats_by_model()
+
+async def main(node):
+    asyncio.create_task(stats_loop())
+
+
+Node.start(main,http_server=HttpServer(api=Api()), cache_secure_channels=True)

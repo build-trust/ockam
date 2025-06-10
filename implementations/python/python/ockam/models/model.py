@@ -1,3 +1,4 @@
+import time
 from typing import List, Optional
 
 import litellm
@@ -7,6 +8,61 @@ import threading
 
 from ..nodes.message import ConversationMessage
 from ..ockam_in_rust_for_python import warn
+
+REQUESTS = []
+
+class RequestMetric:
+    def __init__(self,model_name: str, request_type: str, start_time: float, end_time: float):
+        self.start_time = start_time
+        self.end_time = end_time
+        self.model_name = model_name
+        self.request_type = request_type
+
+
+def record_request(model_name: str, request_type: str, start_time: float, end_time: float):
+    """
+    Record a request metric for the model.
+    """
+    global REQUESTS
+    REQUESTS.append(RequestMetric(model_name, request_type, start_time, end_time))
+
+def print_requests_stats_by_model():
+    """
+    Print the request statistics grouped by model.
+    """
+    global REQUESTS
+    if not REQUESTS:
+        print("No requests recorded.")
+        return
+
+    model_stats = {}
+    for request in REQUESTS:
+        if request.model_name not in model_stats:
+            model_stats[request.model_name] = []
+        model_stats[request.model_name].append(request)
+
+    for model_name, requests in model_stats.items():
+        total_time = sum(req.end_time - req.start_time for req in requests)
+        average_time = total_time / len(requests)
+        percentile_90 = sorted(req.end_time - req.start_time for req in requests)[int(len(requests) * 0.9)]
+        percentile_95 = sorted(req.end_time - req.start_time for req in requests)[int(len(requests) * 0.95)]
+        print(f"Model: {model_name} ")
+        print(f"    Total Requests: {len(requests)}")
+        print(f"    Total Time: {total_time:.2f}s")
+        print(f"    Average Time: {average_time:.2f}s")
+        print(f"    Percentile Time (90): {percentile_90:.2f}s")
+        print(f"    Percentile Time (95): {percentile_95:.2f}s")
+
+def csv_requests_stats_by_model():
+    """
+    Print the request statistics grouped by model in CSV format.
+    """
+    global REQUESTS
+
+    csv = ""
+    for request in REQUESTS:
+        csv += f"{request.model_name},{request.request_type},{request.start_time},{request.end_time}\n"
+    return csv
 
 PROVIDER_ALIASES = {
     "litellm_proxy": {
@@ -202,7 +258,11 @@ class Model:
         if "tools" in kwargs and len(kwargs["tools"]) == 0:
             del kwargs["tools"]
 
-        return await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        start_time = time.time()
+        completion = await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        end_time = time.time()
+        record_request(self.name, "complete_chat", start_time, end_time)
+        return completion
 
     async def embeddings(self, text: List[str], **kwargs) -> List[List[float]]:
         # parameters provided in kwargs will override the default parameters
