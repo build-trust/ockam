@@ -14,6 +14,7 @@ use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_core::compat::collections::HashMap;
 use ockam_node::Context;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 const LONG_ABOUT: &str = include_str!("./static/secret/long_about.txt");
@@ -192,6 +193,9 @@ impl SecretCommand {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct SecretsYaml(BTreeMap<String, String>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Secrets(Vec<Secret>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -201,16 +205,29 @@ struct Secret {
 }
 
 impl Secrets {
+    const SIMPLIFIED_FIELD_NAME: &'static str = "value";
+
     fn from_contents(contents: &str) -> Result<Self> {
-        let mut _self = if contents.starts_with("{") {
-            serde_json::from_str::<Self>(contents)
-                .map_err(|e| miette::miette!(format!("Failed to parse JSON secrets: {}", e)))?
+        let mut _self = if let Ok(parsed_yaml) = Self::parse_contents::<SecretsYaml>(contents) {
+            Self::from_parsed_yaml(parsed_yaml)?
         } else {
-            serde_yaml::from_str::<Self>(contents)
-                .map_err(|e| miette::miette!(format!("Failed to parse YAML secrets: {}", e)))?
+            Self::parse_contents::<Self>(contents)?
         };
         _self.encode_secret_values()?;
         Ok(_self)
+    }
+
+    fn parse_contents<T>(contents: &str) -> Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        if contents.starts_with("{") {
+            serde_json::from_str(contents)
+                .map_err(|e| miette::miette!(format!("Failed to parse JSON: {}", e)))
+        } else {
+            serde_yaml::from_str(contents)
+                .map_err(|e| miette::miette!(format!("Failed to parse YAML: {}", e)))
+        }
     }
 
     fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self> {
@@ -221,6 +238,15 @@ impl Secrets {
                 path.as_ref().display()
             ))?;
         Self::from_contents(&content)
+    }
+
+    fn from_parsed_yaml(parsed_yaml: SecretsYaml) -> Result<Self> {
+        let mut secrets = Vec::new();
+        for (name, value) in parsed_yaml.0 {
+            let fields = HashMap::from([(Self::SIMPLIFIED_FIELD_NAME.to_string(), value)]);
+            secrets.push(Secret { name, fields });
+        }
+        Ok(Self(secrets))
     }
 
     fn encode_secret_values(&mut self) -> Result<()> {
@@ -246,89 +272,123 @@ mod tests {
         Ok(file)
     }
 
-    #[test]
-    fn test_parse_yaml_direct_array() -> Result<()> {
-        let yaml_content = r#"
-        - name: pg
-          fields:
-            username: u
-            password: p
-        "#;
-        let file = create_temp_file_with_content(yaml_content)?;
-        let secrets = Secrets::from_file(file.path())?;
+    mod simplified_format {
+        use super::*;
 
-        assert_eq!(secrets.0.len(), 1);
-        assert_eq!(secrets.0[0].name, "pg");
-        assert_eq!(
-            secrets.0[0].fields.get("username"),
-            Some(&"dQ==".to_string())
-        );
-        assert_eq!(
-            secrets.0[0].fields.get("password"),
-            Some(&"cA==".to_string())
-        );
+        #[test]
+        fn test_parse_yaml() -> Result<()> {
+            let yaml_content = r#"
+            pg_username: u
+            pg_password: p
+            "#;
+            let file = create_temp_file_with_content(yaml_content)?;
+            let secrets = Secrets::from_file(file.path())?;
 
-        Ok(())
+            assert_eq!(secrets.0.len(), 2);
+            let username = secrets.0.iter().find(|s| s.name == "pg_username").unwrap();
+            assert_eq!(username.name, "pg_username");
+            assert_eq!(
+                username.fields.get(Secrets::SIMPLIFIED_FIELD_NAME),
+                Some(&"dQ==".to_string())
+            );
+            let password = secrets.0.iter().find(|s| s.name == "pg_password").unwrap();
+            assert_eq!(password.name, "pg_password");
+            assert_eq!(
+                password.fields.get(Secrets::SIMPLIFIED_FIELD_NAME),
+                Some(&"cA==".to_string())
+            );
+
+            Ok(())
+        }
     }
 
-    #[test]
-    fn test_parse_yaml_multiple_secrets() -> Result<()> {
-        let yaml_content = r#"
-        - name: pg
-          fields:
-            username: u
-            password: p
-        - name: redis
-          fields:
-            host: localhost
-            port: 6379
-        "#;
-        let file = create_temp_file_with_content(yaml_content)?;
-        let secrets = Secrets::from_file(file.path())?;
+    mod raw_format {
+        use super::*;
 
-        assert_eq!(secrets.0.len(), 2);
+        #[test]
+        fn test_parse_yaml_direct_array() -> Result<()> {
+            let yaml_content = r#"
+            - name: pg
+              fields:
+                username: u
+                password: p
+            "#;
+            let file = create_temp_file_with_content(yaml_content)?;
+            let secrets = Secrets::from_file(file.path())?;
 
-        assert_eq!(secrets.0[0].name, "pg");
-        assert_eq!(
-            secrets.0[0].fields.get("username"),
-            Some(&"dQ==".to_string())
-        );
+            assert_eq!(secrets.0.len(), 1);
+            assert_eq!(secrets.0[0].name, "pg");
+            assert_eq!(
+                secrets.0[0].fields.get("username"),
+                Some(&"dQ==".to_string())
+            );
+            assert_eq!(
+                secrets.0[0].fields.get("password"),
+                Some(&"cA==".to_string())
+            );
 
-        assert_eq!(secrets.0[1].name, "redis");
-        assert_eq!(
-            secrets.0[1].fields.get("port"),
-            Some(&"NjM3OQ==".to_string())
-        );
+            Ok(())
+        }
 
-        Ok(())
-    }
+        #[test]
+        fn test_parse_yaml_multiple_secrets() -> Result<()> {
+            let yaml_content = r#"
+            - name: pg
+              fields:
+                username: u
+                password: p
+            - name: redis
+              fields:
+                host: localhost
+                port: 6379
+            "#;
+            let file = create_temp_file_with_content(yaml_content)?;
+            let secrets = Secrets::from_file(file.path())?;
 
-    #[test]
-    fn test_parse_json_format() -> Result<()> {
-        let json_content = r#"[
-          {
-            "name": "pg",
-            "fields": {
-              "username": "u",
-              "password": "p"
-            }
-          }
-        ]"#;
-        let file = create_temp_file_with_content(json_content)?;
-        let secrets = Secrets::from_file(file.path())?;
+            assert_eq!(secrets.0.len(), 2);
 
-        assert_eq!(secrets.0.len(), 1);
-        assert_eq!(secrets.0[0].name, "pg");
-        assert_eq!(
-            secrets.0[0].fields.get("username"),
-            Some(&"dQ==".to_string())
-        );
-        assert_eq!(
-            secrets.0[0].fields.get("password"),
-            Some(&"cA==".to_string())
-        );
+            assert_eq!(secrets.0[0].name, "pg");
+            assert_eq!(
+                secrets.0[0].fields.get("username"),
+                Some(&"dQ==".to_string())
+            );
 
-        Ok(())
+            assert_eq!(secrets.0[1].name, "redis");
+            assert_eq!(
+                secrets.0[1].fields.get("port"),
+                Some(&"NjM3OQ==".to_string())
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_parse_json_format() -> Result<()> {
+            let json_content = r#"[
+              {
+                "name": "pg",
+                "fields": {
+                  "username": "u",
+                  "password": "p"
+                }
+              }
+            ]"#;
+            let file = create_temp_file_with_content(json_content)?;
+            let secrets = Secrets::from_file(file.path())?;
+
+            assert_eq!(secrets.0.len(), 1);
+            assert_eq!(secrets.0[0].name, "pg");
+            assert_eq!(
+                secrets.0[0].fields.get("username"),
+                Some(&"dQ==".to_string())
+            );
+            assert_eq!(
+                secrets.0[0].fields.get("password"),
+                Some(&"cA==".to_string())
+            );
+
+            Ok(())
+        }
     }
 
     #[test]
