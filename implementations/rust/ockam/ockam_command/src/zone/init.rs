@@ -42,8 +42,6 @@ impl Command<Option<PathBuf>> for InitCommand {
     const NAME: &'static str = "zone init";
 
     async fn run(self, _ctx: &Context, opts: CommandGlobalOpts) -> Result<Option<PathBuf>> {
-        let spinner = opts.terminal.spinner();
-
         // Check if the target directory can be used
         let target_path = match self.create_target_path()? {
             Some(path) => path,
@@ -57,6 +55,7 @@ impl Command<Option<PathBuf>> for InitCommand {
         let repository_downloader =
             RepositoryDownloader::new(&self.repository, target_path.clone())?;
         let repository_url = &repository_downloader.repository_url;
+        let spinner = opts.terminal.spinner();
         if let Some(spinner) = &spinner {
             spinner.set_message(format!(
                 "Downloading template from {}...",
@@ -94,7 +93,6 @@ impl Command<Option<PathBuf>> for InitCommand {
 
 impl InitCommand {
     pub fn create_target_path(&self) -> Result<Option<PathBuf>> {
-        let mut current_dir;
         let create_target_path = |path: &PathBuf| {
             if !path.exists() {
                 fs::create_dir_all(path)
@@ -106,44 +104,55 @@ impl InitCommand {
                 .wrap_err(format!("Failed to set current directory to {:?}", path))?;
             Ok::<_, miette::Error>(path.clone())
         };
-        let target_path = match &self.target_path {
-            None => {
-                current_dir = std::env::current_dir()
-                    .into_diagnostic()
-                    .wrap_err("Failed to get current directory")?;
-                current_dir
+        let zone_config_arg = ZoneConfigArg::default();
+        let check_zone_config = |path: &PathBuf| -> Result<()> {
+            if zone_config_arg.zone_config_path().is_ok() {
+                if zone_config_arg.zone_config().is_err() {
+                    Err(miette!(
+                        "Target directory {:?} doesn't contain a valid zone config file",
+                        path
+                    )
+                    .wrap_err(format!(
+                        "Use the command from a valid directory or pass a directory using {}",
+                        color_primary("--target-path")
+                    )))
+                } else {
+                    Ok(())
+                }
+            } else {
+                Err(miette!(
+                    "No zone config file found in target directory {:?}",
+                    path
+                ))
             }
+        };
+
+        let target_path = match &self.target_path {
+            None => std::env::current_dir()
+                .into_diagnostic()
+                .wrap_err("Failed to get current directory")?,
             Some(path) => path.clone(),
         };
-        current_dir = create_target_path(&target_path)?;
+        let current_dir = create_target_path(&target_path)?;
 
         if target_path.read_dir().into_diagnostic()?.next().is_some() {
             // Target is not empty
 
             // Check if it contains a valid zone config file
-            let zone_config_arg = ZoneConfigArg::default();
-            if zone_config_arg.zone_config().is_err() {
+            if zone_config_arg.zone_config_path().is_ok() {
+                // A zone config file exists
+                check_zone_config(&target_path)?;
+                Ok(None)
+            } else {
+                // No zone config file found
                 let target_path = current_dir.join(self.repository_name());
                 create_target_path(&target_path)?;
                 if target_path.read_dir().into_diagnostic()?.next().is_some() {
-                    if zone_config_arg.zone_config().is_err() {
-                        Err(miette!(
-                            "Target directory {:?} doesn't contain a valid zone config file",
-                            target_path
-                        )
-                        .wrap_err(format!(
-                            "Use the command from a valid directory or pass a directory using {}",
-                            color_primary("--target-path")
-                        )))
-                    } else {
-                        Ok(None)
-                    }
+                    check_zone_config(&target_path)?;
+                    Ok(None)
                 } else {
                     Ok(Some(target_path))
                 }
-            } else {
-                // If the zone config is valid, we assume the directory is already initialized.
-                Ok(None)
             }
         } else {
             Ok(Some(target_path.clone()))
