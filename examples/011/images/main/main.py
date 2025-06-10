@@ -229,13 +229,20 @@ async def list_workers(node):
     import ockam
 
     runners = await Zone.nodes(node, filter="runner")
-    futures = [runner.list_workers() for runner in runners]
-    workers_per_runner = await ockam.gather(*futures)
-    workers = []
-    for runner, workers_on_this_runner in zip(runners, workers_per_runner):
-        for w in workers_on_this_runner:
-            workers.append({"worker_name": w["name"], "runner_name": runner.name})
-    return workers
+
+    async def list_per_runner(runner):
+        workers_on_this_runner = await runner.list_workers()
+        return {runner.name: [w["name"] for w in workers_on_this_runner]}
+
+    futures = [list_per_runner(runner) for runner in runners]
+    workers_per_runner = await ockam.gather(*futures, timeout=5, return_exceptions=True)
+
+    # ignore errors
+    workers_per_runner = [r for r in workers_per_runner if not isinstance(r, Exception)]
+    # flatten
+    workers_per_runner = {k: v for d in workers_per_runner for k, v in d.items()}
+
+    return workers_per_runner
 
 
 class Api:
@@ -255,7 +262,7 @@ class Api:
         @self.api.get("/runners/workers")
         async def get_workers():
             workers = await list_workers(node)
-            return JSONResponse(content={"workers": workers})
+            return JSONResponse(content=workers)
 
         @self.api.get("/runners")
         async def get_runners():

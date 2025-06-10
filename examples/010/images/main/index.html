@@ -54,26 +54,69 @@
                 padding: 6px 12px;
                 font-size: 14px;
             }
-            @keyframes pulse {
-                0% {
-                    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
-                }
-                70% {
-                    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
-                }
-                100% {
-                    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
-                }
+            #loader {
+                display: none;
+                width: 15px;
+                height: 15px;
+                margin: 0;
+                border: 8px solid #f3f3f3;
+                border-radius: 50%;
+                border-top: 8px solid #3498db;
+                -webkit-animation: spin 2s linear infinite;
+                animation: spin 2s linear infinite;
             }
-            .pulse {
-                animation: pulse 1.5s infinite;
-                border-color: #007bff;
-                outline: none;
+            @-webkit-keyframes spin {
+                0% { -webkit-transform: rotate(0deg); }
+                100% { -webkit-transform: rotate(360deg); }
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .foo {
+                display: flex;
+                flex-direction: row;
+                justify-content: flex-start;
+                align-items: center;
+            }
+            #popup {
+                display: none;
+                background-color: rgba(0,0,0,0.5);
+                position: fixed;
+                z-index: 999;
+                width: 100%;
+                height: 100vh;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                margin: 0 auto;
+                .popup {
+                    background: white;
+                    color: #fff;
+                    padding: 10px;
+                    border-radius: 5px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    width: 200px;
+                    #text {
+                        color: black;
+                    }
+                }
             }
         </style>
     </head>
     <body>
-        <button id="run-btn">Run</button>
+        <div id="popup">
+            <div class="popup">
+              <p id="text"></p>
+              <button id="ok-btn">OK</button>
+            </div>
+        </div>
+        <div class="foo">
+          <button id="run-btn">Run</button>
+          <div id="loader"></div>
+        </div>
         <div id="container"></div>
         <script src="https://d3js.org/d3.v7.min.js"></script>
         <script>
@@ -83,18 +126,23 @@
 
             const container = d3.select("#container");
 
-            function render(data) {
-                const grouped = {};
-                for (const worker of data.workers) {
-                    if (!grouped[worker.runner_name]) {
-                        grouped[worker.runner_name] = [];
-                    }
-                    grouped[worker.runner_name].push(worker.worker_name);
-                }
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
 
+            window.prev_data = {};
+            function render(data) {
                 const container = d3.select("#container");
 
-                const nodeColumns = container.selectAll(".node-column").data(Object.entries(grouped), (d) => d[0]);
+                // In case some runners didn't respond due to being buse, use the previous value for that runner
+                const new_data = {...window.prev_data, ...data};
+                window.prev_data = {...data};
+
+                const data_list = Object.entries(new_data).sort((a, b) => {
+	                  return a[0].localeCompare(b[0]);
+                });
+
+                const nodeColumns = container.selectAll(".node-column").data(data_list, (d) => d[0]);
                 nodeColumns.exit().remove();
 
                 const nodeColumnsEnter = nodeColumns.enter().append("div").attr("class", "node-column");
@@ -154,17 +202,34 @@
                 });
             }
 
+            document.getElementById("ok-btn").addEventListener("click", async function () {
+                const popup = document.getElementById("popup");
+                popup.style.display = "none"
+            });
+
             document.getElementById("run-btn").addEventListener("click", async function () {
                 const button = this;
-                button.classList.add("pulse");
+                const loader = document.getElementById("loader");
+                const popup = document.getElementById("popup");
+                const text = document.getElementById("text");
+                button.disabled = true;
+                loader.style.display = "block";
+
                 try {
+                    const start = Date.now();
                     const response = await fetch("/analyze", { method: "POST" });
                     const response_json = await response.json();
+                    const end = Date.now();
                     console.log("Analysis: ", response_json);
+                    text.innerHTML = `Success in: ${Math.floor((end - start) / 1000)} s`;
                 } catch (error) {
                     console.error("Error fetching /analyze:", error);
+                    text.innerHTML = "Error"
                 } finally {
-                    button.classList.remove("pulse");
+                    loader.style.display = "none";
+                    await sleep(1500);
+                    popup.style.display = "flex"
+                    button.disabled = false;
                 }
             });
 
@@ -174,7 +239,8 @@
                         const response = await fetch("/runners/workers");
                         if (response.ok) {
                             const response_json = await response.json();
-                            console.log("Workers: ", response_json);
+                            const now = new Date();
+                            console.log(now.toLocaleTimeString(), "Workers:", response_json);
                             render(response_json);
                         }
                     } catch (e) {
