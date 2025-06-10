@@ -4,11 +4,165 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.96.0 - 2025-06-09
+## 0.96.0 - 2025-06-10
 
 ### Added
 
+- Support json output in `project ticket`
+- `project ticket` show warning when using high values for ticket duration/usage
+- Tie each tcp connection inside portal to an `Identifier`
+- Improve delete behavior on different commands
+- Rename ebpf portals -> privileged portals
+- Return new ticket format in `project ticket`
+- Node's http server is enabled by default
+- Remove last usages of `OCKAM_LOG` env var
+- Simplify command node shutdown
+- Add env. variables for auth0
+- Adjust `enroll` logic and output for the new subscription plans
+- Reduce the api versions to the supported range
+- Avoiding memory fragmentation by reducing allocations
+- Increased portal throughput by increasing payload size
+- Add `UDP` support to nodes and multiaddr. refactor multiaddr
+- Enable auto-retry on all repositories
+- Introduce env variables to adjust transport performance
+- Simplify `node create` execution
+- Improve logs for relay creation
+- Improve logs for tcp portals creation
+- Add a custom log format to change the fields order
+- Session replacer sends notifications on session lost/replaced
+- Improvements to portals commands arguments
+- Rewrite `ockam_node`
+- Update the postgres schema
+- Make sure that reset can not remove postgres data
+- Isolate member data by authority
+- Add binary to compile branded command binaries
+- Update the legacy authority identity name
+- Migrate an existing sqlite database to postgres
+- Disable --all functionality in reset command if `OCKAM_DEVELOPER` is not set
+- In enrollment tickets, derive id from project route's service
+- Optimize node creation:
+- Add missing branding replacements in ockam_command
+- Make portal handshake optional
+- Add platinum to `Subscriptions` enum to format it properly
+- Implemented control api http server
+- Added `OpenAPI` schema for `Control Node API`
+- In `Node Control API`, added crud for relay, ticket, and authority members
+- Added `self` reference as node name in `Node Control API`
+- Node control api: bat tests for all apis and relative fixes
+- Add a span exporter using a secure channel
+- Integrate the new span exporter with the rest of the application
+- Send telemetry data to the project node
+- Address review comments
+- Don't create a default node for the telemetry secure client
+- Node control openapi documentation
+- Add support for "launch-configuration" in node's config
+- Added the possibility to overwrite http headers in inlets
+- Add projects to the output of the status command
+- Add connect/disconnect logs to portal worker
+- Add log format for user-facing terminal logs
+- Add command to retrieve the identity listening at some endpoint
+- Polishing node control api
+- Deprecating `--status-endpoint-port` in favor of `--status-endpoint`
+- Add env var to control the orchestrator ui url
+- Unify output of show/list portals commands
+- Set all the spans at the trace level
+- Add an attribute to distinguish user journeys
+- Create only one top-level span
+- Set more spans at the trace level
+- Add more attributes and remove events on spans
+- Pass the cli state to the span exporter to access more data
+- Store attribute data in-memory
+- Address review comments
+- Unify output of crud tcp-connection commands
+- Enable mptcp support between nodes and inside portals
+- Add custom openapi schema for hostnameport to support serde from string
+- On tcp-outlet create request, make kind field optional
+- Update outlet http endpoints request structs
+- Update inlet http endpoints requests structs
+- Use `HostPort` in outlet/inelt api requests
+- Add "via" field to create inlet endpoint request
+- Expose a method to retrieve subject attributes directly from an authority
+- Additional fixes to support project with postgres
+- Expose some apis
+- Reduce `Context` usage
+- Support optional resource_type in policies
+- Remove the drop instance for the in memory node
+- Add a tenant_id column to the postgres and sqlite schemas
+- Expose `Abac`
+- Add `OCKAM_SQL_LOG_LEVEL` env variable
+- Implement `message.is_local` policy
+- Full separate postgres data by tenant_id
+- Add `all` and `none` policies
+- Add ai subcommands for enroll and ticket
+- Add `ai deploy` command
+- Add `ai connect` command
+- Implement orchestrator api for provisioner service
+- Ai enroll returns cluster
+- Add `cluster outlet` command
+- Add `cluster init` command
+- Revert `ai/enroll` endpoint usage
+- Add cluster cbor struct
+- Adjustments for public eks
+- Cluster ticket command going through provisioner
+- Add "ockam" command
+- Add `cluster secret` subcommand
+- Add 5 min timeout to provisioner http api client
+- When resetting with the postgres database delete the tenant tables data
+- Evaluate policies with non-existing attribute keys
+- List relays on project nodes
+- Single token for all ecr repos
+- In `cluster create`, parallelize `docker build` calls
+- Add `OCKAM_DATABASE_MAX_POOL_SIZE`
+- Add alias for ticket response struct field
+- `--watch`, clear screen after receiving an event
 - Updated dependencies
+
+### Changed
+
+- Bump sysinfo from 0.31.4 to 0.32.0
+- Make the auto-retry an implementation detail of repositories
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+- Rename telemetry env vars
+- Rename cloud module to orchestrator
+- Use localhost constructor for `HostnamePort`
+- Bump kafka-protocol from 0.13 to 0.14
+- Enable requests to be messages
+- Generalize the configuration of a secure client
+- Merge `secure-channel peer-info` command into the `show` command
+- Split http api's `HostPort` into request/response types
+- Descriptions for ticket and relay http api endpoints
+- Cleanup cluster output
+- In the cluster repl, use terminal to handle output
+- Update erlang, elixir, rust, and python versions
+
+### Fixed
+
+- Influxdb and tcp inlets delay the alias random value initialization to prevent collisions
+- Make sure that traces are exported when a command is executed
+- Force flush the traces later
+- Error chain is kept in ockam_command crate
+- `project enroll` support for json encoded tickets
+- Update tests using the `ENROLLMENT_TICKET` env var
+- Echo service initialization
+- Command subprocess read child's pipes instead of copying them
+- Node control api fixes and error handling refactorings
+- Fix the deserializaton of error messages in responses
+- Node control api fixes and minor refactorings
+- Protect the start of a grpc forwarder against an incorrect configuration
+- Await signalling the parent process in the foreground node
+- In inlets commands, show the bound port to portal in the output
+- Use localhost to connect to the node when the binding address is `0.0.0.0` or `[::]`
+- Control node api - using multiple tasks to avoid outage during requests timeout
+- Control node api - return a dedicated error when inlet name or port are already in use
+- `cluster delete` command
+- Cluster endpoints requests/responses for orchestrator implementation
+- In zone controller requests, send json data as string instead of vec
+- List_secrets response parsing
+
+### Removed
+
+- Remove the dev. authenticator endpoint
+- Remove double base64 encoding in http api "create secret" endpoint
 
 ## 0.95.0 - 2025-06-04
 
