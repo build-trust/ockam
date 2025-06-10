@@ -9,6 +9,7 @@ fn hash() {
         .unwrap();
     let git_hash = String::from_utf8(output.stdout).unwrap();
     println!("cargo:rustc-env=GIT_HASH={git_hash}");
+    println!("cargo:rerun-if-env-changed=GIT_HASH");
 }
 
 fn binary_name() {
