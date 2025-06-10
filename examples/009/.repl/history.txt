@@ -1,5 +1,0 @@
-#V2
-a=100
-API_KEY="129334444"
-what risks does a public api port pose to my network
-API="22223232232"
