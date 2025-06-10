@@ -1,6 +1,6 @@
 pub mod common_args;
 pub(crate) mod enroll;
-mod show;
+pub(crate) mod show;
 pub(crate) mod ticket;
 pub mod utils;
 
