@@ -4,10 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.153.0 - 2025-06-09
+## 0.153.0 - 2025-06-10
 
 ### Added
 
+- Enable mptcp support between nodes and inside portals
+- Expose some apis
+- Add shared access to sending messages from a `Context`
+- Add `OCKAM_SQL_LOG_LEVEL` env variable
+- Expose `ContextRouter`
+- Implement `message.is_local` policy
+- Add `all` and `none` policies
+- Add a send_extended method to allow sending messages with an outgoing access control
+- Add send methods to the context router
+- Add more ways to send and receive messages using `Context`
 - Updated dependencies
 
 ## 0.152.0 - 2025-06-04
