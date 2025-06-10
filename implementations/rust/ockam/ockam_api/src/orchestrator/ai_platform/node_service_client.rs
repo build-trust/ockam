@@ -3,8 +3,6 @@ use crate::orchestrator::ai_platform::api::AiPlatformApi;
 use crate::orchestrator::ai_platform::responses::{
     Cluster, EcrCredential, Secret, SecretNameList, Ticket, Zone, ZoneNameList,
 };
-use base64_url::base64;
-use base64_url::base64::Engine;
 use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
@@ -222,12 +220,6 @@ impl AiPlatformApi for InMemoryNode {
             "{}/api/{}/zone/{}/secret",
             *AI_API_BASE_URL, cluster, zone_name
         );
-
-        // Convert each value of the secret_fields HashMap to a base64 string
-        let secret_fields = secret_fields
-            .into_iter()
-            .map(|(key, value)| (key, base64::engine::general_purpose::STANDARD.encode(value)))
-            .collect::<HashMap<_, _>>();
 
         let body = serde_json::json!({
             "name": secret_name,
