@@ -4,21 +4,251 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.153.0 - 2025-06-09
+## 0.153.0 - 2025-06-10
 
 ### Added
 
+- Support json output in `project ticket`
+- `project ticket` show warning when using high values for ticket duration/usage
+- Add plain output to `project ticket`
+- First argument of `node create` can contain an inline configuration
+- Cleanup plain output of `project ticket` command
+- Improve delete behavior on different commands
+- Rename ebpf portals -> privileged portals
+- Improve output for privileged portals creation
+- Return new ticket format in `project ticket`
+- Node's http server is enabled by default
+- Rename `--hex-encoded` arg to `--hex` in `project ticket`
+- Simplify command node shutdown
+- Add env. variables for auth0
+- Adjust `enroll` logic and output for the new subscription plans
+- Avoiding memory fragmentation by reducing allocations
+- Add `UDP` support to nodes and multiaddr. refactor multiaddr
+- Simplify `node create` execution
+- To reduce memory fragmentation use mimalloc in command and stress-test
+- Sort credentials output alphabetically
+- Improve logs for relay creation
+- Improve stdout output for `node create`
+- Improve logs for tcp portals creation
+- Add a custom log format to change the fields order
+- Session replacer sends notifications on session lost/replaced
+- Add "unsafe" tag to commands that are considered unsafe
+- Improvements to portals commands arguments
+- Rewrite `ockam_node`
+- Don't create a member for an opentelemetry node
+- Update the postgres schema
+- Isolate member data by authority
+- Add binary to compile branded command binaries
+- Update the legacy authority identity name
+- Add a command to migrate a postgres database
+- Hide the migrate-database command
+- Custom branding config allows you to specify which commands are included
+- In the command, use a different footer when the binary is not ockam
+- Disable --all functionality in reset command if `OCKAM_DEVELOPER` is not set
+- In enrollment tickets, derive id from project route's service
+- Improve defaults handling of branding compile env vars
+- Show env values in `environment` command
+- Optimize node creation:
+- Add missing branding replacements in ockam_command
+- Make portal handshake optional
+- Implemented control api http server
+- In `Node Control API`, added crud for relay, ticket, and authority members
+- Added `self` reference as node name in `Node Control API`
+- Node control api: bat tests for all apis and relative fixes
+- Integrate the new span exporter with the rest of the application
+- Send telemetry data to the project node
+- Address review comments
+- Add support for "launch-configuration" in node's config
+- Added the possibility to overwrite http headers in inlets
+- Add projects to the output of the status command
+- Add log format for user-facing terminal logs
+- Add command to retrieve the identity listening at some endpoint
+- Add `--env` parameter to write environment variables before parsing command
+- Polishing node control api
+- Deprecating `--status-endpoint-port` in favor of `--status-endpoint`
+- Add worker address to the output of `tcp-connection create`
+- Add env var to control the orchestrator ui url
+- Unify output of show/list portals commands
+- Set all the spans at the trace level
+- Create only one top-level span
+- Set more spans at the trace level
+- Create a proper trace for a message sent between an inlet and an outlet
+- Add the proper component name for a local node
+- Pass the cli state to the span exporter to access more data
+- Address review comments
+- Unify output of crud tcp-connection commands
+- Enable mptcp support between nodes and inside portals
+- Update outlet http endpoints request structs
+- Update inlet http endpoints requests structs
+- Add "via" field to create inlet endpoint request
+- Reduce `Context` usage
+- Remove the drop instance for the in memory node
+- Implement `message.is_local` policy
+- Add ai subcommands for enroll and ticket
+- Add `ai deploy` command
+- Add `ai connect` command
+- Implement orchestrator api for provisioner service
+- Ai enroll returns cluster
+- Add `cluster outlet` command
+- Add `cluster init` command
+- `cluster inlet` use passed cluster
+- Revert `ai/enroll` endpoint usage
+- Add cluster cbor struct
+- Adjustments for public eks
+- Cluster ticket command going through provisioner
+- Cluster enroll no personal space
+- Add "ockam" command
+- Build docker image using use dockerfile_dir
+- Base command, add env var for init repository
+- Base command, add env var for zone_name, or derive from email
+- Base command, add env var for inlet address, with default value
+- Add epoch tag to docker image
+- Add `cluster secret` subcommand
+- Add `OCKAM_USE_DOCKER_CACHE` env var used in `cluster create` command
+- List relays on project nodes
+- Push secrets on `cluster create` command
+- Add `cluster` back to `cluster inlet` command
+- Zone config return error if has duplicated pods or containers
+- In `ockam` command, create inlets for every outlet found in the config
+- In `cluster inlet`, automatically generate enrollment ticket if not passed
+- Improve cluster commands output copy
+- In `ockam`, assign outlet's port to the inlet if possible
+- Use "main-pod" as the main pod name instead of "main"
+- Add `background` argument to `cluster inlet/outlet`
+- Add `cluster show` command to retrieve the user's cluster id
+- Improvements to cluster outlet command
+- Let the inlet cmd create the ticket
+- Delete the zone in parallel with image processing
+- Add zones to `cluster show` output
+- Support multi-line input inside repl by escaping with `"""`
+- Single token for all ecr repos
+- Add "cluster attach" command
+- In `cluster create`, parallelize `docker build` calls
+- In `cluster create`, use `--pull` argument when building docker images
+- In `cluster create`, parallelize `docker push` step
+- Extract a cluster repl command for local development
+- Hide all commands from "help" except `cluster`
+- In `ockam`, create inlets to http and logs servers by default
+- Add `--watch` argument to `ockam` command to react to changes in the config or images
+- In `cluster init`, support downloading templates from zip urls
+- Add arguments to skip the logs/http portal creation
+- Add tui ux to `zone delete`
+- Remove local image after it's been pushed
+- Add `--rm` arg to `ockam` to delete the zone before exiting
+- (--watch) add 10 second delay before restarting
+- Add `http_api` arguments to base command
+- Validate secrets key values as base64 encodable
+- Use 3000 as the default port to expose the logs server
+- Add `--no-pull` argument to `ockam` and `ockam zone create`
+- `--watch`, clear screen after receiving an event
+- After deploying a zone, show public http server url
 - In "zone init", set the working directory to the template directory
 - Display the url of the logs server
 - Add bats tests for python
+- Add `zone list` command
+- Improve the message for showing the logs server access
+- Improve error handling in `zone init` when an invalid config is found
 - Updated dependencies
 
 ### Changed
 
+- Extract `OCKAM_SQLITE_IN_MEMORY` env var usage up to the cli state initialization
+- Update cli documentation for the `status` and `reset` commands
+- Rename cloud module to orchestrator
+- Revert command features
+- Use localhost constructor for `HostnamePort`
+- Logic of handling the default node name in `node create`
+- Enable requests to be messages
+- Merge functions for enriching tags
+- Merge `secure-channel peer-info` command into the `show` command
+- Simplify `node list` command
+- Rename ai subcommands to `cluster`
+- Rename `cluster connect` to `cluster inlet`
+- Return zone config from `cluster create`
+- Rename "no args" command to "base command"
+- Reenable ctrlc in enroll command
+- Pass zone name in config, instead of as an argument
+- Cleanup cluster output
+- Make repl reconnect
+- Improve cluster repl
+- Process server response as header+body
+- In the cluster repl, use terminal to handle output
+- Cluster arguments
+- In "cluster inlet/outlet" wait until it's fully created before returning
+- In "ockam" use a new context for each inlet
+- In "ockam" use a new context for each inlet
+- Process "ockam" as a clap command, enabling passing arguments to it
+- Cleanup output of `cluster create` command
+- Rebase on top of develop, moving the repl changes into the `cluster attach` command
+- Split cluster commands into cluster/zone subcommands
+- Merge repl/attach subcommands
+- Update erlang, elixir, rust, and python versions
+- Update help text in command
+- Zone ctrlc handler
 - In `zone secret`, encode secrets values before sending the `create` request
+- Zone commands to properly handle the --watch argument
+
+### Fixed
+
+- `relay create` deprecated warning message
+- Influxdb and tcp inlets delay the alias random value initialization to prevent collisions
+- Make sure that traces are exported when a command is executed
+- Force flush the traces later
+- Error chain is kept in ockam_command crate
+- Fix udp flag for ockam node create with config argument
+- Pull the crypto provider instantiation closer to the start of the command line
+- Adjust timeout used when waiting for a node to be ready
+- `project enroll` command won't issue a credential if run in-memory
+- Newlines between commands run in a configuration
+- Fix bats test on kafka-inlet args parsing
+- Fix the migration of in-memory sqlite dbs
+- Usage of compile time ockam home env var
+- Command subprocess read child's pipes instead of copying them
+- Node control api fixes and error handling refactorings
+- Set node name on background nodes, instead of delegating to the foreground node
+- Node subprocess inherits output streams
+- Handle default value for services in node config
+- In `node create`, detach background process
+- Await signalling the parent process in the foreground node
+- In inlets commands, show the bound port to portal in the output
+- Use localhost to connect to the node when the binding address is `0.0.0.0` or `[::]`
+- `node create` with configuration was swallowing an error produced in a subprocess
+- `node create` with configuration was not exiting properly if node didn't start
+- Test row level security
+- Docker image path
+- Get cluster always from orchestrator
+- Change default values in "ockam"
+- Create cluster inlet using pod from config
+- `cluster create` use buildx to build multiarch images
+- Repl
+- Is_enrolled check
+- Manually parse base command args
+- Hash email using sha256 for the zone name default value
+- Repl initial message handling
+- Pass relay name in `cluster ticket` command
+- Copy when creating an inlet in "ockam" command
+- Parse outlets from zone config properly
+- Improve `cluster secret` copy
+- Fix test_get_main_pod
+- Ctrlc handling in "cluster inlet"
+- `cluster delete` command
+- Parse zone configs with a single outlet properly
+- Improvements for the `cluster` commands output
+- Revert default name for repl outlet
+- Use shared ctrlc handler in no repl branch
+- `--watch` restart signaling
+- Pass zone config with the default outlets defined
+- Cluster endpoints requests/responses for orchestrator implementation
+- List_secrets response parsing
+- Revert unsetting `DOCKER_BUILDKIT`
+- Update command build script to rerun if git hash changes
 
 ### Removed
 
+- Remove ctrlc_handler in enroll
+- Remove ctrlc_handler in enroll again
+- Remove unnecessary text from repl
+- Delete local images after all have been pushed
 - Remove unnecessary empty line after deploying a zone
 
 ## 0.152.0 - 2025-06-04
