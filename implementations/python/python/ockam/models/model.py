@@ -1,6 +1,8 @@
 from typing import List, Optional
 
 import litellm
+from litellm import Router
+
 import os
 import boto3
 import threading
@@ -33,6 +35,14 @@ PROVIDER_ALIASES = {
         "llama3.1-8b-instruct": "litellm_proxy/lambda_ai.llama3.1-8b-instruct",
     },
     "ollama": {
+        "deepseek-r1": "ollama_chat/deepseek-r1",
+        "llama3.2": "ollama_chat/llama3.2",
+        "llama3.3": "ollama_chat/llama3.3",
+        "gemma3": "ollama_chat/gemma3",
+        "gemma3:27b": "ollama_chat/gemma3:27b",
+        "nomic-embed-text": "ollama/nomic-embed-text",
+    },
+    "ollama_chat": {
         "deepseek-r1": "ollama_chat/deepseek-r1",
         "llama3.2": "ollama_chat/llama3.2",
         "llama3.3": "ollama_chat/llama3.3",
@@ -78,6 +88,16 @@ BEDROCK_INFERENCE_PROFILE_MAP = {
 region = None
 account_id = None
 init_lock = threading.Lock()
+
+
+# slightly modify the parameters to accommodate services
+litellm.modify_params = True
+
+model_list = []
+for model_name in ALL_PROVIDER_ALLOWED_FULL_NAMES:
+    model_list.append({"model_name": model_name, "litellm_params": {"model": model_name}})
+
+router = Router(model_list=model_list, default_max_parallel_requests=400)
 
 
 def construct_bedrock_arn(model_identifier: str) -> Optional[str]:
@@ -192,9 +212,6 @@ class Model:
                 if "tool_calls" in message:
                     del message["tool_calls"]
 
-        # slightly modify the parameters to accommodate services
-        litellm.modify_params = True
-
         # parameters provided in kwargs will override the default parameters
         kwargs = {**self.kwargs, **kwargs}
 
@@ -202,7 +219,9 @@ class Model:
         if "tools" in kwargs and len(kwargs["tools"]) == 0:
             del kwargs["tools"]
 
-        return await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        global router
+
+        return await router.acompletion(self.name, messages=messages, stream=stream, **kwargs)
 
     async def embeddings(self, text: List[str], **kwargs) -> List[List[float]]:
         # parameters provided in kwargs will override the default parameters
