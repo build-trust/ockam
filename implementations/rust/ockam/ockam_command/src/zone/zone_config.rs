@@ -1,3 +1,4 @@
+use crate::zone::secret::Secrets;
 use miette::{IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ pub struct ZoneConfig {
     pub pods: Vec<Pod>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Pod {
     pub name: String,
     #[serde(default)]
@@ -26,9 +27,16 @@ pub struct Pod {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Portals {
-    #[serde(default, alias = "inlet", alias = "tcp-inlets", alias = "tcp-inlet")]
+    #[serde(
+        skip_serializing_if = "Vec::is_empty",
+        default,
+        alias = "inlet",
+        alias = "tcp-inlets",
+        alias = "tcp-inlet"
+    )]
     pub inlets: Vec<Inlet>,
     #[serde(
+        skip_serializing_if = "Vec::is_empty",
         default,
         alias = "outlet",
         alias = "tcp-outlets",
@@ -39,7 +47,7 @@ pub struct Portals {
     pub other_fields: HashMap<String, Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Inlet {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -59,10 +67,11 @@ pub struct Outlet {
     pub other_fields: HashMap<String, Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Container {
     pub name: String,
     pub image: String,
+    pub env: Option<HashMap<String, Value>>,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,
 }
@@ -80,6 +89,7 @@ impl ZoneConfig {
         }?;
         _self.validate()?;
         _self.fill_in_defaults()?;
+        _self.transform_env_vars()?;
         Ok(_self)
     }
 
@@ -181,6 +191,45 @@ impl ZoneConfig {
                 });
         }
         Ok(())
+    }
+
+    fn transform_env_vars(&mut self) -> Result<(), miette::Error> {
+        for pod in &mut self.pods {
+            for container in &mut pod.containers {
+                if let Some(env) = &mut container.env {
+                    let mut transformed_env = HashMap::new();
+                    for (key, value) in env.drain() {
+                        if let Some(secret_key) = Self::extract_secret_key(&value) {
+                            // Transform secret reference into structured format
+                            let secret_ref = serde_json::json!({
+                                "name": key.clone(),
+                                "valueFrom": {
+                                    "secretKeyRef": {
+                                        "name": secret_key,
+                                        "key": Secrets::SIMPLIFIED_FIELD_NAME
+                                    }
+                                }
+                            });
+                            transformed_env.insert(key, secret_ref);
+                        } else {
+                            // Keep original value
+                            transformed_env.insert(key, value);
+                        }
+                    }
+                    *env = transformed_env;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn extract_secret_key(value: &Value) -> Option<String> {
+        if let Value::String(s) = value {
+            if let Some(stripped) = s.strip_prefix("secrets.") {
+                return Some(stripped.to_string());
+            }
+        }
+        None
     }
 
     pub fn get_local_images_names(&self) -> Vec<String> {
@@ -424,16 +473,15 @@ pods:
                         Container {
                             name: "abc".to_string(),
                             image: "local-image".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                         Container {
                             name: "cde".to_string(),
                             image: "local-image:tag".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                     ],
-                    portals: Default::default(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 },
                 Pod {
                     name: "pod2".to_string(),
@@ -442,21 +490,20 @@ pods:
                         Container {
                             name: "abc".to_string(),
                             image: "registry.com/remote-image".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                         Container {
                             name: "cde".to_string(),
                             image: "username/image:1.0".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                         Container {
                             name: "efg".to_string(),
                             image: "another-local".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                     ],
-                    portals: Default::default(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 },
                 Pod {
                     name: "pod3".to_string(),
@@ -465,16 +512,15 @@ pods:
                         Container {
                             name: "abc".to_string(),
                             image: " trimmed-local ".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                         Container {
                             name: "cde".to_string(),
                             image: "".to_string(), // Empty image name
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                     ],
-                    portals: Default::default(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 },
             ],
         };
@@ -498,10 +544,9 @@ pods:
                 containers: vec![Container {
                     name: "abc".to_string(),
                     image: "image1".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
-                portals: Default::default(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
         };
 
@@ -518,10 +563,9 @@ pods:
                 containers: vec![Container {
                     name: "abc".to_string(),
                     image: "image1".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
-                portals: Default::default(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
         };
 
@@ -543,10 +587,9 @@ pods:
                 containers: vec![Container {
                     name: "abc".to_string(),
                     image: "image1".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
-                portals: Default::default(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
         };
 
@@ -568,10 +611,9 @@ pods:
                 containers: vec![Container {
                     name: "container-name-is-too-long".to_string(),
                     image: "image1".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
-                portals: Default::default(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
         };
 
@@ -595,10 +637,9 @@ pods:
                     containers: vec![Container {
                         name: "container1".to_string(),
                         image: "image1".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     }],
-                    portals: Default::default(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 },
                 Pod {
                     name: "pod1".to_string(), // Duplicate pod name
@@ -606,10 +647,9 @@ pods:
                     containers: vec![Container {
                         name: "container2".to_string(),
                         image: "image2".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     }],
-                    portals: Default::default(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 },
             ],
         };
@@ -631,16 +671,15 @@ pods:
                     Container {
                         name: "container1".to_string(),
                         image: "image1".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                     Container {
                         name: "container1".to_string(), // Duplicate container name
                         image: "image2".to_string(),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                 ],
-                portals: Default::default(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
         };
 
@@ -662,10 +701,9 @@ pods:
                 containers: vec![Container {
                     name: "container-name-is-too-long".to_string(),
                     image: "image1".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
-                portals: Default::default(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
         };
 
@@ -822,19 +860,19 @@ pods:
                 containers: vec![Container {
                     name: "app".to_string(),
                     image: "image1".to_string(),
-                    other_fields: HashMap::new(),
+                    ..Default::default()
                 }],
                 portals: Portals {
                     inlets: vec![
                         Inlet {
                             name: Some("api".to_string()),
                             from: "external:3000".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                         Inlet {
                             name: None,
                             from: "ext:8080".to_string(),
-                            other_fields: HashMap::new(),
+                            ..Default::default()
                         },
                     ],
                     outlets: vec![Outlet {
@@ -844,7 +882,7 @@ pods:
                     }],
                     other_fields: Default::default(),
                 },
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
         };
 
@@ -949,7 +987,7 @@ pods:
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
             portals: Portals {
                 inlets: vec![],
@@ -970,9 +1008,9 @@ pods:
                         ..Default::default()
                     },
                 ],
-                other_fields: HashMap::new(),
+                ..Default::default()
             },
-            other_fields: HashMap::new(),
+            ..Default::default()
         };
 
         let outlets = pod.get_outlets();
@@ -1035,7 +1073,7 @@ pods:
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
             portals: Portals {
                 inlets: vec![],
@@ -1044,9 +1082,9 @@ pods:
                     to: "service:8080".to_string(),
                     ..Default::default()
                 }],
-                other_fields: HashMap::new(),
+                ..Default::default()
             },
-            other_fields: HashMap::new(),
+            ..Default::default()
         };
 
         let outlets = pod.get_outlets();
@@ -1070,7 +1108,7 @@ pods:
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
             portals: Portals {
                 inlets: vec![],
@@ -1079,9 +1117,9 @@ pods:
                     to: "service:8080".to_string(),
                     ..Default::default()
                 }],
-                other_fields: HashMap::new(),
+                ..Default::default()
             },
-            other_fields: HashMap::new(),
+            ..Default::default()
         };
 
         let outlets = pod.get_outlets();
@@ -1105,7 +1143,7 @@ pods:
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
             portals: Portals {
                 inlets: vec![],
@@ -1119,9 +1157,9 @@ pods:
                         ..Default::default()
                     },
                 ],
-                other_fields: HashMap::new(),
+                ..Default::default()
             },
-            other_fields: HashMap::new(),
+            ..Default::default()
         };
 
         let outlets = pod.get_outlets();
@@ -1144,14 +1182,14 @@ pods:
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
             portals: Portals {
                 inlets: vec![],
                 outlets: vec![],
-                other_fields: HashMap::new(),
+                ..Default::default()
             },
-            other_fields: HashMap::new(),
+            ..Default::default()
         };
 
         let outlets = pod.get_outlets();
@@ -1172,7 +1210,7 @@ pods:
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
             portals: Portals {
                 inlets: vec![],
@@ -1188,9 +1226,9 @@ pods:
                         ..Default::default()
                     },
                 ],
-                other_fields: HashMap::new(),
+                ..Default::default()
             },
-            other_fields: HashMap::new(),
+            ..Default::default()
         };
 
         let outlets = pod.get_outlets();
@@ -1220,7 +1258,7 @@ pods:
             containers: vec![Container {
                 name: "app".to_string(),
                 image: "app-image".to_string(),
-                other_fields: HashMap::new(),
+                ..Default::default()
             }],
             portals: Portals {
                 inlets: vec![],
@@ -1234,12 +1272,12 @@ pods:
                         name: Some("logs".to_string()),
                         to: "logger:1234".to_string(),
                         pod_name: Some("logging-service".to_string()),
-                        other_fields: HashMap::new(),
+                        ..Default::default()
                     },
                 ],
-                other_fields: HashMap::new(),
+                ..Default::default()
             },
-            other_fields: HashMap::new(),
+            ..Default::default()
         };
 
         let outlets = pod.get_outlets();
@@ -1256,5 +1294,57 @@ pods:
 
         // Verify rest contains no items
         assert_eq!(outlets.rest.len(), 0);
+    }
+
+    mod env_var_transformation {
+        use super::*;
+
+        #[test]
+        fn test_transform_env_vars() {
+            let input_yaml = r#"
+            name: test-zone
+            pods:
+            - name: main-pod
+              containers:
+              - name: app
+                image: app-image
+                env:
+                  API_KEY: secrets.MY_API_KEY
+                  REGULAR_VAR: regular-value
+            "#;
+            let config = ZoneConfig::from_contents(input_yaml).unwrap();
+            let _config_as_str = serde_yaml::to_string(&config).unwrap();
+
+            // Verify container env has been transformed
+            let container = &config.pods[0].containers[0];
+            let env = container.env.as_ref().unwrap();
+
+            // Check that secret references are transformed correctly
+            let api_key = env.get("API_KEY").unwrap();
+            assert_eq!(api_key["name"], "API_KEY");
+            assert_eq!(api_key["valueFrom"]["secretKeyRef"]["name"], "MY_API_KEY");
+            assert_eq!(api_key["valueFrom"]["secretKeyRef"]["key"], "value");
+
+            // Check that regular values remain unchanged
+            let regular_var = env.get("REGULAR_VAR").unwrap();
+            assert_eq!(regular_var.as_str().unwrap(), "regular-value");
+        }
+
+        #[test]
+        fn test_transform_env_vars_with_empty_env_field() {
+            let yaml = r#"
+            name: test-zone
+            pods:
+            - name: main-pod
+              containers:
+              - name: app
+                image: app-image
+                # No env specified
+            "#;
+
+            let config = ZoneConfig::from_contents(yaml).unwrap();
+            let container = &config.pods[0].containers[0];
+            assert!(container.env.is_none());
+        }
     }
 }

@@ -196,7 +196,7 @@ impl SecretCommand {
 struct SecretsYaml(BTreeMap<String, String>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Secrets(Vec<Secret>);
+pub(crate) struct Secrets(Vec<Secret>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Secret {
@@ -205,7 +205,7 @@ struct Secret {
 }
 
 impl Secrets {
-    const SIMPLIFIED_FIELD_NAME: &'static str = "value";
+    pub(crate) const SIMPLIFIED_FIELD_NAME: &'static str = "value";
 
     fn from_contents(contents: &str) -> Result<Self> {
         let mut _self = if let Ok(parsed_yaml) = Self::parse_contents::<SecretsYaml>(contents) {
@@ -283,6 +283,9 @@ mod tests {
             "#;
             let file = create_temp_file_with_content(yaml_content)?;
             let secrets = Secrets::from_file(file.path())?;
+            let _secrets_as_str = serde_yaml::to_string(&secrets)
+                .into_diagnostic()
+                .wrap_err("Failed to serialize secrets to YAML")?;
 
             assert_eq!(secrets.0.len(), 2);
             let username = secrets.0.iter().find(|s| s.name == "pg_username").unwrap();
