@@ -5,6 +5,8 @@ import os
 import boto3
 import threading
 
+from openai import AsyncOpenAI
+
 from ..nodes.message import ConversationMessage
 from ..ockam_in_rust_for_python import warn
 
@@ -202,11 +204,41 @@ class Model:
         if "tools" in kwargs and len(kwargs["tools"]) == 0:
             del kwargs["tools"]
 
-        return await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        if self.name.startswith("ollama_chat/") or "lambda_ai" in self.name:
+            actual_model_name = self.name.split('/')[-1]
+            ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+            # For local Ollama, api_key can be a placeholder like "ollama"
+            client = AsyncOpenAI(base_url=ollama_base_url, api_key="ollama")
+
+            openai_client_kwargs = {k: v for k, v in kwargs.items() if k != "drop_params"}
+            return await client.chat.completions.create(
+                model=actual_model_name,
+                messages=messages,
+                stream=stream,
+                **openai_client_kwargs,
+            )
+        else:
+            return await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
 
     async def embeddings(self, text: List[str], **kwargs) -> List[List[float]]:
         # parameters provided in kwargs will override the default parameters
-        kwargs = {**self.kwargs, **kwargs}
+        all_kwargs = {**self.kwargs, **kwargs}
 
-        embedding = await litellm.aembedding(self.name, text, **kwargs)
-        return [embedding["embedding"] for embedding in embedding.data]
+        if self.name.startswith("ollama/"):
+            actual_model_name = self.name.split('/')[-1]
+            ollama_base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+            # For local Ollama, api_key can be a placeholder like "ollama"
+            client = AsyncOpenAI(base_url=ollama_base_url, api_key="ollama")
+
+            openai_client_kwargs = {k: v for k, v in all_kwargs.items() if k != "drop_params"}
+
+            response = await client.embeddings.create(
+                model=actual_model_name,
+                input=text,
+                **openai_client_kwargs,
+            )
+            return [item.embedding for item in response.data]
+        else:
+            # Existing LiteLLM path
+            embedding = await litellm.aembedding(self.name, text, **all_kwargs)
+            return [embedding_item["embedding"] for embedding_item in embedding.data]
