@@ -4,18 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.153.0 - 2025-06-09
+## 0.153.0 - 2025-06-10
 
 ### Added
 
+- After deploying a zone, show public http server url
 - In "zone init", set the working directory to the template directory
 - Display the url of the logs server
 - Add bats tests for python
+- Add `zone list` command
+- Improve the message for showing the logs server access
+- Improve error handling in `zone init` when an invalid config is found
 - Updated dependencies
 
 ### Changed
 
 - In `zone secret`, encode secrets values before sending the `create` request
+- Zone commands to properly handle the --watch argument
+
+### Fixed
+
+- Revert unsetting `DOCKER_BUILDKIT`
 
 ### Removed
 
