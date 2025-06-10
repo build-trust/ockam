@@ -4,21 +4,159 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.153.0 - 2025-06-09
+## 0.153.0 - 2025-06-10
 
 ### Added
 
+- Unify output of show/list portals commands
+- Set all the spans at the trace level
+- Create only one top-level span
+- Set more spans at the trace level
+- Create a proper trace for a message sent between an inlet and an outlet
+- Add the proper component name for a local node
+- Pass the cli state to the span exporter to access more data
+- Address review comments
+- Unify output of crud tcp-connection commands
+- Enable mptcp support between nodes and inside portals
+- Update outlet http endpoints request structs
+- Update inlet http endpoints requests structs
+- Add "via" field to create inlet endpoint request
+- Reduce `Context` usage
+- Remove the drop instance for the in memory node
+- Implement `message.is_local` policy
+- Add ai subcommands for enroll and ticket
+- Add `ai deploy` command
+- Add `ai connect` command
+- Implement orchestrator api for provisioner service
+- Ai enroll returns cluster
+- Add `cluster outlet` command
+- Add `cluster init` command
+- `cluster inlet` use passed cluster
+- Revert `ai/enroll` endpoint usage
+- Add cluster cbor struct
+- Adjustments for public eks
+- Cluster ticket command going through provisioner
+- Cluster enroll no personal space
+- Add "ockam" command
+- Build docker image using use dockerfile_dir
+- Base command, add env var for init repository
+- Base command, add env var for zone_name, or derive from email
+- Base command, add env var for inlet address, with default value
+- Add epoch tag to docker image
+- Add `cluster secret` subcommand
+- Add `OCKAM_USE_DOCKER_CACHE` env var used in `cluster create` command
+- List relays on project nodes
+- Push secrets on `cluster create` command
+- Add `cluster` back to `cluster inlet` command
+- Zone config return error if has duplicated pods or containers
+- In `ockam` command, create inlets for every outlet found in the config
+- In `cluster inlet`, automatically generate enrollment ticket if not passed
+- Improve cluster commands output copy
+- In `ockam`, assign outlet's port to the inlet if possible
+- Use "main-pod" as the main pod name instead of "main"
+- Add `background` argument to `cluster inlet/outlet`
+- Add `cluster show` command to retrieve the user's cluster id
+- Improvements to cluster outlet command
+- Let the inlet cmd create the ticket
+- Delete the zone in parallel with image processing
+- Add zones to `cluster show` output
+- Support multi-line input inside repl by escaping with `"""`
+- Single token for all ecr repos
+- Add "cluster attach" command
+- In `cluster create`, parallelize `docker build` calls
+- In `cluster create`, use `--pull` argument when building docker images
+- In `cluster create`, parallelize `docker push` step
+- Extract a cluster repl command for local development
+- Hide all commands from "help" except `cluster`
+- In `ockam`, create inlets to http and logs servers by default
+- Add `--watch` argument to `ockam` command to react to changes in the config or images
+- In `cluster init`, support downloading templates from zip urls
+- Add arguments to skip the logs/http portal creation
+- Add tui ux to `zone delete`
+- Remove local image after it's been pushed
+- Add `--rm` arg to `ockam` to delete the zone before exiting
+- (--watch) add 10 second delay before restarting
+- Add `http_api` arguments to base command
+- Validate secrets key values as base64 encodable
+- Use 3000 as the default port to expose the logs server
+- Add `--no-pull` argument to `ockam` and `ockam zone create`
+- `--watch`, clear screen after receiving an event
+- After deploying a zone, show public http server url
 - In "zone init", set the working directory to the template directory
 - Display the url of the logs server
 - Add bats tests for python
+- Add `zone list` command
+- Improve the message for showing the logs server access
+- Improve error handling in `zone init` when an invalid config is found
 - Updated dependencies
 
 ### Changed
 
+- Rename ai subcommands to `cluster`
+- Rename `cluster connect` to `cluster inlet`
+- Return zone config from `cluster create`
+- Rename "no args" command to "base command"
+- Reenable ctrlc in enroll command
+- Pass zone name in config, instead of as an argument
+- Cleanup cluster output
+- Make repl reconnect
+- Improve cluster repl
+- Process server response as header+body
+- In the cluster repl, use terminal to handle output
+- Cluster arguments
+- In "cluster inlet/outlet" wait until it's fully created before returning
+- In "ockam" use a new context for each inlet
+- In "ockam" use a new context for each inlet
+- Process "ockam" as a clap command, enabling passing arguments to it
+- Cleanup output of `cluster create` command
+- Rebase on top of develop, moving the repl changes into the `cluster attach` command
+- Split cluster commands into cluster/zone subcommands
+- Merge repl/attach subcommands
+- Update erlang, elixir, rust, and python versions
+- Update help text in command
+- Zone ctrlc handler
 - In `zone secret`, encode secrets values before sending the `create` request
+- Zone commands to properly handle the --watch argument
+
+### Fixed
+
+- `node create` with configuration was swallowing an error produced in a subprocess
+- `node create` with configuration was not exiting properly if node didn't start
+- Test row level security
+- Docker image path
+- Get cluster always from orchestrator
+- Change default values in "ockam"
+- Create cluster inlet using pod from config
+- `cluster create` use buildx to build multiarch images
+- Repl
+- Is_enrolled check
+- Manually parse base command args
+- Hash email using sha256 for the zone name default value
+- Repl initial message handling
+- Pass relay name in `cluster ticket` command
+- Copy when creating an inlet in "ockam" command
+- Parse outlets from zone config properly
+- Improve `cluster secret` copy
+- Fix test_get_main_pod
+- Ctrlc handling in "cluster inlet"
+- `cluster delete` command
+- Parse zone configs with a single outlet properly
+- Improvements for the `cluster` commands output
+- Revert default name for repl outlet
+- Use shared ctrlc handler in no repl branch
+- `--watch` restart signaling
+- Pass zone config with the default outlets defined
+- Cluster endpoints requests/responses for orchestrator implementation
+- List_secrets response parsing
+- Revert unsetting `DOCKER_BUILDKIT`
+- Update command build script to rerun if git hash changes
 
 ### Removed
 
+- Remove ctrlc_handler in enroll
+- Remove ctrlc_handler in enroll again
+- Remove unnecessary text from repl
+- Delete local images after all have been pushed
 - Remove unnecessary empty line after deploying a zone
 
 ## 0.152.0 - 2025-06-04
