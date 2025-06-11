@@ -1,163 +1,149 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    body {
-      margin: 2% 15%;
-      line-height: 1.8;
-      overflow-y: scroll;
-      overflow-x: hidden;
-      font: 22px "Courier New", Courier, monospace;
-      padding: 0;
-    }
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            margin: 2% 15%;
+            line-height: 1.8;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            font: 22px "Courier New", Courier, monospace;
+            padding: 0;
+        }
 
-    main {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 3rem 1rem;
-    }
+        main {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 3rem 1rem;
+        }
 
-    #plan_execute_container {
-      display: flex;
-      justify-content: space-between;
-      gap: 2rem;
-      margin-top: 1rem;
-    }
+        .monospace-block {
+            margin-top: 0;
+            margin-bottom: 0;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            line-height: 1.2;
+            font: inherit;
+            font-family: monospace;
+        }
 
-    .monospace-block {
-      margin-top: 0;
-      margin-bottom: 0;
-      box-sizing: border-box;
-      white-space: pre-wrap;
-      overflow-wrap: break-word;
-      line-height: 1.2;
-      font: inherit;
-      font-family: monospace;
-      width: 50%;
-      min-width: 0;
-      overflow-wrap: break-word;
-      word-break: break-word;
-    }
+        .plan {
+            color: darkcyan;
+        }
 
-    .plan {
-      color: darkcyan;
-    }
+        .plan li,
+        .plan ul,
+        .plan ol,
+        .plan p {
+            color: darkcyan;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
 
-    .plan li,
-    .plan ul,
-    .plan ol,
-    .plan p {
-      color: darkcyan;
-      margin-top: 0;
-      margin-bottom: 0;
-    }
+        .execute li,
+        .execute ul,
+        .execute ol,
+        .execute p {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
 
-    .execute li,
-    .execute ul,
-    .execute ol,
-    .execute p {
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-
-    textarea {
-      width: 100%;
-      max-width: 1080px;
-      box-sizing: border-box;
-      border: 1px solid #e9e9e9;
-      border-radius: 5px;
-      box-shadow: 2px 2px 10px #f4f4f4;
-      font-size: inherit;
-      padding: 1rem;
-      display: block;
-      height: calc(3 * 1.8em + 14.8px);
-      margin-bottom: 10px;
-    }
-  </style>
-  <title></title>
+        textarea {
+            width: 100%;
+            max-width: 1080px;
+            box-sizing: border-box;
+            border: 1px solid #e9e9e9;
+            border-radius: 5px;
+            box-shadow: 2px 2px 10px #f4f4f4;
+            font-size: inherit;
+            padding: 1rem;
+            display: block;
+            height: calc(3 * 1.8em + 14.8px);
+            margin-bottom: 10px;
+        }
+    </style>
+    <title></title>
 </head>
 <body>
 <main>
-  <textarea id="in" autofocus placeholder="How can I help you..."></textarea>
-  <div id="plan_execute_container">
-    <div id="plan" class="plan monospace-block"></div>
-    <div id="execute" class="execute monospace-block"></div>
-  </div>
-  <main>
+    <textarea id="in" autofocus placeholder="How can I help you..."></textarea>
+    <div id="out" class="monospace-block"></div>
+    <main>
 
-    <script>
-      async function appendCharByChar(text, buffer, element, delay = 5) {
-        for (const char of text) {
-          buffer.value += char;
-          element.innerHTML = marked.parse(buffer.value, {breaks: true});
-          await new Promise(resolve => {
-            setTimeout(resolve, delay);
-          });
-        }
-      }
+        <script>
+            let currentPhase = "planning";
+            let currentElement = document.createElement("div");
+            currentElement.className = "plan";
+            let currentBuffer = {"value": ""};
 
-      async function processLine(line, planBuffer, executeBuffer) {
-        if (line.trim()) {
-          const parsed = JSON.parse(line);
-          console.info("parsed", parsed);
-          let phase = parsed.phase;
-          for (const {content} of parsed.messages) {
-            if (content) {
-              if (phase === "planning") {
-                  const plan = document.getElementById("plan");
-                  await appendCharByChar(content, planBuffer, plan);
-              } else {
-                const execute = document.getElementById("execute");
-                await appendCharByChar(content, executeBuffer, execute);
-              }
+            async function appendCharByChar(text, delay = 5) {
+                for (const char of text) {
+                    currentBuffer.value += char;
+                    currentElement.innerHTML = marked.parse(currentBuffer.value, { breaks: true });
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
             }
-          }
-        }
-      }
 
-      async function send(message) {
-        const input = document.getElementById("in");
-        input.disabled = true;
+            async function processLine(line) {
+                if (line.trim()) {
+                    const parsed = JSON.parse(line);
+                    console.info("parsed", parsed);
+                    let phase = parsed.phase;
+                    if (currentPhase !== phase) {
+                        currentPhase = phase;
+                        currentElement = document.createElement("div");
+                        currentElement.className = (phase === "planning") ? "plan" : "execute";
+                        document.getElementById("out").appendChild(currentElement);
+                        currentBuffer = {"value": ""};
+                    }
+                    for (const {content} of parsed.messages) {
+                        if (content) {
+                            await appendCharByChar(content);
+                        }
+                    }
+                }
+            }
 
-        const plan = document.getElementById("plan");
-        plan.innerHTML = "";
+            async function send(message) {
+                const input = document.getElementById("in");
+                input.disabled = true;
 
-        const execute = document.getElementById("execute");
-        execute.innerHTML = "";
+                const out = document.getElementById("out");
+                out.innerHTML = "";
+                out.appendChild(currentElement);
 
-        const response = await fetch("/agents/henry?stream=true&content_size=500&timeout=60", {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({message: message}),
-        });
+                const response = await fetch("/agents/henry?stream=true&content_size=500&timeout=600", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({message: message}),
+                });
 
-        const decoder = new TextDecoder();
-        let decodingBuffer = "";
-        let planBuffer = {value: ""}
-        let executeBuffer = {value: ""}
+                const decoder = new TextDecoder();
+                let decodingBuffer = "";
 
-        for await (const chunk of response.body) {
-          decodingBuffer += decoder.decode(chunk, {stream: true});
-          const lines = decodingBuffer.split('\n');
-          decodingBuffer = lines.pop();
-          for (const line of lines) await processLine(line, planBuffer, executeBuffer);
-        }
+                for await (const chunk of response.body) {
+                    decodingBuffer += decoder.decode(chunk, {stream: true});
+                    const lines = decodingBuffer.split('\n');
+                    decodingBuffer = lines.pop();
+                    for (const line of lines) await processLine(line);
+                }
 
-        await processLine(decodingBuffer, executeBuffer);
+                await processLine(decodingBuffer);
 
-        input.disabled = false;
-        input.focus();
-      }
+                input.disabled = false;
+                input.focus();
+            }
 
-      document.getElementById("in").addEventListener("keydown", async e => {
-        if (e.key === "Enter" && !e.shiftKey && !e.target.disabled && e.target.value.trim()) {
-          e.preventDefault();
-          await send(e.target.value);
-        }
-      });
-    </script>
+            document.getElementById("in").addEventListener("keydown", async e => {
+                if (e.key === "Enter" && !e.shiftKey && !e.target.disabled && e.target.value.trim()) {
+                    e.preventDefault();
+                    await send(e.target.value);
+                }
+            });
+        </script>
 </body>
 </html>

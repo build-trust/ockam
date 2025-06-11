@@ -1,4 +1,4 @@
-from ockam import Agent, Node, CoTPlanner, Model
+from ockam import Agent, Node, CoTPlanner, ReActPlanner, Model, HttpServer
 
 """
 Ask a question to this agent via HTTP:
@@ -12,9 +12,8 @@ async def main(node):
         node=node,
         name="henry",
         instructions="You are an assistant who solves complex tasks by planning them carefully before solving them.",
-        planner=CoTPlanner(model=Model(name="deepseek-r1")),
+        planner=ReActPlanner(model=Model(name="llama3.2")),
     )
 
 
-
-Node.start(main)
+Node.start(main, http_server=HttpServer(listen_address="localhost:8001", log_level="info"))
