@@ -143,16 +143,17 @@ class Agent:
             for message in messages:
                 await self.remember(scope, conversation, message)
 
+        replied = False
         whole_response_snippet = ConversationSnippet(scope, conversation, [])
         iteration = 0
         while True:
             if plan is None:
-                if len(whole_response_snippet.messages) > 0:
-                    # no plan and we have a reply, so we can stop
+                if replied:
                     break
             else:
                 next_steps = plan.next_step(await self.get_messages_only(conversation, scope), contextual_knowledge)
 
+                replied = False
                 plan_completed = True
                 async for next_step in next_steps:
                     if next_step is None:
@@ -188,13 +189,18 @@ class Agent:
                             warn(f"MCP call failed: {error}")
                         # remember the tool being called
                         await self.remember(scope, conversation, tool_call_response)
+                    if stream:
+                        # ignore every token generated after the tool call
+                        break
                 else:
                     if stream:
                         yield response.make_snippet(model_response)
                         if finished:
+                            replied = True
                             break
                     else:
                         whole_response_snippet.messages.append(model_response)
+                        replied = True
                         break
 
             # Move to the next iteration
@@ -205,7 +211,9 @@ class Agent:
             if iteration == self.maximum_iterations:
                 yield Error(str(RuntimeError("Reached maximum_iterations")))
 
-        if not stream:
+        if stream:
+            yield response.make_finished_snippet()
+        else:
             yield whole_response_snippet
 
     async def get_messages_only(self, conversation, scope) -> list[ConversationMessage]:

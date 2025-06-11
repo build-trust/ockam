@@ -158,11 +158,12 @@ class Repl:
                         # even if we make a streaming request, the response might not be streaming if the downstream
                         # agent does not support streaming
                         if type(response) is StreamedConversationSnippet:
-                            received = response.snippet.messages[0].content
-                            buffer += received
-                            if len(buffer) > 20:
-                                await self.write(writer, buffer)
-                                buffer = ""
+                            if len(response.snippet.messages) > 0:
+                                received = response.snippet.messages[0].content
+                                buffer += received
+                                if len(buffer) > 20:
+                                    await self.write(writer, buffer)
+                                    buffer = ""
                             if response.finished:
                                 await self.write(writer, buffer)
                                 # indicate the end of the stream
