@@ -183,14 +183,31 @@ async def main(node):
             """,
     )
 
+    bouncer = await Agent.start(
+        node=node,
+        name="Polite Bouncer",
+        instructions="""
+            You MUST politely reject the user question explaining that only
+            security or networking questions can be asked. Be terse and concise.
+
+            For example:
+            ```
+            Question: What is the meaning of life?
+            Answer: I'm sorry, but I can only answer questions related to security or networking.
+            ```
+        """,
+    )
+
     flow = Flow()
 
     flow.add(START, triage)
 
     flow.add(triage, network_expert, condition="network")
+    flow.add(triage, bouncer, condition="other")
     flow.add(triage, code_evaluator, condition="code", operation=FlowOperation.EVALUATE)
 
     flow.add(network_expert, END)
+    flow.add(bouncer, END)
 
     flow.add(code_evaluator, code_security_fixer)
     flow.add(code_evaluator, END, condition="safe")
