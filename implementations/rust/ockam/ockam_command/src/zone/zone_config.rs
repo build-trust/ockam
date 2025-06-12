@@ -71,6 +71,7 @@ pub struct Outlet {
 pub struct Container {
     pub name: String,
     pub image: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub env: Option<HashMap<String, Value>>,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,
