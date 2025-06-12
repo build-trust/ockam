@@ -8,9 +8,8 @@ from .local import LocalNode
 from .manager import RemoteManager
 
 from ..ockam_in_rust_for_python import Node as RustNode, debug
-from ..nodes.protocol import LocalNodeProtocol
 
-from ..logging.logging import LOGGING_CONFIG
+from ..logging.logging import get_logging_config
 import logging.config
 
 
@@ -29,7 +28,7 @@ class Node:
         ockam_log_level: str = "WARN",
         **kwargs,
     ):
-        logging.config.dictConfig(LOGGING_CONFIG)
+        logging.config.dictConfig(get_logging_config())
         logger = logging.getLogger("node")
 
         # This will make the node use a local SQLite database instead of the Postgres database

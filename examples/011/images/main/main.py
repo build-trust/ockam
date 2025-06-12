@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 
 from os import environ
-from sys import argv
 
 import json
 import secrets
@@ -37,9 +36,7 @@ class FoldersAnalyzer:
 
                 while attempt < max_attempts:
                     try:
-                        content = await to_thread(
-                            box_file_text_extract, self.box_client, file_id
-                        )
+                        content = await to_thread(box_file_text_extract, self.box_client, file_id)
                         break
                     except Exception:
                         attempt += 1
@@ -55,8 +52,12 @@ class FoldersAnalyzer:
                     model=Model("nova-micro-v1"),
                 )
 
-                question = "Is the document missing a company name?\nRespond ONLY with YES or NO.\nDon't say anything else."
-                message = f"File Name: {filename}\nFile Id: {file_id}\n\nFile Content:\n{content}\n\nQuestion:{question}\n\n"
+                question = (
+                    "Is the document missing a company name?\nRespond ONLY with YES or NO.\nDon't say anything else."
+                )
+                message = (
+                    f"File Name: {filename}\nFile Id: {file_id}\n\nFile Content:\n{content}\n\nQuestion:{question}\n\n"
+                )
                 analysis = await agent.send(message, timeout=1000)
 
                 await Agent.stop(self.node, agent.name)
@@ -86,9 +87,7 @@ class FoldersAnalyzer:
 
             async def start_file_analysis(file):
                 worker_name = secrets.token_hex(6)
-                await self.node.start_worker(
-                    worker_name, self.__class__.FileAnalyzer(self.node, self.box_client)
-                )
+                await self.node.start_worker(worker_name, self.__class__.FileAnalyzer(self.node, self.box_client))
                 mailbox_name = secrets.token_hex(6)
                 mailbox = await self.node.create_mailbox(mailbox_name)
 
@@ -106,10 +105,7 @@ class FoldersAnalyzer:
                 await self.node.stop_worker(name)
                 return analysis
 
-            futures = [
-                finish_file_analysis(worker_name, mailbox)
-                for worker_name, mailbox in handles
-            ]
+            futures = [finish_file_analysis(worker_name, mailbox) for worker_name, mailbox in handles]
             analyses = await ockam.gather(*futures, batch_size=100)
 
             await context.reply(json.dumps({"folder": folder, "analyses": analyses}))
@@ -140,9 +136,7 @@ class FoldersAnalyzer:
 
         async def start_folder_analysis(folder):
             worker_name = secrets.token_hex(6)
-            await self.node.start_worker(
-                worker_name, self.__class__.FolderAnalyzer(self.node, box_client)
-            )
+            await self.node.start_worker(worker_name, self.__class__.FolderAnalyzer(self.node, box_client))
             mailbox_name = secrets.token_hex(6)
             mailbox = await self.node.create_mailbox(mailbox_name)
 
@@ -158,10 +152,7 @@ class FoldersAnalyzer:
             await self.node.stop_worker(worker_name)
             return analysis
 
-        futures = [
-            finish_folder_analysis(worker_name, mailbox)
-            for worker_name, mailbox in handles
-        ]
+        futures = [finish_folder_analysis(worker_name, mailbox) for worker_name, mailbox in handles]
         analyses = await ockam.gather(*futures, batch_size=100)
 
         await context.reply(json.dumps(analyses))

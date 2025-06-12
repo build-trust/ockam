@@ -6,14 +6,15 @@ import os
 from ockam.nodes.message import StreamedConversationSnippet
 from ockam.agents.socket_address import parse_host_and_port
 
-from ..logging.logging import LOGGING_CONFIG
+from ..logging.logging import get_logging_config
 import logging.config
 
-logging.config.dictConfig(LOGGING_CONFIG)
+logging.config.dictConfig(get_logging_config())
 logger = logging.getLogger("repl")
 
 DEFAULT_HOST = os.environ.get("DEFAULT_HOST_REPL", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_REPL", "7000"))
+
 
 class Repl:
     def __init__(
@@ -43,7 +44,9 @@ class Repl:
 
     # TODO: should be on Reference class
     @staticmethod
-    async def start(agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=None, stream=True):
+    async def start(
+        agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=None, stream=True
+    ):
         logger.info("starting the REPL")
         repl = Repl(agent_reference, listen_address, functions, timeout, stream)
         # start the repl in a separate thread since we might also have a HTTP server running

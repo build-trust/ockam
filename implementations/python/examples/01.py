@@ -1,4 +1,4 @@
-from ockam import Node, info, LOGGING_CONFIG, set_log_level
+from ockam import Node, info, set_log_level
 
 set_log_level("node", "DEBUG")
 

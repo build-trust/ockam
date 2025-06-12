@@ -12,7 +12,6 @@ from fastapi.responses import StreamingResponse, FileResponse
 from .socket_address import parse_host_and_port
 from ..agents import AgentReference
 from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet
-from ..ockam_in_rust_for_python import info, error
 
 logger = logging.getLogger("http")
 

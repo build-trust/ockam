@@ -1,4 +1,5 @@
 import logging.config
+import os
 
 LOGGING_CONFIG = {
     "version": 1,
@@ -35,7 +36,6 @@ LOGGING_CONFIG = {
     },
     "root": {"level": "INFO", "handlers": ["default"]},
 }
-
 
 def get_logging_config():
     config = LOGGING_CONFIG

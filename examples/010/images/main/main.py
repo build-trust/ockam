@@ -3,8 +3,6 @@ from ockam import HttpServer, Node, Zone
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 
-from sys import argv
-
 import asyncio
 import secrets
 import json
@@ -82,9 +80,7 @@ class CodeAnalyzer:
         print(name, flush=True)
 
         try:
-            files = await asyncio.to_thread(
-                self.files_from_github_repo, org, repo, branch
-            )
+            files = await asyncio.to_thread(self.files_from_github_repo, org, repo, branch)
 
             futures = [self.analyze_file(f, c) for f, c in files]
             agents = await gather(*futures, batch_size=100)

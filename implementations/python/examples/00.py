@@ -153,7 +153,7 @@ async def main(node):
         },
     )
 
-    flow = await Flow.start(node, flow, iteration_limit=50)
+    flow = await Flow.start(node, flow)
     print(flow.name)
 
     identifier = await flow.identifier()
