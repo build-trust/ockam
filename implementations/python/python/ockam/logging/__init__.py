@@ -1,8 +1,8 @@
-from .logging import LOGGING_CONFIG, info, debug, error, warning, set_log_level
+from .logging import info, debug, error, warning, set_log_level, get_logging_config
 from .colored_formatter import OckamColoredFormatter
 
 __all__ = [
-    "LOGGING_CONFIG",
+    "get_logging_config",
     "OckamColoredFormatter",
     "info",
     "debug",

@@ -32,10 +32,10 @@ from ..nodes.message import (
 from ..ockam_in_rust_for_python import info, warn, debug
 from ..planning.protocol import STEP_BY_STEP_EXECUTION
 
-from ..logging.logging import LOGGING_CONFIG
+from ..logging.logging import get_logging_config
 import logging.config
 
-logging.config.dictConfig(LOGGING_CONFIG)
+logging.config.dictConfig(get_logging_config())
 logger = logging.getLogger("agent")
 
 

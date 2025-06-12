@@ -1,5 +1,5 @@
 import colorlog
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class OckamColoredFormatter(colorlog.ColoredFormatter):
@@ -12,7 +12,7 @@ class OckamColoredFormatter(colorlog.ColoredFormatter):
         super().__init__(*args, **kwargs)
 
     def formatTime(self, record, datefmt=None):
-        dt = datetime.utcfromtimestamp(record.created)
+        dt = datetime.fromtimestamp(record.created, UTC)
         if datefmt:
             return dt.strftime(datefmt)
         return super().formatTime(record, datefmt)

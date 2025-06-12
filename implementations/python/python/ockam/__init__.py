@@ -3,7 +3,7 @@ from .clusters import Cluster, Zone
 from .flows import Flow, FlowOperation, START, END
 from .nodes.message import FlowReference
 from .memory import Memory
-from .logging import LOGGING_CONFIG, info, warning, error, debug, set_log_level
+from .logging import get_logging_config, info, warning, error, debug, set_log_level
 from .models import Model
 from .nodes import Node, RemoteNode, LocalNode, LocalNodeProtocol, MailboxProtocol, WorkerProtocol, ContextProtocol
 from .nodes.manager import RemoteManager
@@ -46,7 +46,7 @@ __all__ = [
     "START",
     "END",
     # from .logging
-    "LOGGING_CONFIG",
+    "get_logging_config",
     "info",
     "warning",
     "error",

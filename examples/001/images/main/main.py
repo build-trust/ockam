@@ -1,4 +1,4 @@
-from ockam import Agent, Node, LoggingConfig
+from ockam import Agent, Node
 
 
 async def main(node):

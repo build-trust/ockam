@@ -1,6 +1,4 @@
-from ockam import Agent, Flow, FlowOperation, Node, START, END, Repl, Model
-
-from sys import argv
+from ockam import Agent, Flow, FlowOperation, Node, START, END, Repl
 
 
 async def main(node):

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [[ -z $CLUSTER_ID ]]; then
+  export CLUSTER_ID=$($OCKAM cluster show)
+fi
+
 function orchestrator_python_setup_suite() {
   export OCKAM_COMMAND_RETRY_COUNT=3
   export OCKAM_COMMAND_RETRY_DELAY=1s
@@ -11,4 +15,9 @@ function orchestrator_python_setup_suite() {
 function orchestrator_python_teardown_suite() {
   $OCKAM zone delete --all --yes || true
   rm -rf $OCKAM_HOME_BASE/.tmp
+}
+
+function public_endpoint() {
+  example_name=$1
+  echo "https://${CLUSTER_ID}-${example_name}.ai.ockam.network"
 }

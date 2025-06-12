@@ -19,6 +19,4 @@ class ConversationResponse:
 
     def make_finished_snippet(self):
         self.counter += 1
-        return StreamedConversationSnippet(
-            ConversationSnippet(self.scope, self.conversation, []), self.counter, True
-        )
+        return StreamedConversationSnippet(ConversationSnippet(self.scope, self.conversation, []), self.counter, True)
