@@ -646,8 +646,8 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.68.1"
-source = { registry = "https://pypi.org/simple" }
+version = "1.72.2"
+source = { git = "https://github.com/build-trust/litellm.git?rev=v1.72.2#899f3989bb83916c966f632fc9412af7994cad0e" }
 dependencies = [
     { name = "aiohttp" },
     { name = "click" },
@@ -660,10 +660,6 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "tiktoken" },
     { name = "tokenizers" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/c1/2963a8a9795e3318eaff2a84c6886a780bd237cc276a2c8a126b3328e470/litellm-1.68.1.tar.gz", hash = "sha256:301fe0457ac059806009352b6578821351125cfdf35e3a0ab8c43a8336852667", size = 7323059 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ce/e4/df0dfe14be3d1625ca9b1d84abe17edf101a97429ca28c3a3b8ac99094ed/litellm-1.68.1-py3-none-any.whl", hash = "sha256:aa1c1e07e10ab4b778b1acfb75a3f9bd6545eab07aead59cc46101c860943ad6", size = 7696685 },
 ]
 
 [[package]]
@@ -948,7 +944,7 @@ requires-dist = [
     { name = "docstring-parser", specifier = ">=0.16" },
     { name = "fastapi", specifier = ">=0.103.1" },
     { name = "filetype", specifier = ">=1.2.0" },
-    { name = "litellm", specifier = "==1.68.1" },
+    { name = "litellm", git = "https://github.com/build-trust/litellm.git?rev=v1.72.2" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.6" },
     { name = "pylint" },
     { name = "pypdfium2", specifier = ">=4.30" },
