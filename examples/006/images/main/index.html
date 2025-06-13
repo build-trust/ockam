@@ -55,6 +55,15 @@
         }
       }
 
+      async function processLine(line) {
+        if (line.trim()) {
+          const parsed = JSON.parse(line);
+          for (const { content } of parsed.messages) {
+            if (content) await appendCharByChar(content);
+          }
+        }
+      }
+
       async function send(message) {
         const input = document.getElementById("in");
         input.disabled = true;
@@ -62,30 +71,25 @@
         const out = document.getElementById("out");
         out.textContent = "";
 
-        const response = await fetch("/agents/henry", {
+        const response = await fetch("/agents/henry?stream=true", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: message }),
         });
 
-        const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let done = false;
+        let buffer = "";
 
-        while (!done) {
-          const { value, done: doneReading } = await reader.read();
-          done = doneReading;
-          if (value) {
-            const decoded = decoder.decode(value, { stream: false });
-            const messages = JSON.parse(decoded)
+        for await (const chunk of response.body) {
+          buffer += decoder.decode(chunk, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
 
-            console.log(messages)
-            for (const { content } of messages) {
-              console.log(content)
-              if (content) await appendCharByChar(content);
-            }
-          }
+          if (!out.textContent) input.value = "";
+          for (const line of lines) await processLine(line);
         }
+
+        await processLine(buffer);
 
         input.disabled = false;
         input.focus();
