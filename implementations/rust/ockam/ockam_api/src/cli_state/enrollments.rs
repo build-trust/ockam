@@ -277,14 +277,14 @@ impl FromStr for LegacyEnrollmentTicket {
 
     fn from_str(contents: &str) -> std::result::Result<Self, Self::Err> {
         if let Ok(data) = hex::decode(contents) {
-            debug!(%contents, "decoding hex-encoded LegacyEnrollmentTicket");
+            debug!("decoding hex-encoded LegacyEnrollmentTicket");
             Ok(serde_json::from_slice(&data).map_err(|_err| {
                 ApiError::core(
                     "Failed to decode LegacyEnrollmentTicket json from hex-encoded string",
                 )
             })?)
         } else {
-            debug!(%contents, "decoding LegacyEnrollmentTicket from raw contents");
+            debug!("decoding LegacyEnrollmentTicket from raw contents");
             Ok(serde_json::from_str(contents).map_err(|_err| {
                 ApiError::core("Failed to decode LegacyEnrollmentTicket json from raw contents")
             })?)

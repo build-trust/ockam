@@ -405,10 +405,6 @@ impl DeployCommand {
     }
 
     async fn docker_login(&self, ecr_credentials: &EcrCredential) -> Result<()> {
-        debug!(
-            "logging into ECR with credentials: {}",
-            ecr_credentials.auth_token
-        );
         for (_image_name, uri) in ecr_credentials.images.iter() {
             debug!("logging into ECR with uri: {}", color_primary(uri));
             let mut child = tokio::process::Command::new("docker")
