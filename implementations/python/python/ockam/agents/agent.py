@@ -192,6 +192,11 @@ class Agent:
                 await self.remember(scope, conversation, model_response)
 
                 if len(model_response.tool_calls) > 0:
+                    if stream:
+                        yield response.make_snippet(model_response)
+                    else:
+                        whole_response_snippet.messages.append(model_response)
+
                     for tool_call in model_response.tool_calls:
                         error, tool_call_response = await self.call_tool(tool_call, scope, conversation)
                         if error:
