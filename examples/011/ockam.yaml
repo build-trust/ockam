@@ -7,9 +7,9 @@ pods:
       - name: main
         image: main
         env:
-          BOX_CLIENT_ID: secrets.BOX_CLIENT_ID
-          BOX_CLIENT_SECRET: secrets.BOX_CLIENT_SECRET
-          BOX_ENTERPRISE_ID: secrets.BOX_ENTERPRISE_ID
+          - BOX_CLIENT_ID: secrets.BOX_CLIENT_ID
+          - BOX_CLIENT_SECRET: secrets.BOX_CLIENT_SECRET
+          - BOX_ENTERPRISE_ID: secrets.BOX_ENTERPRISE_ID
 
   - name: runner-pod
     size: big
@@ -18,6 +18,6 @@ pods:
       - name: runner
         image: runner
         env:
-          BOX_CLIENT_ID: secrets.BOX_CLIENT_ID
-          BOX_CLIENT_SECRET: secrets.BOX_CLIENT_SECRET
-          BOX_ENTERPRISE_ID: secrets.BOX_ENTERPRISE_ID
+          - BOX_CLIENT_ID: secrets.BOX_CLIENT_ID
+          - BOX_CLIENT_SECRET: secrets.BOX_CLIENT_SECRET
+          - BOX_ENTERPRISE_ID: secrets.BOX_ENTERPRISE_ID
