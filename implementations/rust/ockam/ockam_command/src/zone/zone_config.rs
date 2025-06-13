@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ZoneConfig {
     #[serde(alias = "zone_name")]
     pub name: String,
@@ -382,6 +382,47 @@ impl Outlet {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_default_config_elements_no_null_fields_in_json() {
+        let pod = Pod::default();
+        let portals = Portals::default();
+        let inlet = Inlet::default();
+        let outlet = Outlet::default();
+        let container = Container::default();
+
+        let pod_json = serde_json::to_string(&pod).unwrap();
+        let portals_json = serde_json::to_string(&portals).unwrap();
+        let inlet_json = serde_json::to_string(&inlet).unwrap();
+        let outlet_json = serde_json::to_string(&outlet).unwrap();
+        let container_json = serde_json::to_string(&container).unwrap();
+
+        assert!(
+            !pod_json.contains("null"),
+            "Pod JSON contains 'null': {}",
+            pod_json
+        );
+        assert!(
+            !portals_json.contains("null"),
+            "Portals JSON contains 'null': {}",
+            portals_json
+        );
+        assert!(
+            !inlet_json.contains("null"),
+            "Inlet JSON contains 'null': {}",
+            inlet_json
+        );
+        assert!(
+            !outlet_json.contains("null"),
+            "Outlet JSON contains 'null': {}",
+            outlet_json
+        );
+        assert!(
+            !container_json.contains("null"),
+            "Container JSON contains 'null': {}",
+            container_json
+        );
+    }
 
     #[test]
     fn test_parse_yaml_zone_config() {
