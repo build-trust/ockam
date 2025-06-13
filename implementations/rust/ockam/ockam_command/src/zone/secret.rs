@@ -205,7 +205,7 @@ struct Secret {
 }
 
 impl Secrets {
-    pub(crate) const SIMPLIFIED_FIELD_NAME: &'static str = "value";
+    pub(crate) const SECRET_NAME: &'static str = "secret";
 
     fn from_contents(contents: &str) -> Result<Self> {
         let mut _self = if let Ok(parsed_yaml) = Self::parse_contents::<SecretsYaml>(contents) {
@@ -242,10 +242,14 @@ impl Secrets {
 
     fn from_parsed_yaml(parsed_yaml: SecretsYaml) -> Result<Self> {
         let mut secrets = Vec::new();
+        let mut secret = Secret {
+            name: Self::SECRET_NAME.to_string(),
+            fields: HashMap::from([]),
+        };
         for (name, value) in parsed_yaml.0 {
-            let fields = HashMap::from([(Self::SIMPLIFIED_FIELD_NAME.to_string(), value)]);
-            secrets.push(Secret { name, fields });
+            secret.fields.insert(name, value);
         }
+        secrets.push(secret);
         Ok(Self(secrets))
     }
 
@@ -287,20 +291,11 @@ mod tests {
                 .into_diagnostic()
                 .wrap_err("Failed to serialize secrets to YAML")?;
 
-            assert_eq!(secrets.0.len(), 2);
-            let username = secrets.0.iter().find(|s| s.name == "pg_username").unwrap();
-            assert_eq!(username.name, "pg_username");
-            assert_eq!(
-                username.fields.get(Secrets::SIMPLIFIED_FIELD_NAME),
-                Some(&"dQ==".to_string())
-            );
-            let password = secrets.0.iter().find(|s| s.name == "pg_password").unwrap();
-            assert_eq!(password.name, "pg_password");
-            assert_eq!(
-                password.fields.get(Secrets::SIMPLIFIED_FIELD_NAME),
-                Some(&"cA==".to_string())
-            );
-
+            assert_eq!(secrets.0.len(), 1);
+            let secret = secrets.0.first().unwrap();
+            assert_eq!(secret.name, Secrets::SECRET_NAME);
+            assert_eq!(secret.fields.get("pg_username"), Some(&"dQ==".to_string()));
+            assert_eq!(secret.fields.get("pg_password"), Some(&"cA==".to_string()));
             Ok(())
         }
     }

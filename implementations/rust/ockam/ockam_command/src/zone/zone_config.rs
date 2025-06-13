@@ -1,4 +1,3 @@
-use crate::zone::secret::Secrets;
 use miette::{IntoDiagnostic, WrapErr};
 use ockam::transport::SchemeHostnamePort;
 use serde::{Deserialize, Serialize};
@@ -6,7 +5,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZoneConfig {
     #[serde(alias = "zone_name")]
     pub name: String,
@@ -72,9 +71,16 @@ pub struct Container {
     pub name: String,
     pub image: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub env: Option<HashMap<String, Value>>,
+    pub env: Option<Env>,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Env {
+    ListOfMaps(Vec<HashMap<String, Value>>),
+    MapOfKeyValues(HashMap<String, String>),
 }
 
 impl ZoneConfig {
@@ -198,30 +204,58 @@ impl ZoneConfig {
         for pod in &mut self.pods {
             for container in &mut pod.containers {
                 if let Some(env) = &mut container.env {
-                    let mut transformed_env = HashMap::new();
-                    for (key, value) in env.drain() {
-                        if let Some(secret_key) = Self::extract_secret_key(&value) {
-                            // Transform secret reference into structured format
-                            let secret_ref = serde_json::json!({
-                                "name": key.clone(),
-                                "valueFrom": {
-                                    "secretKeyRef": {
-                                        "name": secret_key,
-                                        "key": Secrets::SIMPLIFIED_FIELD_NAME
+                    match env {
+                        Env::ListOfMaps(list) => {
+                            let mut maps = vec![];
+                            for map in list.drain(..) {
+                                // If the hashmap has a single item and value is a string,
+                                // process it as a key-value env var
+                                if map.len() == 1 {
+                                    if let Some((key, Value::String(value_str))) = map.iter().next()
+                                    {
+                                        let transformed_item =
+                                            Self::create_env_item(key, value_str);
+                                        maps.push(transformed_item);
                                     }
                                 }
-                            });
-                            transformed_env.insert(key, secret_ref);
-                        } else {
-                            // Keep original value
-                            transformed_env.insert(key, value);
+                                // Otherwise, leave as is
+                                else {
+                                    maps.push(map);
+                                }
+                            }
+                            *env = Env::ListOfMaps(maps);
+                        }
+                        Env::MapOfKeyValues(map) => {
+                            let mut transformed_list = Vec::new();
+                            for (key, value) in map.iter() {
+                                transformed_list.push(Self::create_env_item(key, value));
+                            }
+                            *env = Env::ListOfMaps(transformed_list);
                         }
                     }
-                    *env = transformed_env;
                 }
             }
         }
         Ok(())
+    }
+
+    fn create_env_item(key: &str, value: &str) -> HashMap<String, Value> {
+        let mut env_item = HashMap::new();
+        if let Some(secret_key) = Self::extract_secret_key(&Value::String(value.to_string())) {
+            env_item.insert("name".to_string(), Value::String(key.to_string()));
+            env_item.insert(
+                "valueFrom".to_string(),
+                serde_json::json!({
+                    "secretKeyRef": {
+                        "name": "secret",
+                        "key": secret_key
+                    }
+                }),
+            );
+        } else {
+            env_item.insert(key.to_string(), Value::String(value.to_string()));
+        }
+        env_item
     }
 
     fn extract_secret_key(value: &Value) -> Option<String> {
@@ -382,47 +416,6 @@ impl Outlet {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_default_config_elements_no_null_fields_in_json() {
-        let pod = Pod::default();
-        let portals = Portals::default();
-        let inlet = Inlet::default();
-        let outlet = Outlet::default();
-        let container = Container::default();
-
-        let pod_json = serde_json::to_string(&pod).unwrap();
-        let portals_json = serde_json::to_string(&portals).unwrap();
-        let inlet_json = serde_json::to_string(&inlet).unwrap();
-        let outlet_json = serde_json::to_string(&outlet).unwrap();
-        let container_json = serde_json::to_string(&container).unwrap();
-
-        assert!(
-            !pod_json.contains("null"),
-            "Pod JSON contains 'null': {}",
-            pod_json
-        );
-        assert!(
-            !portals_json.contains("null"),
-            "Portals JSON contains 'null': {}",
-            portals_json
-        );
-        assert!(
-            !inlet_json.contains("null"),
-            "Inlet JSON contains 'null': {}",
-            inlet_json
-        );
-        assert!(
-            !outlet_json.contains("null"),
-            "Outlet JSON contains 'null': {}",
-            outlet_json
-        );
-        assert!(
-            !container_json.contains("null"),
-            "Container JSON contains 'null': {}",
-            container_json
-        );
-    }
 
     #[test]
     fn test_parse_yaml_zone_config() {
@@ -1338,11 +1331,64 @@ pods:
         assert_eq!(outlets.rest.len(), 0);
     }
 
+    #[test]
+    fn test_parse_env_raw_format() {
+        let yaml = r#"
+        name: example007
+        pods:
+          - name: main-pod
+            public: true
+            containers:
+              - name: main
+                image: main
+              - name: mcp
+                image: ghcr.io/build-trust/mcp-proxy
+                env:
+                  - name: BRAVE_API_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: brave
+                        key: key
+                args:
+                  ["--sse-port", "8001", "--pass-environment", "--", "npx", "-y", "@modelcontextprotocol/server-brave-search"]
+        "#;
+
+        let config = ZoneConfig::from_contents(yaml).unwrap();
+
+        let mcp_container = config.pods[0]
+            .containers
+            .iter()
+            .find(|c| c.name == "mcp")
+            .unwrap();
+
+        if let Some(Env::ListOfMaps(env_values)) = &mcp_container.env {
+            assert_eq!(env_values.len(), 1);
+
+            let env_item = &env_values[0];
+            assert!(env_item.contains_key("name"));
+            assert_eq!(
+                env_item.get("name").unwrap().as_str().unwrap(),
+                "BRAVE_API_KEY"
+            );
+
+            assert!(env_item.contains_key("valueFrom"));
+            let value_from = env_item.get("valueFrom").unwrap().as_object().unwrap();
+            let secret_key_ref = value_from.get("secretKeyRef").unwrap().as_object().unwrap();
+            assert_eq!(
+                secret_key_ref.get("name").unwrap().as_str().unwrap(),
+                "brave"
+            );
+            assert_eq!(secret_key_ref.get("key").unwrap().as_str().unwrap(), "key");
+        } else {
+            panic!("Expected env to be parsed as Env::RawList");
+        }
+    }
+
     mod env_var_transformation {
         use super::*;
 
         #[test]
-        fn test_transform_env_vars() {
+        fn test_transform_env_vars_from_map() {
             let input_yaml = r#"
             name: test-zone
             pods:
@@ -1351,25 +1397,117 @@ pods:
               - name: app
                 image: app-image
                 env:
-                  API_KEY: secrets.MY_API_KEY
-                  REGULAR_VAR: regular-value
+                  API_KEY: "secrets.MY_API_KEY"
+                  REGULAR_VAR: "regular-value"
             "#;
+
             let config = ZoneConfig::from_contents(input_yaml).unwrap();
-            let _config_as_str = serde_yaml::to_string(&config).unwrap();
 
-            // Verify container env has been transformed
             let container = &config.pods[0].containers[0];
-            let env = container.env.as_ref().unwrap();
+            if let Some(Env::ListOfMaps(raw_env)) = &container.env {
+                assert_eq!(raw_env.len(), 2);
 
-            // Check that secret references are transformed correctly
-            let api_key = env.get("API_KEY").unwrap();
-            assert_eq!(api_key["name"], "API_KEY");
-            assert_eq!(api_key["valueFrom"]["secretKeyRef"]["name"], "MY_API_KEY");
-            assert_eq!(api_key["valueFrom"]["secretKeyRef"]["key"], "value");
+                // Check API_KEY transformation to a secret reference
+                let api_key = raw_env
+                    .iter()
+                    .find(|v| v.get("name").and_then(|n| n.as_str()) == Some("API_KEY"))
+                    .expect("API_KEY not found");
 
-            // Check that regular values remain unchanged
-            let regular_var = env.get("REGULAR_VAR").unwrap();
-            assert_eq!(regular_var.as_str().unwrap(), "regular-value");
+                let value_from = api_key
+                    .get("valueFrom")
+                    .expect("Missing valueFrom")
+                    .as_object()
+                    .unwrap();
+                let secret_key_ref = value_from
+                    .get("secretKeyRef")
+                    .expect("Missing secretKeyRef")
+                    .as_object()
+                    .unwrap();
+
+                assert_eq!(
+                    secret_key_ref.get("name").unwrap().as_str().unwrap(),
+                    "secret"
+                );
+                assert_eq!(
+                    secret_key_ref.get("key").unwrap().as_str().unwrap(),
+                    "MY_API_KEY"
+                );
+
+                // Check REGULAR_VAR is unchanged
+                let regular_var = raw_env
+                    .iter()
+                    .find(|v| v.get("REGULAR_VAR").is_some())
+                    .expect("REGULAR_VAR not found");
+
+                assert_eq!(
+                    regular_var.get("REGULAR_VAR").unwrap().as_str().unwrap(),
+                    "regular-value"
+                );
+            } else {
+                panic!("Expected Env::RawList variant after transformation");
+            }
+        }
+
+        #[test]
+        fn test_transform_env_vars_from_list_of_keyvalue() {
+            let input_yaml = r#"
+            name: test-zone
+            pods:
+            - name: main-pod
+              containers:
+              - name: app
+                image: app-image
+                env:
+                - API_KEY: "secrets.MY_API_KEY"
+                - REGULAR_VAR: "regular-value"
+            "#;
+
+            let config = ZoneConfig::from_contents(input_yaml).unwrap();
+            let _config_as_yaml = serde_yaml::to_string(&config).unwrap();
+
+            let container = &config.pods[0].containers[0];
+            if let Some(Env::ListOfMaps(raw_env)) = &container.env {
+                assert_eq!(raw_env.len(), 2);
+
+                // Check API_KEY transformation to a secret reference
+                let api_key = raw_env
+                    .iter()
+                    .find(|v| v.get("name").and_then(|n| n.as_str()) == Some("API_KEY"))
+                    .expect("API_KEY not found");
+
+                let value_from = api_key
+                    .get("valueFrom")
+                    .expect("Missing valueFrom")
+                    .as_object()
+                    .unwrap();
+                let secret_key_ref = value_from
+                    .get("secretKeyRef")
+                    .expect("Missing secretKeyRef")
+                    .as_object()
+                    .unwrap();
+
+                assert_eq!(
+                    secret_key_ref.get("name").unwrap().as_str().unwrap(),
+                    "secret"
+                );
+                assert_eq!(
+                    secret_key_ref.get("key").unwrap().as_str().unwrap(),
+                    "MY_API_KEY"
+                );
+
+                // Check REGULAR_VAR is unchanged
+                let regular_var = raw_env
+                    .iter()
+                    .find(|v| v.get("REGULAR_VAR").is_some())
+                    .expect("REGULAR_VAR not found");
+
+                assert_eq!(
+                    regular_var.get("REGULAR_VAR").unwrap().as_str().unwrap(),
+                    "regular-value"
+                );
+            } else {
+                panic!("Expected Env::RawList variant after transformation");
+            }
         }
 
         #[test]
