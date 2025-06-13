@@ -1,0 +1,17 @@
+name: example012
+pods:
+  - name: main-pod
+    public: true
+    containers:
+      - name: main
+        image: main
+
+      - name: mcp
+        image: ghcr.io/build-trust/mcp-proxy
+        env:
+          - name: FIRECRAWL_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: firecrawl
+                key: key
+        args: ["--sse-port", "8001", "--pass-environment", "--", "npx", "-y", "firecrawl-mcp"]
