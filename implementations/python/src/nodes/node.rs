@@ -902,7 +902,7 @@ impl PyNode {
         let now = Instant::now();
         if let Some(cached) = cache.get_mut(key) {
             // Longer duration was observed to work, but I'm letting them at 3 minutes since I'm not sure
-            // _why_ they work (unused secure channel/tcp connections get terminated by the relay node, agressively
+            // _why_ they work (unused secure channel/tcp connections get terminated by the relay node, aggressively
             // now)
             if now.duration_since(cached.last_used) < Duration::from_secs(180) {
                 cached.last_used = now;
