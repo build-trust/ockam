@@ -25,4 +25,4 @@ NIFs are built during every Ockam release and used in production, e.g. during [h
 
 ## Updating Precompile NIF Version
 
-When using a precompiled NIF, we compare the SHA of the precompiled NIF downloaded from GitHub release with that stored in the `checksum-Elixir.ockam_rust_elixir_nifs.Native.exs` file. To update the default precompiled NIF version to use in the ockam_rust_elixir_nifs library, we need to update the SHASum of supported NIF architechtures in the `checksum-Elixir.ockam_rust_elixir_nifs.Native.exs` file.
+When using a precompiled NIF, we compare the SHA of the precompiled NIF downloaded from GitHub release with that stored in the `checksum-Elixir.ockam_rust_elixir_nifs.Native.exs` file. To update the default precompiled NIF version to use in the ockam_rust_elixir_nifs library, we need to update the SHASum of supported NIF architectures in the `checksum-Elixir.ockam_rust_elixir_nifs.Native.exs` file.
