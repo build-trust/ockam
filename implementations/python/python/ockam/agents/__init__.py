@@ -1,4 +1,5 @@
 from .agent import Agent
+from .names import validate_name
 from .conversation_response import ConversationResponse
 from .repl import Repl
 from ..nodes.message import AgentReference
@@ -10,4 +11,5 @@ __all__ = [
     "ConversationResponse",
     "HttpServer",
     "Repl",
+    "validate_name",
 ]

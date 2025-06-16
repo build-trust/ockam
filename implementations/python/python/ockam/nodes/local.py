@@ -47,6 +47,9 @@ class LocalNode(LocalNodeProtocol):
     async def start_worker(
         self, name: str, worker: WorkerProtocol, policy: Optional[str] = None, exposed_as: Optional[str] = None
     ):
+        from ..agents import validate_name
+
+        validate_name(name)
         return await self.rust_node.start_worker(name, worker, policy, exposed_as)
 
     async def start_internal_worker(

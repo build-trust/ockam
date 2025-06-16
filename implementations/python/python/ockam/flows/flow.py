@@ -1,7 +1,9 @@
 import secrets
+import re
 
 from .operation import FlowOperation, END
 from .flow_state import FlowState, FlowEdge, vertex_to_id
+from ..agents import validate_name
 from ..nodes import LocalNodeProtocol
 from ..nodes.message import (
     ConversationSnippet,
@@ -23,6 +25,8 @@ class Flow:
     def __init__(self, name=None, iteration_timeout=120, iteration_limit=20):
         if name is None:
             name = secrets.token_hex(12)
+        else:
+            validate_name(name)
 
         self.name = name
         self.iteration_timeout = iteration_timeout

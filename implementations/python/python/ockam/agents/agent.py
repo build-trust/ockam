@@ -2,7 +2,6 @@ import json
 import traceback
 from typing import Optional, AsyncGenerator
 
-import regex as re
 import secrets
 
 from ..nodes import RemoteNode, LocalNodeProtocol
@@ -28,6 +27,7 @@ from ..nodes.message import (
     GetConversationsResponse,
     Phase,
 )
+from .names import validate_name
 
 from ..ockam_in_rust_for_python import info, warn, debug
 from ..planning.protocol import STEP_BY_STEP_EXECUTION
@@ -359,8 +359,8 @@ class Agent:
         if name is None:
             name = secrets.token_hex(12)
 
-        if exposed_as is not None and re.match(r"^[a-z0-9_-]+$", name) is None:
-            raise ValueError("Agent name may only contain [a-z0-9_-] when exposed")
+        if exposed_as is not None:
+            validate_name(name)
 
         if isinstance(node, LocalNodeProtocol):
             await Agent.start_agent_impl(

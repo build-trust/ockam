@@ -32,6 +32,9 @@ class RemoteNode(NodeProtocol):
         return await client.identifier()
 
     async def start_worker(self, name: str, worker: WorkerProtocol, policy: Optional[str] = None, exposed_as=None):
+        from ..agents import validate_name
+
+        validate_name(name)
         client = RemoteManagerClient(self)
         await client.start_worker(name, worker, policy, exposed_as)
 
