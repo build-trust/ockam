@@ -1,4 +1,8 @@
-from datetime import datetime
+from datetime import datetime, UTC
+from ockam import set_log_levels
+
+set_log_levels("agent=debug,ockam_node=info,ockam=info")
+
 from ockam import Agent, Model, Node, Tool
 
 
@@ -6,7 +10,7 @@ def current_iso8601_utc_time():
     """
     Returns the current UTC time in ISO 8601 format.
     """
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(UTC).isoformat() + "Z"
 
 
 async def main(node):

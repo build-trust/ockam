@@ -6,20 +6,28 @@ import os
 from ockam.nodes.message import StreamedConversationSnippet
 from ockam.agents.socket_address import parse_host_and_port
 
-from ..logging.logging import get_logging_config
-import logging.config
-
-logging.config.dictConfig(get_logging_config())
-logger = logging.getLogger("repl")
 
 DEFAULT_HOST = os.environ.get("DEFAULT_HOST_REPL", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_REPL", "7000"))
 
 
 class Repl:
+    _logger = None
+
+    @classmethod
+    def logger(cls):
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
+
+            cls._logger = get_logger("repl")
+            return cls._logger
+
     def __init__(
         self, agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=120, stream=True
     ):
+        self.logger = Repl.logger()
         self.functions = functions or {}
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
@@ -47,7 +55,7 @@ class Repl:
     async def start(
         agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=None, stream=True
     ):
-        logger.info("starting the REPL")
+        Repl.logger().info("starting the REPL")
         repl = Repl(agent_reference, listen_address, functions, timeout, stream)
         # start the repl in a separate thread since we might also have a HTTP server running
         asyncio.create_task(repl.start_impl())
@@ -61,7 +69,7 @@ class Repl:
             raise ValueError(f"Invalid listen_address: {listen_address}")
 
     async def list_functions(self, writer):
-        logger.debug("list functions")
+        self.logger.debug("list functions")
         functions_list = "\n".join([f"{name}" for name in self.functions.keys()])
         await self.write_repl_message(writer, functions_list)
 
@@ -196,7 +204,7 @@ class Repl:
                     await writer.drain()
 
         except Exception as e:
-            logger.error(f"Error: {e}")
+            self.logger.error(f"Error: {e}")
             print(f"Error: {e}", flush=True)
         finally:
             writer.close()
@@ -208,7 +216,7 @@ class Repl:
             await self.server.serve_forever()
 
     async def stop(self):
-        logger.info("stop the REPL")
+        self.logger.info("stop the REPL")
         if self.server:
             self.server.close()
             await self.server.wait_closed()

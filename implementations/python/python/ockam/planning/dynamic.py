@@ -183,7 +183,10 @@ The key features include a homepage, blog section, about page, and contact form.
 
 
 class DynamicPlanner(Planner):
-    def __init__(self, model=Model("deepseek-r1")):
+    def __init__(self, model: Model = None):
+        if model is None:
+            model = Model(name="deepseek-r1")
+
         self.model = model
 
     async def plan(

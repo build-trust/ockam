@@ -80,7 +80,10 @@ Make sure that the last step reaches the goal of the task.
 
 
 class CoTPlanner(Planner):
-    def __init__(self, model=Model(name="deepseek-r1")):
+    def __init__(self, model: Model = None):
+        if model is None:
+            model = Model(name="deepseek-r1")
+
         self.model = model
 
     async def plan(

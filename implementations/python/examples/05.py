@@ -19,7 +19,8 @@ async def main(node):
         model=Model(name="ollama_chat/llama3.2"),
     )
     identifier = await agent.identifier()
-    info(identifier)
+    info(f"the agent identifier is {identifier}")
+
     reply = await agent.send("Who was Gandhi?")
     info(reply)
 

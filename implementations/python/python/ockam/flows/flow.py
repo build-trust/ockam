@@ -17,16 +17,21 @@ from ..nodes.message import (
     StreamedConversationSnippet,
 )
 
-from ..ockam_in_rust_for_python import info, debug
-
 
 class Flow:
+    @classmethod
+    def logger(cls):
+        from ..logging.logging import get_logger
+
+        return get_logger("flow")
+
     def __init__(self, name=None, iteration_timeout=120, iteration_limit=20):
         if name is None:
             name = secrets.token_hex(12)
         else:
             validate_name(name)
 
+        self.logger = Flow.logger()
         self.name = name
         self.iteration_timeout = iteration_timeout
         self.iteration_limit = iteration_limit
@@ -55,6 +60,7 @@ class Flow:
 
 class FlowWorker:
     def __init__(self, name: str, node: LocalNodeProtocol, flow: Flow, iteration_limit: int, iteration_timeout: int):
+        self.logger = Flow.logger()
         self.name = name
         self.node = node
         self.flow = flow
@@ -100,7 +106,7 @@ class FlowWorker:
         if not snippet.conversation:
             snippet.conversation = secrets.token_hex(16)
 
-        debug(f"INIT: {snippet}\n\n")
+        self.logger.debug(f"INIT: {snippet}\n\n")
 
         self.flow.state.reset()
 
@@ -127,7 +133,7 @@ class FlowWorker:
                 snippet_to_send = ConversationSnippet(snippet.scope, conversation, [last_message])
 
             if next_vertex == END:
-                info(f"Flow converged in {i} iterations")
+                self.logger.info(f"Flow converged in {i} iterations")
                 snippet.messages[:] = snippet.messages[-1:]
                 return snippet
 
@@ -135,7 +141,7 @@ class FlowWorker:
                 raise RuntimeError(f"Unexpected next_vertex: {next_vertex}")
 
             next_vertex_id = vertex_to_id(next_vertex)
-            debug(f"Iteration: {i} To: {next_vertex_id} Sending: {snippet_to_send}\n\n")
+            self.logger.debug(f"Iteration: {i} To: {next_vertex_id} Sending: {snippet_to_send}\n\n")
 
             reply = await next_vertex.send_and_receive_request(
                 snippet_to_send, converter=self.converter, timeout=self.iteration_timeout
@@ -148,6 +154,6 @@ class FlowWorker:
                     reply_to_append.messages.append(UserMessage(content=message.content))
 
             snippet.messages.extend(reply_to_append.messages)
-            debug(f"Iteration: {i} From {next_vertex_id} Received: {reply}\n\n")
+            self.logger.debug(f"Iteration: {i} From {next_vertex_id} Received: {reply}\n\n")
 
         raise RuntimeError(f"Flow did not converge in {self.iteration_limit} iterations")

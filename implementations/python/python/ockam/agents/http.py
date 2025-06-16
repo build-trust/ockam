@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import logging
 import uvicorn
 
 from dataclasses import asdict, is_dataclass
@@ -13,7 +12,6 @@ from .socket_address import parse_host_and_port
 from ..agents import AgentReference
 from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet, Phase
 
-logger = logging.getLogger("http")
 
 """
     This class starts an HTTP server allowing a user to interact with a node and its agents.
@@ -24,7 +22,20 @@ DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_HTTP", "8000"))
 
 
 class HttpServer:
+    _logger = None
+
+    @classmethod
+    def logger(cls):
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
+
+            cls._logger = get_logger("http")
+            return cls._logger
+
     def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", log_level: str = "error", api=None):
+        self.logger = HttpServer.logger()
         self.node = None
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
@@ -45,34 +56,34 @@ class HttpServer:
 
         @self.app.get("/agents")
         async def get_agents(node=Depends(self.get_node)):
-            logger.info("get agents")
+            self.logger.info("get agents")
             return {"agents": await node.list_agents()}
 
         @self.app.get("/workers")
         async def get_workers(node=Depends(self.get_node)):
-            logger.info("get workers")
+            self.logger.info("get workers")
             return {"workers": await node.list_workers()}
 
         @self.app.get("/agents/{name}")
         async def get_agent_by_name(name: str, node=Depends(self.get_node)):
-            logger.info(f"get agent by name: {name}")
+            self.logger.info(f"get agent by name: {name}")
             return await find_agent(node, name)
 
         @self.app.get("/agents/{name}/conversations")
         async def get_conversations_by_agent_name(name: str, node=Depends(self.get_node)):
-            logger.info(f"get conversations by agent name: {name}")
+            self.logger.info(f"get conversations by agent name: {name}")
             return await get_agent_by_name_and_scope_and_conversation_impl(name, None, None, node)
 
         @self.app.get("/agents/{name}/scopes/{scope}/conversations")
         async def get_conversations_by_agent_name_and_scope(name: str, scope: str, node=Depends(self.get_node)):
-            logger.info(f"get conversations by agent {name} and scope {scope}")
+            self.logger.info(f"get conversations by agent {name} and scope {scope}")
             return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, None, node)
 
         @self.app.get("/agents/{name}/scopes/{scope}/conversations/{conversation}")
         async def get_agent_by_name_and_scope_and_conversation(
             name: str, scope: str, conversation: str, node=Depends(self.get_node)
         ):
-            logger.info(f"getting conversations by agent {name}, scope {scope} and conversation {conversation}")
+            self.logger.info(f"getting conversations by agent {name}, scope {scope} and conversation {conversation}")
             return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, conversation, node)
 
         async def get_agent_by_name_and_scope_and_conversation_impl(
@@ -87,7 +98,7 @@ class HttpServer:
                 response = await agent.send_and_receive_request(query)
                 return response
             except Exception as e:
-                logger.error(f"Failed to get the conversations for agent '{name}': {e}")
+                self.logger.error(f"Failed to get the conversations for agent '{name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to get the conversations for agent '{name}'")
 
         @self.app.post("/agents/{name}")
@@ -99,7 +110,7 @@ class HttpServer:
             timeout: int = 60,
             node=Depends(self.get_node),
         ):
-            logger.info(f"send a message to agent '{name}'")
+            self.logger.info(f"send a message to agent '{name}'")
             await find_agent(node, name)
 
             try:
@@ -140,17 +151,17 @@ class HttpServer:
                 else:
                     return await agent.send(msg, scope, conversation, timeout=timeout)
             except Exception as e:
-                logger.error(f"failed to send message to agent '{name}': {e}")
+                self.logger.error(f"failed to send message to agent '{name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to send message")
 
         @self.app.get("/tools")
         async def get_tools(node=Depends(self.get_node)):
-            logger.info("get the exposed tools")
+            self.logger.info("get the exposed tools")
             return node.list_tools()
 
         @self.app.get("/tools/{name}")
         async def get_tool_by_name(name: str, node=Depends(self.get_node)):
-            logger.info(f"get tool by name: {name}")
+            self.logger.info(f"get tool by name: {name}")
             return find_tool(node, name)
 
         # mount the custom routes

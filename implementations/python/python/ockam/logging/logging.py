@@ -1,83 +1,135 @@
-import logging.config
 import os
+import logging.config
 
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "()": "ockam.logging.colored_formatter.OckamColoredFormatter",
-            "format": "%(asctime)s %(log_color)s%(levelname)s%(reset)s %(name)s: %(message)s",
-            "log_colors": {
-                "DEBUG": "cyan",
-                "INFO": "green",
-                "WARNING": "yellow",
-                "ERROR": "red",
-                "CRITICAL": "bold_red",
-            },
-        },
-    },
-    "handlers": {
-        "default": {
-            "level": "DEBUG",
-            "formatter": "default",
-            "class": "logging.StreamHandler",
-        },
-    },
-    "loggers": {
-        "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
-        "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
-        "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
-        "http": {"handlers": ["default"], "level": "INFO", "propagate": False},
-        "httpx": {"handlers": ["default"], "level": "WARNING", "propagate": False},
-        "LiteLLM": {"handlers": ["default"], "level": "WARNING", "propagate": False},
-        "agent": {"handlers": ["default"], "level": "DEBUG", "propagate": False},
-        "node": {"handlers": ["default"], "level": "DEBUG", "propagate": False},
-    },
-    "root": {"level": "INFO", "handlers": ["default"]},
-}
+DEFAULT_LOG_FORMAT = os.getenv(
+    "DEFAULT_LOG_FORMAT", "%(asctime)s %(log_color)s%(levelname)5s%(reset)s %(name)-14s %(message)s"
+)
+FORMAT = DEFAULT_LOG_FORMAT + (" [%(pathname)s:%(lineno)d]" if os.getenv("OCKAM_LOG_SHOW_SOURCE", False) else "")
+
+LOG_LEVELS = {}
 
 
-def get_logging_config():
-    config = LOGGING_CONFIG
+def get_logging_config() -> dict[str, int | bool | dict | str | None]:
     # Disable logging if explicitly set to 0; otherwise, assume it's enabled
     if os.environ.get("OCKAM_LOGGING", "1") == "0":
         return {
             "version": 1,
         }
-    return config
+
+    global LOG_LEVELS
+    if not LOG_LEVELS:
+        set_log_levels(None)
+    return create_logging_config(LOG_LEVELS, FORMAT)
+
+
+def set_log_levels(log_levels: str):
+    global LOG_LEVELS
+    LOG_LEVELS = create_log_levels(log_levels)
+
+    # By default, silence the Ockam rust modules
+    if os.environ.get("OCKAM_LOG_LEVEL") is None or LOG_LEVELS.get("ockam_rust_modules") is not None:
+        os.environ["OCKAM_LOG_LEVEL"] = LOG_LEVELS.get("ockam_rust_modules")
+
+
+def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool | dict | str | None]:
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "()": "ockam.logging.colored_formatter.OckamColoredFormatter",
+                "format": log_format,
+                "log_colors": {
+                    "DEBUG": "blue",
+                    "INFO": "green",
+                    "WARNING": "yellow",
+                    "ERROR": "red",
+                    "CRITICAL": "bold_red",
+                },
+            },
+        },
+        "handlers": {
+            "default": {
+                "level": levels.get("default"),
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+            },
+            "ockam": {
+                "level": levels.get("ockam"),
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+            },
+        },
+        "loggers": {
+            "asyncio": {"handlers": ["default"], "level": levels.get("asyncio", "WARNING"), "propagate": False},
+            "uvicorn": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
+            "http": {"handlers": ["default"], "level": levels.get("http", "WARNING"), "propagate": False},
+            "httpcore": {"handlers": ["default"], "level": levels.get("httpcore", "WARNING"), "propagate": False},
+            "httpx": {"handlers": ["default"], "level": levels.get("httpx", "WARNING"), "propagate": False},
+            "LiteLLM": {"handlers": ["default"], "level": levels.get("LiteLLM", "WARNING"), "propagate": False},
+            "agent": {
+                "handlers": ["ockam"],
+                "level": levels.get("agent") or levels.get("default"),
+                "propagate": False,
+            },
+            "model": {
+                "handlers": ["default"],
+                "level": levels.get("model") or levels.get("default"),
+                "propagate": False,
+            },
+            "node": {"handlers": ["ockam"], "level": levels.get("node") or levels.get("default"), "propagate": False},
+            "tool": {"handlers": ["ockam"], "level": levels.get("tool") or levels.get("default"), "propagate": False},
+        },
+        "root": {"level": levels.get("default"), "handlers": ["default"]},
+    }
+
+
+def create_log_levels(log_levels: str) -> dict[str, str]:
+    """
+    Create log levels for python modules
+    """
+    result = {"default": "INFO", "ockam_rust_modules": "WARN"}
+    if log_levels is not None:
+        # set log levels for each python module if defined in the log_levels string
+        ockam_rust_levels = []
+        for level in log_levels.split(","):
+            key_value = level.split("=")
+            if len(key_value) == 1:
+                result["default"] = level.upper()
+            else:
+                key = key_value[0].strip()
+                value = key_value[1].strip()
+                if key.startswith("ockam_") or "ockam" == key:
+                    ockam_rust_levels.append(f"{key}={value}")
+                else:
+                    result[key] = value.upper()
+        # if the user does not specify anything for the ockam rust modules, then set them to warn
+        if len(ockam_rust_levels) > 0:
+            result["ockam_rust_modules"] = ",".join(ockam_rust_levels)
+
+    return result
+
+
+def get_logger(logger_name):
+    logging.config.dictConfig(get_logging_config())
+    return logging.getLogger(logger_name)
 
 
 def info(msg, *args, **kwargs):
     logger = logging.getLogger("node")
-    logger.info(msg, *args, **kwargs)
+    logger.info(msg, stacklevel=2, *args, **kwargs)
 
 
 def warning(msg, *args, **kwargs):
-    import logging.config
-
     logger = logging.getLogger("node")
-    logger.warning(msg, *args, **kwargs)
+    logger.warning(msg, stacklevel=2, *args, **kwargs)
 
 
 def debug(msg, *args, **kwargs):
-    import logging.config
-
     logger = logging.getLogger("node")
-    logger.debug(msg, *args, **kwargs)
+    logger.debug(msg, stacklevel=2, *args, **kwargs)
 
 
 def error(msg, *args, **kwargs):
-    import logging.config
-
     logger = logging.getLogger("node")
-    logger.error(msg, *args, **kwargs)
-
-
-def set_log_level(logger_name, level):
-    logging_config = get_logging_config()
-    if logger_name in logging_config.get("loggers", {}):
-        logging_config["loggers"][logger_name]["level"] = level
-        import logging.config
-
-        logging.config.dictConfig(logging_config)
+    logger.error(msg, stacklevel=2, *args, **kwargs)
