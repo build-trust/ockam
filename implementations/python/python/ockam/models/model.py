@@ -157,9 +157,7 @@ class Model:
         return True
 
     def support_forced_assistant_answer(self):
-        if "bedrock" in self.name or "litellm_proxy" in self.name:
-            return False
-        return True
+        return "bedrock" not in self.name and "litellm_proxy" not in self.name
 
     async def complete_chat(self, messages: List[dict] | List[ConversationMessage], stream: bool = False, **kwargs):
         messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())

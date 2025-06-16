@@ -1,6 +1,6 @@
 import json
 import traceback
-from typing import Optional, AsyncGenerator
+from typing import Optional, AsyncGenerator, Tuple, Dict
 
 import regex as re
 import secrets
@@ -179,6 +179,7 @@ class Agent:
                     # we executed the whole plan
                     break
 
+            tool_calls = []
             # Call the model
             model_response: AssistantMessage
             async for error, finished, model_response in self.complete_chat(
@@ -197,15 +198,8 @@ class Agent:
                     else:
                         whole_response_snippet.messages.append(model_response)
 
-                    for tool_call in model_response.tool_calls:
-                        error, tool_call_response = await self.call_tool(tool_call, scope, conversation)
-                        if error:
-                            warn(f"MCP call failed: {error}")
-                        # remember the tool being called
-                        await self.remember(scope, conversation, tool_call_response)
-                    if stream:
-                        # ignore every token generated after the tool call
-                        break
+                    # postpone tool calls until the end of the response
+                    tool_calls.extend(model_response.tool_calls)
                 else:
                     if stream:
                         yield response.make_snippet(model_response)
@@ -216,6 +210,16 @@ class Agent:
                         whole_response_snippet.messages.append(model_response)
                         replied = True
                         break
+
+            for tool_call in tool_calls:
+                error, tool_call_response = await self.call_tool(tool_call, scope, conversation)
+                if error:
+                    warn(f"MCP call failed: {error}")
+                # remember the tool being called
+                await self.remember(scope, conversation, tool_call_response)
+
+                # we need another iteration to process the tool call response
+                replied = False
 
             # Move to the next iteration
             iteration += 1
@@ -273,7 +277,7 @@ class Agent:
 
     async def complete_chat(
         self, scope, conversation, contextual_knowledge, stream: bool = False
-    ) -> AsyncGenerator[AssistantMessage, None]:
+    ) -> AsyncGenerator[Tuple[Optional[Exception], bool, AssistantMessage], None]:
         message_history = await self.message_history(scope, conversation)
 
         if contextual_knowledge is not None:
@@ -286,8 +290,28 @@ class Agent:
 
         response = await self.model.complete_chat(tools=self.tool_specs, messages=message_history, stream=stream)
         if stream:
+            tool_calls: Dict[int, ToolCall] = {}
             async for chunk in response:
-                yield await self.send_response(chunk)
+                finished = chunk.choices[0].finish_reason is not None
+                delta = chunk.choices[0].delta
+
+                if delta.tool_calls:
+                    for tool_call in delta.tool_calls:
+                        if tool_call.index in tool_calls:
+                            tool_calls[tool_call.index].function.arguments += tool_call.function.arguments
+                        else:
+                            tool_calls[tool_call.index] = tool_call
+                    delta.tool_calls = None
+
+                # return all the tool calls at the end of the response
+                if finished:
+                    if len(tool_calls) > 0:
+                        response = AssistantMessage()
+                        response.tool_calls = list(tool_calls.values())
+                        yield None, False, response
+
+                if finished or (delta.content is not None and len(delta.content) > 0):
+                    yield await self.send_response(chunk)
         else:
             yield await self.send_response(response)
 
