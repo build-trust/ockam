@@ -86,7 +86,7 @@ class SearchableKnowledge(KnowledgeProvider):
     def __init__(
         self,
         name: str,
-        model: Model = Model("ollama/nomic-embed-text"),
+        model: Model = None,
         storage: Storage = InMemory(),
         text_extractor: TextExtractor = None,
         chunker: Chunker = NaiveChunker(),
@@ -111,6 +111,9 @@ class SearchableKnowledge(KnowledgeProvider):
         :param max_distance: Maximum allowable distance for operations. Defaults to 0.2.
         :type max_distance: float
         """
+        if model is None:
+            model = Model("ollama/nomic-embed-text")
+
         if text_extractor is None:
             text_extractor = create_extractor()
 

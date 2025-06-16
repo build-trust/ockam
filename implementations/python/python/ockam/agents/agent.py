@@ -32,13 +32,7 @@ from ..nodes.message import (
 )
 from .names import validate_name
 
-from ..ockam_in_rust_for_python import info, warn, debug
-
-from ..logging.logging import get_logging_config
-import logging.config
-
-logging.config.dictConfig(get_logging_config())
-logger = logging.getLogger("agent")
+from ..ockam_in_rust_for_python import warn
 
 
 class AgentState(Enum):
@@ -258,7 +252,18 @@ class AgentStateMachine:
 
 
 class Agent:
+    _logger = None
     tools: Dict[str, InvokableTool]
+
+    @classmethod
+    def logger(cls):
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
+
+            cls._logger = get_logger("agent")
+            return cls._logger
 
     def __init__(
         self,
@@ -273,7 +278,8 @@ class Agent:
         knowledge: KnowledgeProvider,
         max_knowledge_size: int,
     ):
-        logger.info("starting agent")
+        self.logger = Agent.logger()
+        self.logger.info(f"start agent '{name}'")
         self.node = node
 
         self.tools = tools
@@ -296,8 +302,7 @@ class Agent:
 
     async def handle_message(self, context, message):
         try:
-            logger.info("received a message")
-            logger.debug(f"the message is {message}")
+            self.logger.debug(f"agent '{self.name}' received: {message}")
 
             message = self.converter.message_from_json(message)
             handlers = {
@@ -316,7 +321,7 @@ class Agent:
                 if handler is not None:
                     reply = await handler(message)
                 else:
-                    logger.error(f"unexpected message: {message}")
+                    self.logger.error(f"unexpected message: {message}")
                     reply = Error(f"Unexpected Message: {message}")
 
                 if reply is not None:
@@ -479,7 +484,7 @@ class Agent:
                 role = delta.role
 
             if choice.finish_reason is not None:
-                debug(f"finished streaming reply with reason {choice.get('finish_reason', 'unknown')}")
+                self.logger.debug(f"finished streaming reply with reason {choice.get('finish_reason', 'unknown')}")
                 finished = True
                 response = {"role": role}
             else:
@@ -522,7 +527,7 @@ class Agent:
         node: NodeProtocol,
         instructions: str,
         name: Optional[str] = None,
-        model: Model = Model(name="llama3.2"),
+        model: Model = None,
         tools: Optional[List[InvokableTool]] = None,
         planner: Planner = None,
         exposed_as: Optional[str] = None,
@@ -534,6 +539,9 @@ class Agent:
 
         validate_name(name)
 
+        if model is None:
+            model = Model(name="llama3.2")
+
         match node:
             case node if isinstance(node, LocalNodeProtocol):
                 await Agent.start_agent_impl(
@@ -543,7 +551,7 @@ class Agent:
                 await node.start_agent(
                     instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
                 )
-                info(f"Successfully started agent {name} on a remote node")
+                Agent.logger().info(f"Successfully started agent {name} on a remote node")
             case _:
                 raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
@@ -558,12 +566,15 @@ class Agent:
         node: NodeProtocol,
         instructions: str,
         number_of_agents: int,
-        model: Model = Model(name="llama3.2"),
+        model: Model = None,
         tools: Optional[list] = None,
         planner=None,
         knowledge: Optional[KnowledgeProvider] = None,
         max_knowledge_size: int = 4096,
     ):
+        if model is None:
+            model = Model(name="llama3.2")
+
         agents = []
 
         match node:
@@ -582,7 +593,7 @@ class Agent:
                 for name in names:
                     agents.append(AgentReference(name, node))
 
-                info("Successfully started agents on a remote node")
+                Agent.logger().info("Successfully started agents on a remote node")
             case _:
                 raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
@@ -609,11 +620,9 @@ class Agent:
                 node, name, instructions, model, tools_specs, tools, planner, memory, knowledge, max_knowledge_size
             )
 
-        info(f"Starting agent {name}")
-
         await node.start_spawner(name, agent_creator, key_extractor, None, exposed_as)
 
-        info(f"Successfully started agent {name}")
+        Agent.logger().debug(f"successfully started agent {name}")
 
 
 def key_extractor(message):

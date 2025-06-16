@@ -6,7 +6,6 @@ import boto3
 import threading
 
 from ..nodes.message import ConversationMessage
-from ..ockam_in_rust_for_python import warn
 
 PROVIDER_ALIASES = {
     "litellm_proxy": {
@@ -106,11 +105,13 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
 
                 cluster_id = os.environ.get("CLUSTER")
                 if not cluster_id:
-                    warn("CLUSTER is not set. Cannot automatically manage inference profiles. Returning None.")
+                    Model.logger().warning(
+                        "CLUSTER is not set. Cannot automatically manage inference profiles. Returning None."
+                    )
                     return None
 
             except Exception as e:
-                warn(f"Could not construct Bedrock ARN: {e}")
+                Model.logger().warning(f"Could not construct Bedrock ARN: {e}")
                 return None
 
     sanitized_model_name = original_name.replace(":", "_").replace(".", "_")
@@ -133,7 +134,7 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
                             _inference_profile_cache[cache_key] = arn
                             return arn
             except Exception as e:
-                warn(f"An error occurred while listing existing inference profiles: {e}")
+                Model.logger().warning(f"An error occurred while listing existing inference profiles: {e}")
                 return None
 
             # Determine the source ARN for the new profile
@@ -165,7 +166,20 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
 
 
 class Model:
+    _logger = None
+
+    @classmethod
+    def logger(cls):
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
+
+            cls._logger = get_logger("model")
+            return cls._logger
+
     def __init__(self, name, **kwargs):
+        self.logger = Model.logger()
         if os.environ.get("LITELLM_PROXY_API_BASE"):
             provider = "litellm_proxy"
         elif os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE"):
@@ -173,6 +187,7 @@ class Model:
         else:
             provider = "ollama"
 
+        self.original_name = name
         resolved_name = None
         provider_aliases = PROVIDER_ALIASES.get(provider, {})
         original_name = name
@@ -191,6 +206,7 @@ class Model:
                 f"Model '{original_name}' (resolved to '{resolved_name}') is not supported or enabled by any configured provider."
             )
 
+        self.logger.debug(f"the resolved model name is '{resolved_name}'")
         self.name = resolved_name
         self.kwargs = kwargs
         self.kwargs["drop_params"] = True
@@ -216,7 +232,7 @@ class Model:
                     if arn:
                         self.kwargs["model_id"] = arn
                     else:
-                        warn(
+                        Model.logger().warning(
                             f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly."
                         )
 
@@ -229,6 +245,9 @@ class Model:
         return "bedrock" not in self.name and "litellm_proxy" not in self.name
 
     async def complete_chat(self, messages: List[dict] | List[ConversationMessage], stream: bool = False, **kwargs):
+        self.logger.info(f"send {len(messages)} messages to model '{self.original_name}'")
+        self.logger.debug(f"the messages are: {messages} (stream={stream})")
+
         messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())
 
         # slightly modify the parameters to accommodate services
@@ -241,7 +260,9 @@ class Model:
         if "tools" in kwargs and len(kwargs["tools"]) == 0:
             del kwargs["tools"]
 
-        return await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        response = await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        self.logger.debug(f"got a response from the model '{self.original_name}': {response}")
+        return response
 
     async def embeddings(self, text: List[str], **kwargs) -> List[List[float]]:
         # parameters provided in kwargs will override the default parameters

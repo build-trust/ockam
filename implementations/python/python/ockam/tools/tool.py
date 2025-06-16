@@ -10,7 +10,20 @@ from .protocol import InvokableTool
 
 
 class Tool(InvokableTool):
+    _logger = None
+
+    @classmethod
+    def logger(cls):
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
+
+            cls._logger = get_logger("tool")
+            return cls._logger
+
     def __init__(self, func):
+        self.logger = Tool.logger()
         name, spec = function_spec(func)
         self.func = wrap(func)
         self.name = name
@@ -23,11 +36,18 @@ class Tool(InvokableTool):
         return self._spec
 
     async def invoke(self, json_argument: Optional[str]) -> str:
-        if json_argument is None or json_argument == "":
-            args = {}
-        else:
-            args = json.loads(json_argument)
-        tool_response = str(await self.func(**args))
+        self.logger.info(f"invoke tool '{self.name}'")
+        self.logger.debug(f"the arguments are: {json_argument}")
+        try:
+            if json_argument is None or json_argument == "":
+                args = {}
+            else:
+                args = json.loads(json_argument)
+            tool_response = str(await self.func(**args))
+            self.logger.debug("the tool call succeeded: {tool_response}")
+        except Exception as e:
+            tool_response = f"the tool call failed with error: {e}"
+            self.logger.error(tool_response)
         return tool_response
 
 

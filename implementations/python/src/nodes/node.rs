@@ -145,11 +145,10 @@ impl PyNode {
         cache_secure_channels: bool,
     ) -> PyResult<PyObject> {
         let _ = pyo3_async_runtimes::tokio::init_with_runtime(get_runtime_ref());
-
         let node = get_runtime().block_on(async move {
             let node_builder = NodeBuilder::new()
                 .with_runtime(get_runtime())
-                .with_logging(false);
+                .with_logging(true);
             let (ctx, executor) = node_builder.build();
 
             let node = if let Some(ticket) = ticket {

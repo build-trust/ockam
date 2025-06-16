@@ -24,7 +24,10 @@ class ReActPlan(Plan):
 
 
 class ReActPlanner(Planner):
-    def __init__(self, model=Model("deepseek-r1")):
+    def __init__(self, model: Model = None):
+        if model is None:
+            model = Model("deepseek-r1")
+
         self.model = model
 
     async def plan(

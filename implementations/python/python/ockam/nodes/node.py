@@ -7,13 +7,22 @@ from typing import Awaitable, Callable, Optional
 from .local import LocalNode
 from .manager import RemoteManager
 
-from ..ockam_in_rust_for_python import Node as RustNode, debug
-
-from ..logging.logging import get_logging_config
-import logging.config
+from ..ockam_in_rust_for_python import Node as RustNode
 
 
 class Node:
+    _logger = None
+
+    @classmethod
+    def logger(cls):
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
+
+            cls._logger = get_logger("node")
+            return cls._logger
+
     @staticmethod
     def start(
         main: Optional[Callable[[LocalNode], Awaitable[None]]] = None,
@@ -25,12 +34,8 @@ class Node:
         cache_secure_channels: bool = False,
         use_local_db: bool = False,
         llm_debug: bool = False,
-        ockam_log_level: str = "WARN",
         **kwargs,
     ):
-        logging.config.dictConfig(get_logging_config())
-        logger = logging.getLogger("node")
-
         # This will make the node use a local SQLite database instead of the Postgres database
         if use_local_db:
             os.environ.pop("OCKAM_DATABASE_INSTANCE", None)
@@ -38,8 +43,6 @@ class Node:
             os.environ.pop("OCKAM_DATABASE_INSTANCE", None)
             os.environ["OCKAM_TELEMETRY_EXPORT"] = "false"
             os.environ["OCKAM_SQLITE_IN_MEMORY"] = "true"
-
-        os.environ["OCKAM_LOG_LEVEL"] = ockam_log_level
 
         if llm_debug:
             litellm._turn_on_debug()
@@ -68,13 +71,13 @@ class Node:
             await main(node)
 
         try:
-            logger.info("starting node")
+            Node.logger().info(f"start node '{name}'")
             RustNode.start(
                 start_node, name=name, ticket=ticket, allow=allow, cache_secure_channels=cache_secure_channels, **kwargs
             )
         except KeyboardInterrupt:
-            logger.debug("shutting down node due to KeyboardInterrupt")
-            debug(f"\nNode {name} shutting down")
+            Node.logger().debug("shutting down node due to KeyboardInterrupt")
+            Node.logger().debug(f"\nNode {name} shutting down")
 
 
 def wait_until_interrupted_decorator(func=None):
