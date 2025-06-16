@@ -1,0 +1,12 @@
+name: example013
+pods:
+  - name: main-pod
+    size: big
+    public: true
+    containers:
+      - name: main
+        image: main
+
+      - name: browser
+        image: mcr.microsoft.com/playwright:v1.52.0-noble
+        args: ["npx", "-y", "playwright@1.52.0", "run-server", "--port", "3333", "--host", "0.0.0.0"]
