@@ -4,13 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.154.0 - 2025-06-12
+## 0.154.0 - 2025-06-17
 
 ### Added
 
-- Simplify structure of zone secrets yaml
-- Simplify secret definition in zone config
 - Updated dependencies
+
+### Changed
+
+- Split repl into attach/repl subcommands
+- Zone arg in zone commands
+
+### Fixed
+
+- No env variables on containers
+- Default zone config elements
+- Back-compatibility parsing of raw env section in zone config
+- Only allow alphanumeric chars in zone name args
+- `zone delete` ux when using a config file
 
 ## 0.153.0 - 2025-06-10
 
