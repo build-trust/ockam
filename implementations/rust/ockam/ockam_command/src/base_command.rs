@@ -84,7 +84,7 @@ impl BaseCommand {
         self.enroll(ctx, opts).await?;
         self.zone_init(ctx, opts).await?;
         self.zone_deploy(ctx, opts).await?;
-        self.zone_repl(opts, ctx).await?;
+        self.zone_attach(opts, ctx).await?;
         Ok(())
     }
 
@@ -133,9 +133,9 @@ impl BaseCommand {
         Ok(())
     }
 
-    async fn zone_repl(&self, opts: &CommandGlobalOpts, ctx: &Context) -> Result<()> {
-        use crate::zone::repl::ReplCommand;
-        let cmd = ReplCommand {
+    async fn zone_attach(&self, opts: &CommandGlobalOpts, ctx: &Context) -> Result<()> {
+        use crate::zone::attach::AttachCommand;
+        let cmd = AttachCommand {
             http_api: self.http_api.clone(),
             inlets: self.inlets.clone(),
             ..Default::default()

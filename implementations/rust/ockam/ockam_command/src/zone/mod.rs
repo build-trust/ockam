@@ -1,3 +1,4 @@
+pub(crate) mod attach;
 pub(crate) mod common_args;
 pub(crate) mod create;
 pub(crate) mod ctrlc;
@@ -21,6 +22,7 @@ use deploy::DeployCommand;
 use init::InitCommand;
 use ockam_node::Context;
 
+use crate::zone::attach::AttachCommand;
 use crate::zone::delete::DeleteCommand;
 use crate::zone::inlet::InletCommand;
 use crate::zone::list::ListCommand;
@@ -60,6 +62,7 @@ impl ZoneCommand {
             ZoneSubcommand::Delete(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Inlet(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Outlet(c) => c.run(ctx, opts).await,
+            ZoneSubcommand::Attach(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Repl(c) => c.run(ctx, opts).await.map(|_| ()),
         }
     }
@@ -79,6 +82,8 @@ pub enum ZoneSubcommand {
     Outlet(OutletCommand),
     #[command(hide = true)]
     Repl(ReplCommand),
+    #[command(hide = true)]
+    Attach(AttachCommand),
 }
 
 impl ZoneSubcommand {
@@ -93,6 +98,7 @@ impl ZoneSubcommand {
             ZoneSubcommand::Inlet(c) => c.name(),
             ZoneSubcommand::Outlet(c) => c.name(),
             ZoneSubcommand::Repl(c) => c.name(),
+            ZoneSubcommand::Attach(c) => c.name(),
         }
     }
 }
