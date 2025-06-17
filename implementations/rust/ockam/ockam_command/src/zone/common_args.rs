@@ -1,4 +1,5 @@
 use crate::docs;
+use crate::util::parsers::alphanumeric_parser;
 use crate::zone::zone_config::ZoneConfig;
 use clap::Args;
 use miette::{miette, Context as _, IntoDiagnostic};
@@ -52,7 +53,7 @@ impl ZoneConfigArg {
 #[derive(Clone, Debug, Args, Default)]
 #[group(multiple = false)]
 pub struct ZoneNameOrConfigArg {
-    #[arg(help = ZONE_NAME_HELP)]
+    #[arg(value_parser = alphanumeric_parser, help = ZONE_NAME_HELP)]
     pub zone_name: Option<String>,
 
     #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]
@@ -97,7 +98,7 @@ impl ZoneNameOrConfigArg {
 #[derive(Clone, Debug, Args, Default)]
 #[group(multiple = false)]
 pub struct ZoneNameLongOrConfigArg {
-    #[arg(long = "zone", help = ZONE_NAME_HELP)]
+    #[arg(long = "zone", value_parser = alphanumeric_parser, help = ZONE_NAME_HELP)]
     pub zone_name: Option<String>,
 
     #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]

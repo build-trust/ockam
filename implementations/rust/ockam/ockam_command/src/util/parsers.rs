@@ -13,6 +13,14 @@ use ockam_core::env::parse_duration;
 use crate::util::validators::cloud_resource_name_validator;
 use crate::Result;
 
+pub(crate) fn alphanumeric_parser(s: &str) -> miette::Result<String> {
+    if s.chars().all(char::is_alphanumeric) {
+        Ok(s.to_owned())
+    } else {
+        Err(miette!("must contain only alphanumeric characters"))
+    }
+}
+
 /// Helper function for parsing a socket from user input by using
 /// [`SchemeHostnamePort::from_str()`]
 pub(crate) fn hostname_parser(input: &str) -> Result<SchemeHostnamePort> {
