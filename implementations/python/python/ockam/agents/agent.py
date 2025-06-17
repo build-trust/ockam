@@ -1,12 +1,14 @@
 import json
 import traceback
-from typing import Optional, AsyncGenerator, Tuple, Dict
+from typing import Optional, AsyncGenerator, Tuple, Dict, List
+from enum import Enum
 
 import secrets
 
+from .conversation_response import ConversationResponse
 from ..nodes import RemoteNode, LocalNodeProtocol
 from ..planning import Planner
-
+from ..tools.protocol import InvokableTool
 from ..knowledge import SearchResults, KnowledgeProvider
 from ..memory import Memory
 from ..models import Model
@@ -26,6 +28,7 @@ from ..nodes.message import (
     GetConversationsRequest,
     GetConversationsResponse,
     Phase,
+    ToolCallResponseMessage,
 )
 from .names import validate_name
 
@@ -38,15 +41,233 @@ logging.config.dictConfig(get_logging_config())
 logger = logging.getLogger("agent")
 
 
+class AgentState(Enum):
+    """
+    States for the agent conversation state machine.
+
+    - INIT: Initial state where we set up the conversation and initialize planning if available
+    - PLANNING: Create the next step of the plan
+    - MODEL_CALLING: Call the model to generate a response
+    - TOOL_CALLING: Execute tool calls from the model response
+    - FINISHED: End of the conversation
+
+    ┌─────────┐
+    │         │
+    │  INIT   │
+    │         │
+    └────┬────┘
+         │
+         ├─────────────────────────┐
+         │                         │
+         │ [planner available]     │ [planner not available]
+         ▼                         ▼
+    ┌─────────┐               ┌──────────┐
+    │         │               │          │
+    │PLANNING │◀──[next step]─┤ MODEL    │◀─────┐
+    │         ├──[execute]───▶│ CALLING  │      │
+    └────┬────┘               └┬────┬────┘      │
+         │                     │    │           │
+         │                     │    │           │
+         │                     │    │           │
+         │                     │    │           │
+         │                     │    │           │
+         │                     │    ▼           │
+         │                     │┌────────┐      │
+         │                     ││        │      │
+         │                     ││  TOOL  │──────┘
+         │ [plan completed]    ││CALLING │
+         │                     │└────────┘
+         │                     │
+         ▼                     │
+    ┌─────────┐                │
+    │         │                │
+    │FINISHED │◀───────────────┘
+    │         │
+    └─────────┘
+    """
+
+    INIT = "init"
+    PLANNING = "planning"
+    MODEL_CALLING = "model_calling"
+    TOOL_CALLING = "tool_calling"
+    FINISHED = "finished"
+
+
+class AgentStateMachine:
+    """
+    State machine for managing agent conversation flow.
+
+    This class implements a state machine that manages the flow of an agent conversation.
+    It handles the transitions between different states and executes the appropriate actions
+    for each state. The state machine is designed to be used by the `handle__conversation_snippet`
+    method of the `Agent` class.
+    """
+
+    def __init__(self, agent, scope, conversation, stream, response, contextual_knowledge=None):
+        self.agent = agent
+        self.scope = scope
+        self.conversation = conversation
+        self.stream = stream
+        self.streaming_response = response
+        self.contextual_knowledge = contextual_knowledge
+        self.state = AgentState.INIT
+        self.plan = None
+        self.iteration = 0
+        self.tool_calls = []
+        self.whole_response = ConversationSnippet(scope, conversation, [])
+
+    async def transition(self):
+        """Execute the current state and determine the next state."""
+
+        match self.state:
+            case AgentState.INIT:
+                if self.agent.planner is not None:
+                    self.state = AgentState.PLANNING
+                else:
+                    self.state = AgentState.MODEL_CALLING
+            case AgentState.PLANNING:
+                async for result in self._handle_planning_state():
+                    yield result
+            case AgentState.MODEL_CALLING:
+                async for result in self._handle_model_calling_state():
+                    yield result
+            case AgentState.TOOL_CALLING:
+                async for result in self._handle_tool_calling_state():
+                    yield result
+            case AgentState.FINISHED:
+                async for result in self._handle_finished_state():
+                    yield result
+
+    async def _handle_planning_state(self):
+        """Handle the PLANNING state: Execute the next steps from the plan."""
+
+        plan_completed = True
+        next_steps = self.plan.next_step(
+            await self.agent.get_messages_only(self.conversation, self.scope), self.contextual_knowledge
+        )
+
+        async for next_step in next_steps:
+            if next_step is None:
+                break
+            plan_completed = False
+            self.contextual_knowledge = await self.agent.add_knowledge_search(next_step.content)
+            if next_step.phase == Phase.PLANNING:
+                await self.agent.remember(self.scope, self.conversation, next_step)
+            if self.stream:
+                yield self.streaming_response.make_snippet(next_step)
+            else:
+                self.whole_response.messages.append(next_step)
+
+        if plan_completed:
+            # We executed the whole plan
+            self.state = AgentState.FINISHED
+        else:
+            # The model will execute the next plan step
+            self.state = AgentState.MODEL_CALLING
+
+    async def _handle_model_calling_state(self):
+        """Handle the MODEL_CALLING state: Call the model to generate a response."""
+
+        self.iteration += 1
+        if self.iteration == self.agent.maximum_iterations:
+            yield Error(str(RuntimeError("Reached maximum_iterations")))
+            self.state = AgentState.FINISHED
+
+        self.tool_calls = []
+        async for error, finished, model_response in self.agent.complete_chat(
+            self.scope, self.conversation, self.contextual_knowledge, stream=self.stream
+        ):
+            if error:
+                yield self.streaming_response.make_snippet(error)
+                self.state = AgentState.FINISHED
+                return
+
+            # Remember the model response
+            await self.agent.remember(self.scope, self.conversation, model_response)
+
+            if len(model_response.tool_calls) > 0:
+                # Record the event of the tool being called
+                if self.stream:
+                    yield self.streaming_response.make_snippet(model_response)
+                else:
+                    self.whole_response.messages.append(model_response)
+                # Store tool calls for later processing
+                self.tool_calls.extend(model_response.tool_calls)
+                self.state = AgentState.TOOL_CALLING
+            elif finished or not self.stream:
+                # either we are streaming and we finished, or we are expecting a single response
+                if self.stream:
+                    yield self.streaming_response.make_snippet(model_response)
+                else:
+                    self.whole_response.messages.append(model_response)
+
+                if self.state == AgentState.TOOL_CALLING:
+                    return
+                else:
+                    if self.agent.planner is None:
+                        self.state = AgentState.FINISHED
+                    else:
+                        self.state = AgentState.PLANNING
+                    return
+            else:
+                # Handle streamed response chunk
+                yield self.streaming_response.make_snippet(model_response)
+
+    async def _handle_tool_calling_state(self):
+        """Handle the TOOL_CALLING state: Process tool calls from the model response."""
+
+        for tool_call in self.tool_calls:
+            error, tool_call_response = await self.agent.call_tool(tool_call)
+            if error:
+                warn(f"MCP call failed: {error}")
+
+            # the tool_call_response contains the error message if the tool call failed
+            await self.agent.remember(self.scope, self.conversation, tool_call_response)
+            if self.stream:
+                yield self.streaming_response.make_snippet(tool_call_response)
+            else:
+                self.whole_response.messages.append(tool_call_response)
+
+        # after processing tool calls, we need another model call
+        self.state = AgentState.MODEL_CALLING
+
+    async def _handle_finished_state(self):
+        """Handle the FINISHED state: End the conversation and return the final response."""
+
+        if self.stream:
+            yield self.streaming_response.make_finished_snippet()
+        else:
+            yield self.whole_response
+
+    async def initialize_plan(self, messages):
+        """Initialize the plan if a planner is available and remember messages."""
+
+        if self.agent.planner is None:
+            for message in messages:
+                await self.agent.remember(self.scope, self.conversation, message)
+        else:
+            # When a planner is provided, the input messages will be handled solely by the planner
+            self.plan = await self.agent.planner.plan(messages, self.contextual_knowledge, self.stream)
+
+    async def run(self):
+        """Run the state machine until completion."""
+
+        while self.state != AgentState.FINISHED:
+            async for result in self.transition():
+                yield result
+
+
 class Agent:
+    tools: Dict[str, InvokableTool]
+
     def __init__(
         self,
         node: LocalNodeProtocol,
         name: str,
         instructions: str,
         model: Model,
-        tool_specs,
-        tools: list,
+        tool_specs: List[dict],
+        tools: Dict[str, InvokableTool],
         planner: Planner,
         memory: Memory,
         knowledge: KnowledgeProvider,
@@ -117,18 +338,15 @@ class Agent:
     async def handle__conversation_snippet(
         self, snippet: StreamedConversationSnippet | ConversationSnippet
     ) -> AsyncGenerator[StreamedConversationSnippet | ConversationSnippet | Error, None]:
-        from ..agents import ConversationResponse
-
         stream = type(snippet) is StreamedConversationSnippet
         if stream:
             snippet = snippet.snippet
-        scope = snippet.scope
 
+        scope = snippet.scope
         if not scope:
             scope = secrets.token_hex(16)
 
         conversation = snippet.conversation
-
         if not conversation:
             conversation = secrets.token_hex(16)
 
@@ -144,95 +362,22 @@ class Agent:
         if self.knowledge is not None:
             contextual_knowledge = await self.add_knowledge_search(query)
 
-        # If there is a planner, initialize a plan
-        plan = None
-        if self.planner is not None:
-            plan = await self.planner.plan(messages, contextual_knowledge, stream)
-        else:
-            for message in messages:
-                await self.remember(scope, conversation, message)
+        # Create and initialize the state machine
+        state_machine = AgentStateMachine(
+            agent=self,
+            scope=scope,
+            conversation=conversation,
+            stream=stream,
+            response=response,
+            contextual_knowledge=contextual_knowledge,
+        )
 
-        replied = False
-        whole_response_snippet = ConversationSnippet(scope, conversation, [])
-        iteration = 0
-        while True:
-            if plan is None:
-                if replied:
-                    break
-            else:
-                next_steps = plan.next_step(await self.get_messages_only(conversation, scope), contextual_knowledge)
+        # Initialize the plan if needed
+        await state_machine.initialize_plan(messages)
 
-                replied = False
-                plan_completed = True
-                async for next_step in next_steps:
-                    if next_step is None:
-                        break
-                    plan_completed = False
-                    contextual_knowledge = await self.add_knowledge_search(next_step.content)
-                    if next_step.phase == Phase.PLANNING:
-                        await self.remember(scope, conversation, next_step)
-                    if stream:
-                        yield response.make_snippet(next_step)
-                    else:
-                        whole_response_snippet.messages.append(next_step)
-                if plan_completed:
-                    # we executed the whole plan
-                    break
-
-            tool_calls = []
-            # Call the model
-            model_response: AssistantMessage
-            async for error, finished, model_response in self.complete_chat(
-                scope, conversation, contextual_knowledge, stream=stream
-            ):
-                # Break the loop, if the model complete_chat call returned an error.
-                if error:
-                    yield response.make_snippet(error)
-                    return
-
-                await self.remember(scope, conversation, model_response)
-
-                if len(model_response.tool_calls) > 0:
-                    if stream:
-                        yield response.make_snippet(model_response)
-                    else:
-                        whole_response_snippet.messages.append(model_response)
-
-                    # postpone tool calls until the end of the response
-                    tool_calls.extend(model_response.tool_calls)
-                else:
-                    if stream:
-                        yield response.make_snippet(model_response)
-                        if finished:
-                            replied = True
-                            break
-                    else:
-                        whole_response_snippet.messages.append(model_response)
-                        replied = True
-                        break
-
-            for tool_call in tool_calls:
-                error, tool_call_response = await self.call_tool(tool_call, scope, conversation)
-                if error:
-                    warn(f"MCP call failed: {error}")
-                # remember the tool being called
-                await self.remember(scope, conversation, tool_call_response)
-
-                # we need another iteration to process the tool call response
-                replied = False
-
-            # Move to the next iteration
-            iteration += 1
-
-            # Break the loop, if the loop has reached maximum_iterations.
-            # Send an error as a reply.
-            if iteration == self.maximum_iterations:
-                yield Error(str(RuntimeError("Reached maximum_iterations")))
-
-        if stream:
-            yield response.make_finished_snippet()
-        else:
-            yield whole_response_snippet
+        # Run the state machine
+        async for result in state_machine.run():
+            yield result
 
     async def get_messages_only(self, conversation, scope) -> list[ConversationMessage]:
         messages: list[dict] = self.memory.get_messages_only(scope, conversation)
@@ -242,10 +387,8 @@ class Agent:
         """
         Search the knowledge base for relevant information and adds it to the search results.
         """
-        if self.knowledge is None:
-            return None
-
-        if not query or len(query) == 0:
+        # Check if knowledge is None or query is empty
+        if self.knowledge is None or not query or len(query) == 0:
             return None
 
         hits = await self.knowledge.search(query)
@@ -356,21 +499,23 @@ class Agent:
 
         return None, finished, self.converter.conversation_message_from_dict(response)
 
-    async def call_tool(self, tool_call: ToolCall, scope: str, conversation: str):
-        tools = self.tools
-
+    async def call_tool(self, tool_call: ToolCall) -> Tuple[Optional[Error], ToolCallResponseMessage]:
         id = tool_call.id
         name = tool_call.function.name
         args = tool_call.function.arguments
 
-        if name not in tools:
+        tool = self.tools.get(name)
+        if not tool:
             error_response = f"Tool '{name}' not found."
             error = Error(error_response)
-            return error, tool_call_response(id, name, error_response)
+            return error, ToolCallResponseMessage(id, name, error_response)
 
-        tool = tools[name]
-        response = await tool.invoke(args)
-        return None, tool_call_response(id, name, response)
+        try:
+            response = await tool.invoke(args)
+            return None, ToolCallResponseMessage(id, name, response)
+        except BaseException as e:
+            error_response = f"Tool '{name}' invocation failed: {str(e)}"
+            return Error(error_response), ToolCallResponseMessage(id, name, error_response)
 
     @staticmethod
     async def start(
@@ -378,7 +523,7 @@ class Agent:
         instructions: str,
         name: Optional[str] = None,
         model: Model = Model(name="llama3.2"),
-        tools: Optional[list] = None,
+        tools: Optional[List[InvokableTool]] = None,
         planner: Planner = None,
         exposed_as: Optional[str] = None,
         knowledge: Optional[KnowledgeProvider] = None,
@@ -389,16 +534,18 @@ class Agent:
 
         validate_name(name)
 
-        if isinstance(node, LocalNodeProtocol):
-            await Agent.start_agent_impl(
-                node, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
-            )
-        elif isinstance(node, RemoteNode):
-            await node.start_agent(instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size)
-
-            info(f"Successfully started agent {name} on a remote node")
-        else:
-            raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
+        match node:
+            case node if isinstance(node, LocalNodeProtocol):
+                await Agent.start_agent_impl(
+                    node, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+                )
+            case node if isinstance(node, RemoteNode):
+                await node.start_agent(
+                    instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+                )
+                info(f"Successfully started agent {name} on a remote node")
+            case _:
+                raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
         return AgentReference(name, node, exposed_as)
 
@@ -419,24 +566,25 @@ class Agent:
     ):
         agents = []
 
-        if isinstance(node, LocalNodeProtocol):
-            for i in range(number_of_agents):
-                name = secrets.token_hex(12)
-                await Agent.start_agent_impl(
-                    node, instructions, name, model, tools, planner, None, knowledge, max_knowledge_size
+        match node:
+            case node if isinstance(node, LocalNodeProtocol):
+                for i in range(number_of_agents):
+                    name = secrets.token_hex(12)
+                    await Agent.start_agent_impl(
+                        node, instructions, name, model, tools, planner, None, knowledge, max_knowledge_size
+                    )
+                    agents.append(AgentReference(name, node))
+            case node if isinstance(node, RemoteNode):
+                names = await node.start_agents(
+                    instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size
                 )
-                agents.append(AgentReference(name, node))
-        elif isinstance(node, RemoteNode):
-            names = await node.start_agents(
-                instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size
-            )
 
-            for name in names:
-                agents.append(AgentReference(name, node))
+                for name in names:
+                    agents.append(AgentReference(name, node))
 
-            info("Successfully started agents on a remote node")
-        else:
-            raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
+                info("Successfully started agents on a remote node")
+            case _:
+                raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
         return agents
 
@@ -446,7 +594,7 @@ class Agent:
         instructions: str,
         name: Optional[str],
         model: Model,
-        tools: Optional[list],
+        tools: Optional[List[InvokableTool]],
         planner: Planner,
         exposed_as: Optional[str],
         knowledge: Optional[KnowledgeProvider],
@@ -478,7 +626,7 @@ def key_extractor(message):
     return None
 
 
-async def prepare_tools(node, tools):
+async def prepare_tools(node, tools) -> Tuple[List[dict], Dict[str, InvokableTool]]:
     specs = []
     prepared = {}
     if tools is None:
@@ -495,7 +643,3 @@ async def prepare_tools(node, tools):
 
 def system_message(message: str) -> dict:
     return {"role": "system", "content": message}
-
-
-def tool_call_response(id: str, name: str, response: str):
-    return {"role": "tool", "tool_call_id": id, "name": name, "content": response}
