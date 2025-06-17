@@ -132,6 +132,13 @@ impl DeleteCommandTui for DeleteTui {
     }
 
     async fn list_items_names(&self) -> miette::Result<Vec<String>> {
+        // Only remove the zone defined in the config if `all` is not set.
+        if !self.cmd.all {
+            if let Ok(zone_config) = self.cmd.zone.zone_config() {
+                return Ok(vec![zone_config.name]);
+            }
+        }
+        // Otherwise, list all zones in the cluster to let the user choose which ones to delete.
         self.api_client
             .list_zones(&self.ctx, Some(&self.cluster))
             .await
