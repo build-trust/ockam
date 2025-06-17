@@ -39,7 +39,8 @@ LOGGING_CONFIG = {
 
 def get_logging_config():
     config = LOGGING_CONFIG
-    if os.environ.get("OCKAM_LOGGING", "0") == "0":
+    # Disable logging if explicitly set to 0; otherwise, assume it's enabled
+    if os.environ.get("OCKAM_LOGGING", "1") == "0":
         return {
             "version": 1,
         }
