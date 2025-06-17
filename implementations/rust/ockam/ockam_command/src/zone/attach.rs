@@ -122,14 +122,6 @@ impl AttachCommand {
                 .await?;
             Ok::<(Executor, Option<SchemeHostnamePort>), miette::Error>((executor, Some(from)))
         };
-        let repl_address = match main_pod_outlets.repl {
-            None => None,
-            Some(repl_outlet) => {
-                let (executor, repl_address) = create_inlet(repl_outlet).await?;
-                executors.push(executor);
-                repl_address
-            }
-        };
         let mut rest = main_pod_outlets.rest;
         if !self.inlets.no_http {
             rest.push(main_pod_outlets.http.clone());
@@ -148,6 +140,14 @@ impl AttachCommand {
             }
             executors.push(executor);
         }
+        let repl_address = match main_pod_outlets.repl {
+            None => None,
+            Some(repl_outlet) => {
+                let (executor, repl_address) = create_inlet(repl_outlet).await?;
+                executors.push(executor);
+                repl_address
+            }
+        };
         let services = ServicesAddresses {
             http: http_address,
             logs: logs_address,
