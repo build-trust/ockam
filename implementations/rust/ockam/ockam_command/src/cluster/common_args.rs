@@ -8,7 +8,7 @@ use ockam_node::Context;
 #[derive(Clone, Debug, Args, Default)]
 pub struct ClusterArg {
     /// The Cluster that hosts the Zone.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub cluster: Option<String>,
 }
 

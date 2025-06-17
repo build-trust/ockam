@@ -42,7 +42,7 @@ pub struct DeployCommand {
     pub secrets: SecretsConfigArg,
 
     /// Whether to use a public AWS ECR
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub use_public_ecr: bool,
 
     #[command(flatten)]

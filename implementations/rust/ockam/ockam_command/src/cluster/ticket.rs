@@ -9,7 +9,7 @@ use ockam_node::Context;
 
 use super::utils::{get_api_client, get_cluster};
 use crate::cluster::common_args::HttpApiArgs;
-use crate::zone::common_args::ZoneNameOrConfigArg;
+use crate::zone::common_args::ZoneNameLongOrConfigArg;
 use crate::{docs, node_command::InMemoryNodeCommand, Command, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -25,7 +25,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct TicketCommand {
     #[command(flatten)]
-    pub zone: ZoneNameOrConfigArg,
+    pub zone: ZoneNameLongOrConfigArg,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,

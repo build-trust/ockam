@@ -8,7 +8,6 @@ use crate::zone::common_args::{
 use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::get_cluster_name::GetClusterName;
 use crate::zone::repl::ReplCommand;
-use crate::zone::services_addresses::ServicesAddresses;
 use crate::zone::zone_config::{Outlet, ZoneConfig};
 use crate::{docs, Command, CommandGlobalOpts, Result};
 use async_trait::async_trait;
@@ -39,10 +38,10 @@ pub struct AttachCommand {
     pub zone: ZoneConfigArg,
 
     #[command(flatten)]
-    pub http_api: HttpApiArgs,
+    pub inlets: ZoneInletsArgs,
 
     #[command(flatten)]
-    pub inlets: ZoneInletsArgs,
+    pub http_api: HttpApiArgs,
 }
 
 #[async_trait]
@@ -234,6 +233,14 @@ impl AttachCommand {
 
         Ok(executor)
     }
+}
+
+/// This struct stores the inlet addresses created to access remote services
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ServicesAddresses {
+    http: Option<SchemeHostnamePort>,
+    logs: Option<SchemeHostnamePort>,
+    repl: Option<SchemeHostnamePort>,
 }
 
 #[cfg(test)]
