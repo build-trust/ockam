@@ -10,8 +10,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
 
 from ..agents import AgentReference
-from ..nodes.message import GetConversationsRequest, ConversationMessage, AssistantMessage, StreamedConversationSnippet
-from ..ockam_in_rust_for_python import info, error
+from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet
 
 logger = logging.getLogger("http")
 

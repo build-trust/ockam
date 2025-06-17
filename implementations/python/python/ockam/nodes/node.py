@@ -8,7 +8,6 @@ from .local import LocalNode
 from .manager import RemoteManager
 
 from ..ockam_in_rust_for_python import Node as RustNode, debug
-from ..nodes.protocol import LocalNodeProtocol
 
 from ..logging.logging import LOGGING_CONFIG
 import logging.config

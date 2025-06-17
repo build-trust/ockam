@@ -24,14 +24,14 @@ async def main_simple_node(node):
 async def main_agent(node):
     agent = await Agent.start(
         node=node,
-        name="History Teacher",
+        name="history-teacher",
         instructions="You are an assistant who is an expert in history.",
         model=Model(name="ollama_chat/llama3.2"),
     )
     reply = await agent.send("Who was Gandhi?")
     evaluator = await Agent.start(
         node=node,
-        name="History Article Evaluator",
+        name="history-article-evaluator",
         instructions=textwrap.dedent("""You are an assistant who is an expert at history.
 
         You will be given an article and a question about the article,

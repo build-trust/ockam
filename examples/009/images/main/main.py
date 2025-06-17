@@ -6,7 +6,7 @@ from sys import argv
 async def main(node):
     triage = await Agent.start(
         node=node,
-        name="Security Task Triage",
+        name="security-task-triage",
         instructions="""
         You are an information security triage agent.
 
@@ -46,7 +46,7 @@ async def main(node):
 
     network_expert = await Agent.start(
         node=node,
-        name="Network Security Expert",
+        name="network-security-expert",
         instructions="""
             You are a network security expert.
             Answer network security questions.
@@ -55,7 +55,7 @@ async def main(node):
 
     code_security_fixer = await Agent.start(
         node=node,
-        name="Code Security Fixer",
+        name="code-security-fixer",
         instructions="""
             You are a codding expert who knows the Python programming language.
 
@@ -70,7 +70,7 @@ async def main(node):
 
     code_evaluator = await Agent.start(
         node=node,
-        name="Code Evaluator",
+        name="code-evaluator",
         instructions="""
             Your goal is to check if a python code snippet has any commonly made
             security mistakes or not.
@@ -185,7 +185,7 @@ async def main(node):
 
     bouncer = await Agent.start(
         node=node,
-        name="Polite Bouncer",
+        name="polite-bouncer",
         instructions="""
             You MUST politely reject the user question explaining that only
             security or networking questions can be asked. Be terse and concise.

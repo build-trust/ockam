@@ -1,5 +1,4 @@
 import secrets
-import re
 
 from .operation import FlowOperation, END
 from .flow_state import FlowState, FlowEdge, vertex_to_id
