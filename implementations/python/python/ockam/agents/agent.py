@@ -359,8 +359,7 @@ class Agent:
         if name is None:
             name = secrets.token_hex(12)
 
-        if exposed_as is not None:
-            validate_name(name)
+        validate_name(name)
 
         if isinstance(node, LocalNodeProtocol):
             await Agent.start_agent_impl(

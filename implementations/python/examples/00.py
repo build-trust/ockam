@@ -4,7 +4,7 @@ from ockam import Agent, Flow, Node, START, END, TRY_AGAIN
 async def main(node):
     triage = await Agent.start(
         node=node,
-        name="Language Triage",
+        name="language-triage",
         instructions="""
             You are a language triage agent.
 
@@ -19,25 +19,25 @@ async def main(node):
 
     english_support = await Agent.start(
         node=node,
-        name="English assistant",
+        name="english-assistant",
         instructions="You are an assistant who answers questions in English.",
     )
 
     french_support = await Agent.start(
         node=node,
-        name="French assistant",
+        name="french-assistant",
         instructions="You are an assistant who answers questions in French.",
     )
 
     spanish_support = await Agent.start(
         node=node,
-        name="Spanish assistant",
+        name="spanish-assistant",
         instructions="You are an assistant who answers questions in Spanish.",
     )
 
     hindi_support = await Agent.start(
         node=node,
-        name="Hindi assistant",
+        name="hindi-assistant",
         instructions="""
             You are an assistant who answers questions in Hindi.
             You respond in hindi written in the latin alphabet.
@@ -46,7 +46,7 @@ async def main(node):
 
     english_quality_check = await Agent.start(
         node=node,
-        name="English quality check",
+        name="english-quality-check",
         instructions=f"""
             You are an English quality check agent.
 
@@ -61,7 +61,7 @@ async def main(node):
 
     french_quality_check = await Agent.start(
         node=node,
-        name="French quality check",
+        name="french-quality-check",
         instructions=f"""
             You are a French quality check agent.
 
@@ -76,7 +76,7 @@ async def main(node):
 
     spanish_quality_check = await Agent.start(
         node=node,
-        name="Spanish quality check",
+        name="spanish-quality-check",
         instructions=f"""
             You are a Spanish quality check agent.
 
@@ -91,7 +91,7 @@ async def main(node):
 
     hindi_quality_check = await Agent.start(
         node=node,
-        name="Hindi quality check",
+        name="hindi-quality-check",
         instructions=f"""
             You are a Hindi quality check agent.
 

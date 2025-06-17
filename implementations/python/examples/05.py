@@ -14,7 +14,7 @@ from ockam import Agent, Model, Node, info
 async def main(node):
     agent = await Agent.start(
         node=node,
-        name="History Teacher",
+        name="history-teacher",
         instructions="You are an assistant who is an expert in history.",
         model=Model(name="ollama_chat/llama3.2"),
     )

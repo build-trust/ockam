@@ -4,7 +4,7 @@ from ockam import Agent, Flow, Node, START, END, Repl, FlowOperation
 async def main(node):
     triage = await Agent.start(
         node=node,
-        name="Security Task Triage",
+        name="security-task-triage",
         instructions="""
 You are an information security agent.
 
@@ -40,13 +40,13 @@ Examples:
 
     network_expert = await Agent.start(
         node=node,
-        name="Network Security Expert",
+        name="network-security-expert",
         instructions="You are a network security expert. Answer network security questions.",
     )
 
     code_security_expert = await Agent.start(
         node=node,
-        name="Code Security Expert",
+        name="code-security-expert",
         instructions="""
 You are a codding expert who knows the Python programming language.
 
@@ -57,7 +57,7 @@ Only print the fixed code snippet. Under no circumstances print anything else ex
 
     code_evaluator = await Agent.start(
         node=node,
-        name="Code Evaluator",
+        name="code-evaluator",
         instructions="""
 Your goal is to figure out if a python code snippet has any vulnerabilities.
 
