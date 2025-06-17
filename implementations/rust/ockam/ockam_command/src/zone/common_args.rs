@@ -93,6 +93,11 @@ impl ZoneNameOrConfigArg {
         let zone_config = ZoneConfigArg::new(self.zone_config.clone());
         zone_config.zone_name()
     }
+
+    pub fn zone_config(&self) -> crate::Result<ZoneConfig> {
+        let zone_config = ZoneConfigArg::new(self.zone_config.clone());
+        zone_config.zone_config()
+    }
 }
 
 #[derive(Clone, Debug, Args, Default)]
