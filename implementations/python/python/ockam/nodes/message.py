@@ -63,9 +63,9 @@ class AssistantMessage:
 
 @dataclass
 class ToolCallResponseMessage:
-    content: str
     tool_call_id: str
     name: str
+    content: str
     phase: Phase = Phase.EXECUTING
     role: ConversationRole = ConversationRole.TOOL
 

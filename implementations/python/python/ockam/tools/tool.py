@@ -23,15 +23,11 @@ class Tool(InvokableTool):
         return self._spec
 
     async def invoke(self, json_argument: Optional[str]) -> str:
-        try:
-            if json_argument is None or json_argument == "":
-                args = {}
-            else:
-                args = json.loads(json_argument)
-            tool_response = str(await self.func(**args))
-        except Exception as e:
-            tool_response = f"tool call failed with error: {e}"
-
+        if json_argument is None or json_argument == "":
+            args = {}
+        else:
+            args = json.loads(json_argument)
+        tool_response = str(await self.func(**args))
         return tool_response
 
 
