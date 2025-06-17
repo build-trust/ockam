@@ -77,31 +77,71 @@ BEDROCK_INFERENCE_PROFILE_MAP = {
 
 region = None
 account_id = None
+cluster_id = None
 init_lock = threading.Lock()
 
 
 def construct_bedrock_arn(model_identifier: str) -> Optional[str]:
-    global region, account_id, init_lock
+    global region, account_id, cluster_id, init_lock
     with init_lock:
         if account_id is None:
             try:
                 region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
                 if not region:
                     session = boto3.Session()
-                    region = session.region_name or "us-west-2"
-                sts_client = boto3.client("sts")
+                    region = session.region_name
+                sts_client = boto3.client("sts", region_name=region)
                 account_id = sts_client.get_caller_identity()["Account"]
+
+                cluster_id = os.environ.get("CLUSTER")
+                if not cluster_id:
+                    warn("CLUSTER is not set. Cannot automatically manage inference profiles. Returning None.")
+                    return None
+
             except Exception as e:
                 warn(f"Could not construct Bedrock ARN: {e}")
                 return None
-    try:
-        inference_profile_id = BEDROCK_INFERENCE_PROFILE_MAP[model_identifier]
-        arn = f"arn:aws:bedrock:{region}:{account_id}:inference-profile/{inference_profile_id}"
-        return arn
-    except Exception as e:
-        warn(f"Could not construct Bedrock ARN: {e}")
-        return None
 
+    sanitized_model_name = model_identifier.replace(":", "_").replace(".", "_")
+    inference_profile_name = f'{cluster_id}_{sanitized_model_name}'
+
+    bedrock_client = boto3.client('bedrock', region_name=region)
+
+    # Check if profile already exists
+    try:
+        paginator = bedrock_client.get_paginator('list_inference_profiles')
+        for page in paginator.paginate(typeEquals='APPLICATION'):
+            for profile in page.get('inferenceProfileSummaries', []):
+                if profile['inferenceProfileName'] == inference_profile_name:
+                    return profile['inferenceProfileArn']
+    except Exception as e:
+        warn(f"An error occurred while listing existing inference profiles: {e}")
+
+    # Determine the source ARN for the new profile
+    if model_identifier in BEDROCK_INFERENCE_PROFILE_MAP:
+        source_profile_id = BEDROCK_INFERENCE_PROFILE_MAP[model_identifier]
+        model_source_arn = f'arn:aws:bedrock:{region}:{account_id}:inference-profile/{source_profile_id}'
+    else:
+        # This is a standard foundation model
+        model_source_arn = f'arn:aws:bedrock:{region}::foundation-model/{model_identifier}'
+
+    # Create the profile
+    try:
+        response = bedrock_client.create_inference_profile(
+            inferenceProfileName=inference_profile_name,
+            modelSource={'copyFrom': model_source_arn},
+            tags=[
+                {'key': 'ockam.ai/clusterID', 'value': cluster_id},
+                {'key': 'ockam.ai/modelID', 'value': model_identifier}
+            ]
+        )
+        created_arn = response['inferenceProfileArn']
+        return created_arn
+    except bedrock_client.exceptions.ConflictException:
+        return None
+    except Exception as e:
+        warn(f"Failed to create inference profile '{inference_profile_name}': {e}")
+        return None
 
 class Model:
     def __init__(self, name, **kwargs):
@@ -143,13 +183,19 @@ class Model:
 
         # Apply inference profile if needed
         if model_identifier and "model_id" not in kwargs:
+            # Check for an explicit ARN override from the environment first
             inference_profile_arn = os.environ.get("BEDROCK_INFERENCE_PROFILE_ARN")
             if inference_profile_arn:
                 self.kwargs["model_id"] = inference_profile_arn
-            elif model_identifier in BEDROCK_INFERENCE_PROFILE_MAP:
-                arn = construct_bedrock_arn(model_identifier)
-                if arn:
-                    self.kwargs["model_id"] = arn
+            else:
+                # If no override, use the automatic get-or-create logic
+                provider, _ = resolved_name.split("/", 1)
+                if provider == "bedrock" or provider == "litellm_proxy":
+                    arn = construct_bedrock_arn(model_identifier)
+                    if arn:
+                        self.kwargs["model_id"] = arn
+                    else:
+                        warn(f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly.")
 
     def support_tools(self):
         if "deepseek" in self.name:
