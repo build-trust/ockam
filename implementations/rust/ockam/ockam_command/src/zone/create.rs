@@ -25,7 +25,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct CreateCommand {
     #[command(flatten)]
-    pub zone_config: ZoneNameOrConfigArg,
+    pub zone: ZoneNameOrConfigArg,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
@@ -44,7 +44,7 @@ impl InMemoryNodeCommand for CreateNodeCommand {
         let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = get_cluster(ctx, &node).await?;
-        let zone_name = self.command.zone_config.zone_name()?;
+        let zone_name = self.command.zone.zone_name()?;
         api_client
             .create_zone(ctx, Some(&cluster), &zone_name)
             .await?;

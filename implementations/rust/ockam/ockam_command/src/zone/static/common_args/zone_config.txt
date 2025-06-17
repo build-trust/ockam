@@ -1,0 +1,2 @@
+The path to the Zone configuration file, in yaml or json format.
+If not set, the `./ockam.yaml` file from the current directory will be used.

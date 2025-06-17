@@ -7,15 +7,20 @@ use ockam_node::Context;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+const ZONE_CONFIG_HELP: &str = include_str!("./static/common_args/zone_config.txt");
+const ZONE_NAME_HELP: &str = "The name of the Zone";
+
 #[derive(Clone, Debug, Args, Default)]
 pub struct ZoneConfigArg {
-    /// The path to the Zone configuration file, in yaml or json format.
-    /// If not set, the `./ockam.yaml` file from the current directory will be used.
-    #[arg(long, visible_alias = "config")]
+    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]
     pub zone_config: Option<String>,
 }
 
 impl ZoneConfigArg {
+    pub fn new(zone_config: Option<String>) -> Self {
+        Self { zone_config }
+    }
+
     pub fn zone_config_path(&self) -> crate::Result<PathBuf> {
         match &self.zone_config {
             Some(path) => Ok(PathBuf::from(path)),
@@ -47,35 +52,36 @@ impl ZoneConfigArg {
 #[derive(Clone, Debug, Args, Default)]
 #[group(multiple = false)]
 pub struct ZoneNameOrConfigArg {
-    /// The name of the Zone
-    #[arg(long = "zone")]
+    #[arg(help = ZONE_NAME_HELP)]
     pub zone_name: Option<String>,
 
-    #[command(flatten)]
-    pub zone_config: ZoneConfigArg,
+    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]
+    pub zone_config: Option<String>,
 }
 
 impl From<ZoneConfigArg> for ZoneNameOrConfigArg {
     fn from(zone_config: ZoneConfigArg) -> Self {
         Self {
-            zone_name: None,
-            zone_config,
+            zone_name: zone_config.zone_name().ok(),
+            zone_config: zone_config.zone_config,
+        }
+    }
+}
+
+impl From<ZoneNameLongOrConfigArg> for ZoneNameOrConfigArg {
+    fn from(zone_name_or_config: ZoneNameLongOrConfigArg) -> Self {
+        Self {
+            zone_name: zone_name_or_config.zone_name,
+            zone_config: zone_name_or_config.zone_config,
         }
     }
 }
 
 impl ZoneNameOrConfigArg {
-    pub fn from_zone_config(zone_config: ZoneConfigArg) -> Self {
-        Self {
-            zone_name: None,
-            zone_config,
-        }
-    }
-
     pub fn from_zone_name(zone_name: String) -> Self {
         Self {
             zone_name: Some(zone_name),
-            zone_config: ZoneConfigArg::default(),
+            zone_config: None,
         }
     }
 
@@ -83,7 +89,24 @@ impl ZoneNameOrConfigArg {
         if let Some(zone_name) = &self.zone_name {
             return Ok(zone_name.clone());
         }
-        self.zone_config.zone_name()
+        let zone_config = ZoneConfigArg::new(self.zone_config.clone());
+        zone_config.zone_name()
+    }
+}
+
+#[derive(Clone, Debug, Args, Default)]
+#[group(multiple = false)]
+pub struct ZoneNameLongOrConfigArg {
+    #[arg(long = "zone", help = ZONE_NAME_HELP)]
+    pub zone_name: Option<String>,
+
+    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]
+    pub zone_config: Option<String>,
+}
+
+impl ZoneNameLongOrConfigArg {
+    pub fn zone_name(&self) -> crate::Result<String> {
+        ZoneNameOrConfigArg::from(self.clone()).zone_name()
     }
 }
 

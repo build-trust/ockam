@@ -30,10 +30,10 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct SecretCommand {
     #[command(flatten)]
-    pub secrets_config: SecretsConfigArg,
+    pub zone: ZoneNameOrConfigArg,
 
     #[command(flatten)]
-    pub zone: ZoneNameOrConfigArg,
+    pub secrets_config: SecretsConfigArg,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
