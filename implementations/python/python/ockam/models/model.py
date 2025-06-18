@@ -91,6 +91,7 @@ init_lock = threading.Lock()
 _inference_profile_cache = {}
 _cache_lock = threading.Lock()
 
+
 def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional[str]:
     global region, account_id, cluster_id, init_lock
     with init_lock:
@@ -119,7 +120,7 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
         if cache_key in _inference_profile_cache:
             return _inference_profile_cache[cache_key]
         else:
-            inference_profile_name = f'{cluster_id}_{sanitized_model_name}'
+            inference_profile_name = f"{cluster_id}_{sanitized_model_name}"
             bedrock_client = boto3.client("bedrock", region_name=region)
             # Check if profile already exists
             try:
