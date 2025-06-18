@@ -268,7 +268,7 @@ class AgentReference(Reference, InvokableTool):
         if len(reply.messages) > 0:
             return reply.messages[-1].content
         else:
-            return f"Agent error: 'empty response'"
+            return "Agent error: 'empty response'"
 
 
 @dataclass

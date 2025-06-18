@@ -134,9 +134,6 @@ class AgentStateMachine:
             case AgentState.TOOL_CALLING:
                 async for result in self._handle_tool_calling_state():
                     yield result
-            case AgentState.FINISHED:
-                async for result in self._handle_finished_state():
-                    yield result
 
     async def _handle_planning_state(self):
         """Handle the PLANNING state: Execute the next steps from the plan."""
@@ -255,6 +252,9 @@ class AgentStateMachine:
         while self.state != AgentState.FINISHED:
             async for result in self.transition():
                 yield result
+
+        async for result in self._handle_finished_state():
+            yield result
 
 
 class Agent:
