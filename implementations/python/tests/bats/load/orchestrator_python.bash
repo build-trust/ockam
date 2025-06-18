@@ -5,11 +5,9 @@ if [[ -z $CLUSTER_ID ]]; then
 fi
 
 function orchestrator_python_setup_suite() {
-  export OCKAM_COMMAND_RETRY_COUNT=3
-  export OCKAM_COMMAND_RETRY_DELAY=1s
-  $OCKAM zone create --zone bats-zone || true
   export CLUSTER=$($OCKAM cluster show --jq '.cluster')
-  export ZONE_NAME=bats-zone
+  $OCKAM zone create --zone batszone || true
+  export ZONE_NAME=batszone
 }
 
 function orchestrator_python_teardown_suite() {
@@ -18,6 +16,6 @@ function orchestrator_python_teardown_suite() {
 }
 
 function public_endpoint() {
-  example_name=$1
-  echo "https://${CLUSTER_ID}-${example_name}.ai.ockam.network"
+  zone_name=$1
+  echo "https://${CLUSTER_ID}-${zone_name}.ai.ockam.network"
 }

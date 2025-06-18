@@ -9,10 +9,6 @@ pods:
       - name: mcp
         image: ghcr.io/build-trust/mcp-proxy
         env:
-          - name: BRAVE_API_KEY
-            valueFrom:
-              secretKeyRef:
-                name: brave
-                key: key
+          - BRAVE_API_KEY: secrets.BRAVE_API_KEY
         args:
           ["--sse-port", "8001", "--pass-environment", "--", "npx", "-y", "@modelcontextprotocol/server-brave-search"]
