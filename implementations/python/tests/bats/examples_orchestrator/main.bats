@@ -6,6 +6,7 @@ setup() {
   load ../load/base.bash
   load ../load/base_python.bash
   load ../load/orchestrator.bash
+  load ../load/orchestrator_python.bash
   load_bats_ext
   setup_home_dir
   skip_if_orchestrator_tests_not_enabled
@@ -14,14 +15,14 @@ setup() {
 
 teardown() {
   teardown_home_dir
-  kill_ockam_pid
+  kill_background_pids
 }
 
 # ===== TESTS
 
 # For most of the examples, we run `$OCKAM --rm` in a subshell, store its PID, and keep trying
 # for 5 minutes a `curl http://localhost:8000/agents` until it returns a response that
-# contains `.agents[0].name == "henry"`
+# contains `.agents[0].name == "henry"`. In others, we wait until the public endpoint is reachable.
 
 @test "example 001" {
   example_dir="$MAIN_EXAMPLES_DIR"/001
@@ -29,9 +30,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -42,9 +43,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -55,9 +56,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -68,26 +69,33 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
-  res="$(echo $output | jq -r '.agents[0].name')"
-  assert_equal "$res" "henry"
+  # validate the public endpoint is reachable and returns an ok response
+  endpoint="$(public_endpoint 'example004')"
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "$endpoint"
 }
 
 @test "example 005" {
-  skip "Failing to connect to localhost:5555"
-
   example_dir="$MAIN_EXAMPLES_DIR"/005
   check_dir_exists "$example_dir"
   pushd "$example_dir" >/dev/null || return 1
 
-  $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  pushd data >/dev/null || return 1
+  python3 -m http.server --bind 127.0.0.1 5555 &
+  add_background_pid $!
+  popd >/dev/null || return 1
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
-  res="$(echo $output | jq -r '.agents[0].name')"
-  assert_equal "$res" "henry"
+  $OCKAM --rm --no-logs &
+  add_background_pid $!
+
+  sleep 30 # wait until the zone is created so we can generate an enrollment ticket
+  $OCKAM zone outlet --relay files --to 127.0.0.1:5555 &
+  add_background_pid $!
+
+  # validate the public endpoint is reachable and returns an ok response
+  endpoint="$(public_endpoint 'example005')"
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "$endpoint"
 }
 
 @test "example 006" {
@@ -96,9 +104,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -109,9 +117,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -122,9 +130,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -135,9 +143,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
   res="$(echo $output | jq -r '.agents | length')"
   assert_equal "$res" "5"
 }
@@ -148,11 +156,11 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "localhost:8000"
-  res="$(echo $output | jq -r '.agents[0].name')"
-  assert_equal "$res" "henry"
+  # validate the public endpoint is reachable and returns an ok response
+  endpoint="$(public_endpoint 'example010')"
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "$endpoint"
 }
 
 @test "example 011" {
@@ -161,11 +169,11 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
   # validate the public endpoint is reachable and returns an ok response
-  public_endpoint="$(public_endpoint 'example-011')"
-  run_success curl -sSf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "$public_endpoint"
+  endpoint="$(public_endpoint 'example011')"
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "$endpoint"
 }
 
 @test "example 012" {
@@ -174,9 +182,9 @@ teardown() {
   pushd "$example_dir" >/dev/null || return 1
 
   $OCKAM --rm --no-logs &
-  export OCKAM_PID=$!
+  add_background_pid $!
 
   # validate the public endpoint is reachable and returns an ok response
-  public_endpoint="$(public_endpoint 'example-012')"
-  run_success curl -sSf --retry-all-errors --retry-delay 30 --retry 10 -m 5 "$public_endpoint"
+  endpoint="$(public_endpoint 'example012')"
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "$endpoint"
 }

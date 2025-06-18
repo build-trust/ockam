@@ -23,10 +23,23 @@ function check_dir_exists() {
   return 0
 }
 
-function kill_ockam_pid() {
-  if [[ -n "$OCKAM_PID" ]]; then
-    kill $OCKAM_PID 2>/dev/null || true
-    wait $OCKAM_PID 2>/dev/null || true
-    unset OCKAM_PID
+function add_background_pid() {
+  local pid="$1"
+  if [[ -z "$PENDING_PIDS" ]]; then
+    PENDING_PIDS="$pid"
+  else
+    PENDING_PIDS="$PENDING_PIDS;$pid"
+  fi
+}
+function kill_background_pids() {
+  if [[ -n "$PENDING_PIDS" ]]; then
+    IFS=';' read -ra pids <<<"$PENDING_PIDS"
+    for pid in "${pids[@]}"; do
+      kill $pid 2>/dev/null || true
+      wait $pid 2>/dev/null || true
+      sleep 5
+      kill -9 $pid 2>/dev/null || true
+    done
+    unset PENDING_PIDS
   fi
 }

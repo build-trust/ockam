@@ -57,6 +57,10 @@ impl ReplCommand {
     }
 
     pub async fn open_repl(&self, opts: &CommandGlobalOpts) -> miette::Result<()> {
+        if !opts.terminal.is_tty() {
+            return Ok(());
+        }
+
         use tokio::net::TcpStream;
         use tokio::time::sleep;
 
