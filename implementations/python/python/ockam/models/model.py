@@ -120,14 +120,14 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
             return _inference_profile_cache[cache_key]
         else:
             inference_profile_name = f'{cluster_id}_{sanitized_model_name}'
-            bedrock_client = boto3.client('bedrock', region_name=region)
+            bedrock_client = boto3.client("bedrock", region_name=region)
             # Check if profile already exists
             try:
-                paginator = bedrock_client.get_paginator('list_inference_profiles')
-                for page in paginator.paginate(typeEquals='APPLICATION'):
-                    for profile in page.get('inferenceProfileSummaries', []):
-                        if profile['inferenceProfileName'] == inference_profile_name:
-                            arn = profile['inferenceProfileArn']
+                paginator = bedrock_client.get_paginator("list_inference_profiles")
+                for page in paginator.paginate(typeEquals="APPLICATION"):
+                    for profile in page.get("inferenceProfileSummaries", []):
+                        if profile["inferenceProfileName"] == inference_profile_name:
+                            arn = profile["inferenceProfileArn"]
                             # Cache the result
                             _inference_profile_cache[cache_key] = arn
                             return arn
@@ -138,29 +138,30 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
             # Determine the source ARN for the new profile
             if model_identifier in BEDROCK_INFERENCE_PROFILE_MAP:
                 source_profile_id = BEDROCK_INFERENCE_PROFILE_MAP[model_identifier]
-                model_source_arn = f'arn:aws:bedrock:{region}:{account_id}:inference-profile/{source_profile_id}'
+                model_source_arn = f"arn:aws:bedrock:{region}:{account_id}:inference-profile/{source_profile_id}"
             else:
                 # This is a standard foundation model
-                model_source_arn = f'arn:aws:bedrock:{region}::foundation-model/{model_identifier}'
+                model_source_arn = f"arn:aws:bedrock:{region}::foundation-model/{model_identifier}"
             # Create the profile
             try:
                 response = bedrock_client.create_inference_profile(
                     inferenceProfileName=inference_profile_name,
-                    modelSource={'copyFrom': model_source_arn},
+                    modelSource={"copyFrom": model_source_arn},
                     tags=[
-                        {'key': 'ockam.ai/clusterID', 'value': cluster_id},
-                        {'key': 'ockam.ai/modelID', 'value': model_identifier}
-                    ]
+                        {"key": "ockam.ai/clusterID", "value": cluster_id},
+                        {"key": "ockam.ai/modelID", "value": model_identifier},
+                    ],
                 )
-                created_arn = response['inferenceProfileArn']
+                created_arn = response["inferenceProfileArn"]
                 # Cache the newly created ARN
                 _inference_profile_cache[cache_key] = created_arn
                 return created_arn
             except bedrock_client.exceptions.ConflictException:
                 _inference_profile_cache[cache_key] = None
                 return None
-            except Exception as e:
+            except Exception:
                 return None
+
 
 class Model:
     def __init__(self, name, **kwargs):
@@ -214,7 +215,9 @@ class Model:
                     if arn:
                         self.kwargs["model_id"] = arn
                     else:
-                        warn(f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly.")
+                        warn(
+                            f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly."
+                        )
 
     def support_tools(self):
         if "deepseek" in self.name:

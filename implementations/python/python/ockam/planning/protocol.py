@@ -1,7 +1,7 @@
-from typing import List, Protocol, AsyncGenerator
+from typing import Protocol, AsyncGenerator
 
 from typing_extensions import Optional
-from ..nodes.message import ConversationMessage, UserMessage, AssistantMessage
+from ..nodes.message import ConversationMessage
 
 
 class Plan(Protocol):

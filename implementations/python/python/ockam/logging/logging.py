@@ -37,6 +37,7 @@ LOGGING_CONFIG = {
     "root": {"level": "INFO", "handlers": ["default"]},
 }
 
+
 def get_logging_config():
     config = LOGGING_CONFIG
     # Disable logging if explicitly set to 0; otherwise, assume it's enabled
