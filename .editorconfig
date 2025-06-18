@@ -49,5 +49,5 @@ end_of_line = unset
 insert_final_newline = unset
 
 [*.py]
-indent_style = space
-indent_size = 4
+indent_style = unset
+indent_size = unset

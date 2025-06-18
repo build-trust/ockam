@@ -1,4 +1,4 @@
-from ockam.nodes.message import ConversationMessage, StreamedConversationSnippet, ConversationSnippet, Phase
+from ockam.nodes.message import ConversationMessage, StreamedConversationSnippet, ConversationSnippet
 
 
 class ConversationResponse:

@@ -9,7 +9,7 @@ test: build
 
 lint:
 	uv run pylint python examples
-	uv run ruff check examples python --fix
+	uv run ruff check examples python --fix --exit-non-zero-on-fix
 
 clean:
 	rm -rf python/ockam/*.abi3.so
@@ -19,7 +19,7 @@ very_clean: clean
 fmt: format
 format:
 	cargo fmt
-	uv run ruff format examples python tests
+	uv run ruff format examples python tests --exit-non-zero-on-format
 
 release-linux:
 	docker run --rm -v "$(shell pwd)/..":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
