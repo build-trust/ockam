@@ -14,17 +14,20 @@ PROVIDER_ALIASES = {
         "claude-3-5-sonnet-v1": "litellm_proxy/anthropic.claude-3-5-sonnet-20240620-v1:0",
         "claude-3-5-sonnet-v2": "litellm_proxy/anthropic.claude-3-5-sonnet-20241022-v2:0",
         "claude-3-7-sonnet-v1": "litellm_proxy/anthropic.claude-3-7-sonnet-20250219-v1:0",
+        "claude-opus-4-v1": "litellm_proxy/anthropic.claude-opus-4-20250514-v1:0",
+        "claude-sonnet-4-v1": "litellm_proxy/anthropic.claude-sonnet-4-20250514-v1:0",
         "deepseek-r1": "litellm_proxy/us.deepseek.r1-v1:0",
         "embed-english-v3": "litellm_proxy/cohere.embed-english-v3",
         "embed-multilingual-v3": "litellm_proxy/cohere.embed-multilingual-v3",
-        "gemma3": "litellm_proxy/gemma3",  # gemma3 is only for local ollama
-        "gemma3:27b": "litellm_proxy/gemma3:27b",  # gemma3 is only for local ollama
         "llama3.2": "litellm_proxy/meta.llama3-2-90b-instruct-v1:0",
         "llama3.3": "litellm_proxy/meta.llama3-3-70b-instruct-v1:0",
+        "llama4-maverick": "litellm_proxy/meta.llama4-maverick-17b-instruct-v1:0",
+        "llama4-scout": "litellm_proxy/meta.llama4-scout-17b-instruct-v1:0",
         "nomic-embed-text": "litellm_proxy/nomic-embed-text",
         "nova-lite-v1": "litellm_proxy/amazon.nova-lite-v1:0",
         "nova-micro-v1": "litellm_proxy/amazon.nova-micro-v1:0",
         "nova-pro-v1": "litellm_proxy/amazon.nova-pro-v1:0",
+        "nova-premier-v1": "litellm_proxy/amazon.nova-premier-v1:0",
         "titan-embed-image-v1": "litellm_proxy/amazon.titan-embed-image-v1",
         "titan-embed-text-v1": "litellm_proxy/amazon.titan-embed-text-v1",
         "titan-embed-text-v2": "litellm_proxy/amazon.titan-embed-text-v2:0",
@@ -69,9 +72,14 @@ BEDROCK_INFERENCE_PROFILE_MAP = {
     "amazon.nova-lite-v1:0": "us.amazon.nova-lite-v1:0",
     "amazon.nova-micro-v1:0": "us.amazon.nova-micro-v1:0",
     "amazon.nova-pro-v1:0": "us.amazon.nova-pro-v1:0",
+    "amazon.nova-premier-v1:0": "us.amazon.nova-premier-v1:0",
     "anthropic.claude-3-7-sonnet-20250219-v1:0": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+    "anthropic.claude-opus-4-20250514-v1:0": "us.anthropic.claude-opus-4-20250514-v1:0",
+    "anthropic.claude-sonnet-4-20250514-v1:0": "us.anthropic.claude-sonnet-4-20250514-v1:0",
     "meta.llama3-2-90b-instruct-v1:0": "us.meta.llama3-2-90b-instruct-v1:0",
     "meta.llama3-3-70b-instruct-v1:0": "us.meta.llama3-3-70b-instruct-v1:0",
+    "meta.llama4-maverick-17b-instruct-v1:0": "us.meta.llama4-maverick-17b-instruct-v1:0",
+    "meta.llama4-scout-17b-instruct-v1:0": "us.meta.llama4-scout-17b-instruct-v1:0",
     "us.deepseek.r1-v1:0": "us.deepseek.r1-v1:0",
 }
 
@@ -81,7 +89,7 @@ cluster_id = None
 init_lock = threading.Lock()
 
 
-def construct_bedrock_arn(model_identifier: str) -> Optional[str]:
+def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional[str]:
     global region, account_id, cluster_id, init_lock
     with init_lock:
         if account_id is None:
@@ -102,7 +110,7 @@ def construct_bedrock_arn(model_identifier: str) -> Optional[str]:
                 warn(f"Could not construct Bedrock ARN: {e}")
                 return None
 
-    sanitized_model_name = model_identifier.replace(":", "_").replace(".", "_")
+    sanitized_model_name = original_name.replace(":", "_").replace(".", "_")
     inference_profile_name = f'{cluster_id}_{sanitized_model_name}'
 
     bedrock_client = boto3.client('bedrock', region_name=region)
@@ -191,7 +199,7 @@ class Model:
                 # If no override, use the automatic get-or-create logic
                 provider, _ = resolved_name.split("/", 1)
                 if provider == "bedrock" or provider == "litellm_proxy":
-                    arn = construct_bedrock_arn(model_identifier)
+                    arn = construct_bedrock_arn(model_identifier, original_name)
                     if arn:
                         self.kwargs["model_id"] = arn
                     else:
