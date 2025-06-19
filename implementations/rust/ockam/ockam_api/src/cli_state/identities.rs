@@ -173,10 +173,7 @@ impl CliState {
     /// Return the identifier for identity given an optional name.
     /// If that name is None, then we return the identifier of the default identity
     #[instrument(skip_all, fields(name = name.clone()), level = Level::TRACE)]
-    pub async fn get_identifier_by_optional_name(
-        &self,
-        name: &Option<String>,
-    ) -> Result<Identifier> {
+    pub async fn get_identifier_by_optional_name(&self, name: Option<&str>) -> Result<Identifier> {
         let repository = self.identities_repository();
         let result = match name {
             Some(name) => repository.get_identifier(name).await?,
@@ -192,7 +189,7 @@ impl CliState {
     /// Return a full identity from its name
     /// Use the default identity if no name is given
     #[instrument(skip_all, fields(name = name.clone()), level = Level::TRACE)]
-    pub async fn get_identity_by_optional_name(&self, name: &Option<String>) -> Result<Identity> {
+    pub async fn get_identity_by_optional_name(&self, name: Option<&str>) -> Result<Identity> {
         let named_identity = match name {
             Some(name) => {
                 self.identities_repository()
@@ -366,7 +363,7 @@ impl CliState {
 
 /// Support methods
 impl CliState {
-    /// Once a identity has been created, store it.
+    /// Once an identity has been created, store it.
     /// If there is no previous default identity we set it as the default identity
     #[instrument(skip_all, fields(name = %name, identifier = %identifier, vault_name = %vault_name), level = Level::TRACE)]
     pub async fn store_named_identity(
@@ -408,12 +405,10 @@ impl CliState {
         }
     }
 
-    fn missing_identifier(name: &Option<String>) -> Error {
-        let message = name
-            .clone()
-            .map_or("no default identifier found".to_string(), |n| {
-                format!("no identifier found with name {}", n)
-            });
+    fn missing_identifier(name: Option<&str>) -> Error {
+        let message = name.map_or("no default identifier found".to_string(), |n| {
+            format!("no identifier found with name {}", n)
+        });
         Error::new(Origin::Api, Kind::NotFound, message)
     }
 }

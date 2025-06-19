@@ -1,0 +1,3 @@
+```sh
+$ ockam identity import $EXPORTED_IDENTITY
+```

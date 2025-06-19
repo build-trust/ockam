@@ -1,4 +1,7 @@
-use crate::{Signature, SigningKeyType, SigningSecretKeyHandle, VerifyingPublicKey};
+use crate::{
+    Signature, SigningKeyType, SigningSecret, SigningSecretKeyHandle, VaultError,
+    VerifyingPublicKey,
+};
 
 use ockam_core::{async_trait, compat::boxed::Box, Result};
 
@@ -35,4 +38,17 @@ pub trait VaultForSigning: Send + Sync + 'static {
         &self,
         signing_secret_key_handle: SigningSecretKeyHandle,
     ) -> Result<bool>;
+
+    /// Get a stored secret by its handle.
+    async fn export_key(
+        &self,
+        _signing_secret_key_handle: &SigningSecretKeyHandle,
+    ) -> Result<SigningSecret> {
+        Err(VaultError::UnsupportedOperation.into())
+    }
+
+    /// Imports a Signing Secret Key into the vault and returns a handle to it.
+    async fn import_key(&self, _signing_secret: SigningSecret) -> Result<SigningSecretKeyHandle> {
+        Err(VaultError::UnsupportedOperation.into())
+    }
 }
