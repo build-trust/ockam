@@ -1,4 +1,5 @@
-use crate::{EDDSA_CURVE25519_PUBLIC_KEY_LENGTH, EDDSA_CURVE25519_SIGNATURE_LENGTH};
+use crate::{VaultError, EDDSA_CURVE25519_PUBLIC_KEY_LENGTH, EDDSA_CURVE25519_SIGNATURE_LENGTH};
+use ockam_core::Result;
 use static_assertions::const_assert_eq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -53,6 +54,35 @@ impl SigningSecret {
         match self {
             SigningSecret::EdDSACurve25519(k) => k.key(),
             SigningSecret::ECDSASHA256CurveP256(k) => k.key(),
+        }
+    }
+
+    /// Return the u8 representation of this signing secret type
+    pub fn type_as_u8(&self) -> u8 {
+        match self {
+            SigningSecret::EdDSACurve25519(_) => 0,
+            SigningSecret::ECDSASHA256CurveP256(_) => 1,
+        }
+    }
+
+    /// Create a new `SigningSecret` from a 32-byte key.
+    pub fn from_key(key: &[u8], key_type: u8) -> Result<Self> {
+        match key_type {
+            0 => {
+                let k: [u8; EDDSA_CURVE25519_SECRET_KEY_LENGTH] =
+                    key.try_into().map_err(|_| VaultError::InvalidKeyType)?;
+                Ok(SigningSecret::EdDSACurve25519(
+                    EdDSACurve25519SecretKey::new(k),
+                ))
+            }
+            1 => {
+                let k: [u8; ECDSA_SHA256_CURVEP256_SECRET_KEY_LENGTH] =
+                    key.try_into().map_err(|_| VaultError::InvalidKeyType)?;
+                Ok(SigningSecret::ECDSASHA256CurveP256(
+                    ECDSASHA256CurveP256SecretKey::new(k),
+                ))
+            }
+            _ => Err(VaultError::InvalidKeyType.into()),
         }
     }
 }

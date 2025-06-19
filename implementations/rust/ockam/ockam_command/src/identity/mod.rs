@@ -2,6 +2,8 @@ use clap::{Args, Subcommand};
 
 pub use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
+pub(crate) use export::ExportCommand;
+pub(crate) use import::ImportCommand;
 pub(crate) use list::ListCommand;
 pub(crate) use show::ShowCommand;
 
@@ -13,6 +15,8 @@ use ockam_node::Context;
 mod create;
 mod default;
 mod delete;
+mod export;
+mod import;
 mod list;
 mod show;
 
@@ -37,6 +41,8 @@ pub enum IdentitySubcommand {
     List(ListCommand),
     Default(DefaultCommand),
     Delete(DeleteCommand),
+    Export(ExportCommand),
+    Import(ImportCommand),
 }
 
 impl IdentityCommand {
@@ -47,6 +53,8 @@ impl IdentityCommand {
             IdentitySubcommand::List(c) => c.run(opts).await,
             IdentitySubcommand::Delete(c) => c.run(opts).await,
             IdentitySubcommand::Default(c) => c.run(opts).await,
+            IdentitySubcommand::Export(c) => c.run(ctx, opts).await,
+            IdentitySubcommand::Import(c) => c.run(ctx, opts).await,
         }
     }
 
@@ -57,6 +65,8 @@ impl IdentityCommand {
             IdentitySubcommand::List(c) => c.name(),
             IdentitySubcommand::Delete(c) => c.name(),
             IdentitySubcommand::Default(c) => c.name(),
+            IdentitySubcommand::Export(c) => c.name(),
+            IdentitySubcommand::Import(c) => c.name(),
         }
         .to_string()
     }

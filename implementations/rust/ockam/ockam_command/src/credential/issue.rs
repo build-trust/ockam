@@ -58,7 +58,7 @@ impl IssueCommand {
     pub async fn run(&self, opts: CommandGlobalOpts) -> miette::Result<()> {
         let authority = opts
             .state
-            .get_identifier_by_optional_name(&self.as_identity)
+            .get_identifier_by_optional_name(self.as_identity.as_deref())
             .await?;
 
         let named_vault = opts.state.get_named_vault_or_default(&self.vault).await?;

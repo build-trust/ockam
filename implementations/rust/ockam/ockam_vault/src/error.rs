@@ -39,6 +39,8 @@ pub enum VaultError {
     InsufficientEncryptBuffer,
     /// Buffer is too short during decryption
     InsufficientDecryptBuffer,
+    /// Unsupported operation
+    UnsupportedOperation,
 }
 
 impl ockam_core::compat::error::Error for VaultError {}
@@ -63,6 +65,9 @@ impl core::fmt::Display for VaultError {
             Self::AeadSecretNotFound => write!(f, "aead secret was not found in the storage"),
             Self::InsufficientEncryptBuffer => write!(f, "insufficient encrypt buffer"),
             Self::InsufficientDecryptBuffer => write!(f, "insufficient decrypt buffer"),
+            VaultError::UnsupportedOperation => {
+                write!(f, "unsupported operation")
+            }
         }
     }
 }

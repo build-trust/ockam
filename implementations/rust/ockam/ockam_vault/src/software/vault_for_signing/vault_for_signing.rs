@@ -141,6 +141,17 @@ impl VaultForSigning for SoftwareVaultForSigning {
             .delete_signing_secret(&signing_secret_key_handle)
             .await
     }
+
+    async fn export_key(
+        &self,
+        signing_secret_key_handle: &SigningSecretKeyHandle,
+    ) -> Result<SigningSecret> {
+        self.get_stored_secret(signing_secret_key_handle).await
+    }
+
+    async fn import_key(&self, signing_secret: SigningSecret) -> Result<SigningSecretKeyHandle> {
+        self.import_key(signing_secret).await
+    }
 }
 
 impl SoftwareVaultForSigning {

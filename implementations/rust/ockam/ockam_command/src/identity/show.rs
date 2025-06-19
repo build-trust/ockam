@@ -105,7 +105,10 @@ impl ShowCommand {
         full: bool,
         encoding: Option<EncodeFormat>,
     ) -> miette::Result<()> {
-        let identity = opts.state.get_identity_by_optional_name(name).await?;
+        let identity = opts
+            .state
+            .get_identity_by_optional_name(name.as_deref())
+            .await?;
 
         let (plain, json) = if full {
             if Some(EncodeFormat::Hex) == encoding {
