@@ -88,6 +88,8 @@ account_id = None
 cluster_id = None
 init_lock = threading.Lock()
 
+_inference_profile_cache = {}
+_cache_lock = threading.Lock()
 
 def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional[str]:
     global region, account_id, cluster_id, init_lock
@@ -111,6 +113,12 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
                 return None
 
     sanitized_model_name = original_name.replace(":", "_").replace(".", "_")
+    cache_key = f"{cluster_id}_{sanitized_model_name}"
+
+    with _cache_lock:
+        if cache_key in _inference_profile_cache:
+            return _inference_profile_cache[cache_key]
+
     inference_profile_name = f'{cluster_id}_{sanitized_model_name}'
 
     bedrock_client = boto3.client('bedrock', region_name=region)
@@ -121,7 +129,11 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
         for page in paginator.paginate(typeEquals='APPLICATION'):
             for profile in page.get('inferenceProfileSummaries', []):
                 if profile['inferenceProfileName'] == inference_profile_name:
-                    return profile['inferenceProfileArn']
+                    arn = profile['inferenceProfileArn']
+                    # Cache the result
+                    with _cache_lock:
+                        _inference_profile_cache[cache_key] = arn
+                    return arn
     except Exception as e:
         warn(f"An error occurred while listing existing inference profiles: {e}")
 
@@ -144,8 +156,13 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
             ]
         )
         created_arn = response['inferenceProfileArn']
+        # Cache the newly created ARN
+        with _cache_lock:
+            _inference_profile_cache[cache_key] = created_arn
         return created_arn
     except bedrock_client.exceptions.ConflictException:
+        with _cache_lock:
+            _inference_profile_cache[cache_key] = None
         return None
     except Exception as e:
         warn(f"Failed to create inference profile '{inference_profile_name}': {e}")
