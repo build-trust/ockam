@@ -58,7 +58,7 @@ class CodeAnalyzer:
 
                 Don't say anything else. Only output one upper case word YES or NO.
             """,
-            model=Model("llama3.1-8b-instruct"),
+            model=Model("nova-micro-v1"),
         )
 
         message = f"Filename: {filename}\nContent:\n\n{content}"
