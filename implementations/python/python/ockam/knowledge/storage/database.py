@@ -13,18 +13,26 @@ from .protocol import Storage
 """
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS document_pieces (
-    id VARCHAR PRIMARY KEY,
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
     namespace TEXT,
     name TEXT,
     text TEXT,
     embedding vector NOT NULL
 );
 CREATE TABLE IF NOT EXISTS documents (
-    id VARCHAR PRIMARY KEY,
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
     namespace TEXT,
     name TEXT,
     text TEXT
 );
+
+ALTER TABLE document_pieces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY document_pieces_policy ON document_pieces USING (tenant_id = current_user);
+CREATE POLICY documents_policy ON documents USING (tenant_id = current_user);
 """
 
 
@@ -33,12 +41,14 @@ class Database(Storage):
     user: Optional[str]
     password: Optional[str]
     connection: Optional[psycopg.AsyncConnection]
+    tenant_id: Optional[str]
 
     def __init__(self, connection_url: str, user: Optional[str] = None, password: Optional[str] = None):
         self.connection_url = connection_url
         self.user = user
         self.password = password
         self.connection = None
+        self.tenant_id = None
 
     async def initialize(self) -> None:
         """
@@ -55,6 +65,13 @@ class Database(Storage):
         else:
             self.connection = await psycopg.AsyncConnection.connect(self.connection_url)
 
+        async with self.connection.cursor() as cursor:
+            await cursor.execute("SELECT \"current_user\"()")
+            result = await cursor.fetchone()
+            if result is None:
+                raise Exception("Failed to connect to the database. No current user found.")
+            self.tenant_id = result[0]
+
     async def delete_all(self):
         """For testing purposes, delete all entries"""
         await self.initialize()
@@ -69,8 +86,8 @@ class Database(Storage):
 
         async with self.connection.cursor() as cursor:
             await cursor.execute(
-                "INSERT INTO documents (namespace, id, name, text) VALUES (%s, %s, %s, %s)",
-                (namespace, id, name, text),
+                "INSERT INTO documents (tenant_id, namespace, id, name, text) VALUES (%s, %s, %s, %s, %s)",
+                (self.tenant_id, namespace, id, name, text),
             )
             await self.connection.commit()
 
@@ -80,8 +97,8 @@ class Database(Storage):
         async with self.connection.cursor() as cursor:
             if id:
                 await cursor.execute(
-                    "SELECT id, name, text FROM documents WHERE namespace = %s AND document_id = %s",
-                    (namespace, id),
+                    "SELECT id, name, text FROM documents WHERE tenant_id = %s AND namespace = %s AND document_id = %s",
+                    (self.tenant_id, namespace, id),
                 )
                 result: Optional[Row] = await cursor.fetchone()
                 if result:
@@ -89,7 +106,7 @@ class Database(Storage):
                 else:
                     raise Exception(f"Document {id} not found.")
             else:
-                await cursor.execute("SELECT id, name, text FROM documents WHERE namespace = %s", (namespace,))
+                await cursor.execute("SELECT id, name, text FROM documents WHERE tenant_id = %s AND namespace = %s", (self.tenant_id, namespace,))
                 results: List[Row] = await cursor.fetchall()
                 return [SearchHit(result[0], result[1], result[2]) for result in results]
 
@@ -99,8 +116,8 @@ class Database(Storage):
         async with self.connection.cursor() as cursor:
             for piece in pieces:
                 await cursor.execute(
-                    "INSERT INTO document_pieces (namespace, id, name, text, embedding) VALUES (%s, %s, %s, %s, %s)",
-                    (namespace, id, name, piece.text, piece.embedding),
+                    "INSERT INTO document_pieces (tenant_id, namespace, id, name, text, embedding) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (self.tenant_id, namespace, id, name, piece.text, piece.embedding),
                 )
             await self.connection.commit()
 
@@ -111,10 +128,10 @@ class Database(Storage):
             await cursor.execute(
                 """
                 SELECT id, name, text, (embedding <=> %s::sparsevec) as distance FROM document_pieces
-                WHERE namespace = %s AND (embedding <=> %s::sparsevec) <= %s
+                WHERE tenant_id = %s AND namespace = %s AND (embedding <=> %s::sparsevec) <= %s
                 ORDER BY distance LIMIT %s
                 """,
-                (embedding, namespace, embedding, max_distance * 2.0, max_results),
+                (embedding, self.tenant_id, namespace, embedding, max_distance * 2.0, max_results),
             )
             results = await cursor.fetchall()
             # returned cosine distance is in the range [0, 2]

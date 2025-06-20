@@ -3,7 +3,6 @@ from .clusters import Cluster, Zone
 from .flows import Flow, FlowOperation, START, END
 from .nodes.message import FlowReference
 from .history import ConversationHistory
-from .logging import get_logging_config, info, warning, error, debug, set_log_level
 from .logging import info, warning, error, debug, set_log_levels, get_logger
 from .models import Model
 from .nodes import Node, RemoteNode, LocalNode, LocalNodeProtocol, MailboxProtocol, WorkerProtocol, ContextProtocol
