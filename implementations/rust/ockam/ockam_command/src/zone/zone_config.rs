@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZoneConfig {
-    #[serde(alias = "zone_name")]
+    #[serde(alias = "zone_name", deserialize_with = "deserialize_with_env")]
     pub name: String,
     pub pods: Vec<Pod>,
 }
@@ -113,14 +113,25 @@ impl ZoneConfig {
     fn validate(&self) -> Result<(), miette::Error> {
         // Limit zone name to 10 chars
         if self.name.len() > 10 {
-            return Err(miette::miette!("Zone name exceeds 10 characters"));
+            return Err(miette::miette!(
+                "Zone name exceeds 10 characters: {}",
+                self.name
+            ));
+        }
+
+        // Zone name must be alphanumeric only
+        if !self.name.chars().all(char::is_alphanumeric) {
+            return Err(miette::miette!(
+                "Zone name must be alphanumeric only: {}",
+                self.name
+            ));
         }
 
         // Limit pod name to 10 chars
         for pod in &self.pods {
             if pod.name.len() > 10 {
                 return Err(miette::miette!(format!(
-                    "Pod name '{}' exceeds 10 characters",
+                    "Pod name exceeds 10 characters: {}",
                     pod.name
                 )));
             }
@@ -131,7 +142,7 @@ impl ZoneConfig {
             for container in &pod.containers {
                 if container.name.len() > 10 {
                     return Err(miette::miette!(format!(
-                        "Container name '{}' exceeds 10 characters",
+                        "Container name exceeds 10 characters: {}",
                         container.name
                     )));
                 }
@@ -143,7 +154,7 @@ impl ZoneConfig {
         for pod in &self.pods {
             if let Some(existing) = pod_names.insert(&pod.name, pod) {
                 return Err(miette::miette!(format!(
-                    "Duplicate pod name '{}' found in zone configuration",
+                    "Duplicate pod name found in zone configuration: {}",
                     existing.name
                 )));
             }
@@ -151,7 +162,7 @@ impl ZoneConfig {
             for container in &pod.containers {
                 if let Some(existing) = container_names.insert(&container.name, container) {
                     return Err(miette::miette!(format!(
-                        "Duplicate container name '{}' found in pod '{}'",
+                        "Duplicate container name found in pod '{}': {}",
                         existing.name, pod.name
                     )));
                 }
@@ -413,6 +424,17 @@ impl Outlet {
     }
 }
 
+fn deserialize_with_env<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let s = shellexpand::env(&s).map(|c| c.to_string()).map_err(|e| {
+        serde::de::Error::custom(format!("Environment variable '{}' not found", e.var_name))
+    })?;
+    Ok(s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -420,7 +442,7 @@ mod tests {
     #[test]
     fn test_parse_yaml_zone_config() {
         let yaml = r#"
-name: my-zone
+name: testzone
 pods:
 - name: main-pod
   expose-port: 3000,
@@ -456,7 +478,7 @@ pods:
         let config = ZoneConfig::from_contents(yaml).unwrap();
 
         // Verify strictly typed fields
-        assert_eq!(config.name, "my-zone");
+        assert_eq!(config.name, "testzone");
         assert_eq!(config.pods.len(), 2);
         assert_eq!(config.pods[0].name, "main-pod");
         assert_eq!(config.pods[0].containers[0].image, "client-app");
@@ -569,192 +591,160 @@ pods:
         assert!(local_images.contains(&"trimmed-local".to_string()));
     }
 
-    #[test]
-    fn test_validate_valid_config() {
-        let config = ZoneConfig {
-            name: "valid-zone".to_string(),
-            pods: vec![Pod {
-                name: "pod1".to_string(),
-                public: false,
-                containers: vec![Container {
-                    name: "abc".to_string(),
-                    image: "image1".to_string(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-        };
+    mod validation {
+        use super::*;
 
-        assert!(config.validate().is_ok());
-    }
-
-    #[test]
-    fn test_validate_long_zone_name() {
-        let config = ZoneConfig {
-            name: "this-zone-name-is-too-long".to_string(),
-            pods: vec![Pod {
-                name: "pod1".to_string(),
-                public: false,
-                containers: vec![Container {
-                    name: "abc".to_string(),
-                    image: "image1".to_string(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-        };
-
-        let result = config.validate();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Zone name exceeds 10 characters"));
-    }
-
-    #[test]
-    fn test_validate_long_pod_name() {
-        let config = ZoneConfig {
-            name: "zone".to_string(),
-            pods: vec![Pod {
-                name: "pod-name-too-long".to_string(),
-                public: false,
-                containers: vec![Container {
-                    name: "abc".to_string(),
-                    image: "image1".to_string(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-        };
-
-        let result = config.validate();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Pod name 'pod-name-too-long' exceeds 10 characters"));
-    }
-
-    #[test]
-    fn test_validate_long_container_name() {
-        let config = ZoneConfig {
-            name: "zone".to_string(),
-            pods: vec![Pod {
-                name: "pod1".to_string(),
-                public: false,
-                containers: vec![Container {
-                    name: "container-name-is-too-long".to_string(),
-                    image: "image1".to_string(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-        };
-
-        let result = config.validate();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Container name 'container-name-is-too-long' exceeds 10 characters"));
-    }
-
-    #[test]
-    fn test_validate_duplicate_names() {
-        // Test duplicate pod names
-        let config_duplicate_pods = ZoneConfig {
-            name: "zone".to_string(),
-            pods: vec![
-                Pod {
+        #[test]
+        fn test_validate_valid_config() {
+            let config = ZoneConfig {
+                name: "testzone".to_string(),
+                pods: vec![Pod {
                     name: "pod1".to_string(),
                     public: false,
                     containers: vec![Container {
-                        name: "container1".to_string(),
+                        name: "abc".to_string(),
                         image: "image1".to_string(),
                         ..Default::default()
                     }],
                     ..Default::default()
-                },
-                Pod {
-                    name: "pod1".to_string(), // Duplicate pod name
+                }],
+            };
+
+            assert!(config.validate().is_ok());
+        }
+
+        #[test]
+        fn test_validate_long_zone_name() {
+            let config = ZoneConfig {
+                name: "this-zone-name-is-too-long".to_string(),
+                pods: vec![],
+            };
+
+            let result = config.validate();
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("Zone name exceeds 10 characters"));
+        }
+
+        #[test]
+        fn test_validate_non_alphanumeric_zone_name() {
+            let config = ZoneConfig {
+                name: "z-one".to_string(),
+                pods: vec![],
+            };
+
+            let result = config.validate();
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("Zone name must be alphanumeric only"));
+        }
+
+        #[test]
+        fn test_validate_long_pod_name() {
+            let config = ZoneConfig {
+                name: "zone".to_string(),
+                pods: vec![Pod {
+                    name: "pod-name-too-long".to_string(),
+                    ..Default::default()
+                }],
+            };
+
+            let result = config.validate();
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_validate_long_container_name() {
+            let config = ZoneConfig {
+                name: "zone".to_string(),
+                pods: vec![Pod {
+                    name: "pod1".to_string(),
                     public: false,
                     containers: vec![Container {
-                        name: "container2".to_string(),
-                        image: "image2".to_string(),
+                        name: "container-name-is-too-long".to_string(),
                         ..Default::default()
                     }],
                     ..Default::default()
-                },
-            ],
-        };
+                }],
+            };
 
-        let result = config_duplicate_pods.validate();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Duplicate pod name 'pod1' found"));
+            let result = config.validate();
+            assert!(result.is_err());
+        }
 
-        // Test duplicate container names within a pod
-        let config_duplicate_containers = ZoneConfig {
-            name: "zone".to_string(),
-            pods: vec![Pod {
-                name: "pod1".to_string(),
-                public: false,
-                containers: vec![
-                    Container {
-                        name: "container1".to_string(),
-                        image: "image1".to_string(),
+        #[test]
+        fn test_validate_duplicate_names() {
+            // Test duplicate pod names
+            let config_duplicate_pods = ZoneConfig {
+                name: "zone".to_string(),
+                pods: vec![
+                    Pod {
+                        name: "pod1".to_string(),
                         ..Default::default()
                     },
-                    Container {
-                        name: "container1".to_string(), // Duplicate container name
-                        image: "image2".to_string(),
+                    Pod {
+                        name: "pod1".to_string(), // Duplicate pod name
                         ..Default::default()
                     },
                 ],
-                ..Default::default()
-            }],
-        };
+            };
 
-        let result = config_duplicate_containers.validate();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Duplicate container name 'container1' found in pod 'pod1'"));
-    }
+            let result = config_duplicate_pods.validate();
+            assert!(result.is_err());
 
-    #[test]
-    fn test_validate_multiple_issues() {
-        let config = ZoneConfig {
-            name: "long-zone-name".to_string(),
-            pods: vec![Pod {
-                name: "long-pod-name".to_string(),
-                public: false,
-                containers: vec![Container {
-                    name: "container-name-is-too-long".to_string(),
-                    image: "image1".to_string(),
+            // Test duplicate container names within a pod
+            let config_duplicate_containers = ZoneConfig {
+                name: "zone".to_string(),
+                pods: vec![Pod {
+                    name: "pod1".to_string(),
+                    public: false,
+                    containers: vec![
+                        Container {
+                            name: "container1".to_string(),
+                            ..Default::default()
+                        },
+                        Container {
+                            name: "container1".to_string(), // Duplicate container name
+                            ..Default::default()
+                        },
+                    ],
                     ..Default::default()
                 }],
-                ..Default::default()
-            }],
-        };
+            };
 
-        let result = config.validate();
-        assert!(result.is_err());
-        // It should fail on the first validation (zone name)
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Zone name exceeds 10 characters"));
+            let result = config_duplicate_containers.validate();
+            assert!(result.is_err());
+        }
+
+        #[test]
+        fn test_validate_multiple_issues() {
+            let config = ZoneConfig {
+                name: "long-zone-name".to_string(),
+                pods: vec![Pod {
+                    name: "long-pod-name".to_string(),
+                    public: false,
+                    containers: vec![Container {
+                        name: "container-name-is-too-long".to_string(),
+                        image: "image1".to_string(),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+            };
+
+            let result = config.validate();
+            assert!(result.is_err());
+        }
     }
 
     #[test]
     fn test_parse_yaml_with_portals() {
         let yaml = r#"
-name: test-zone
+name: testzone
 pods:
 - name: pod1
   containers:
@@ -794,7 +784,7 @@ pods:
     #[test]
     fn test_parse_yaml_with_tcp_alias() {
         let yaml = r#"
-name: test-zone
+name: testzone
 pods:
 - name: pod1
   containers:
@@ -826,7 +816,7 @@ pods:
     #[test]
     fn test_default_portals() {
         let yaml = r#"
-name: test-zone
+name: testzone
 pods:
 - name: pod1
   containers:
@@ -847,7 +837,7 @@ pods:
     #[test]
     fn test_other_fields_in_portals() {
         let yaml = r#"
-name: test-zone
+name: testzone
 pods:
 - name: pod1
   containers:
@@ -949,10 +939,88 @@ pods:
     }
 
     #[test]
+    fn test_env_var_substitution_in_zone_name() {
+        use std::env;
+
+        // Set environment variables for testing
+        env::set_var("TEST_ZONE_NAME", "zn");
+
+        // Test with ${VAR} syntax
+        let yaml_brace_syntax = r#"
+        name: ${TEST_ZONE_NAME}
+        pods:
+        - name: main-pod
+          containers:
+          - name: app
+            image: app-image
+        "#;
+
+        let config1 = ZoneConfig::from_contents(yaml_brace_syntax).unwrap();
+        assert_eq!(config1.name, "zn");
+
+        // Test with $VAR syntax
+        let yaml_dollar_syntax = r#"
+        name: $TEST_ZONE_NAME
+        pods:
+        - name: main-pod
+          containers:
+          - name: app
+            image: app-image
+        "#;
+
+        let config2 = ZoneConfig::from_contents(yaml_dollar_syntax).unwrap();
+        assert_eq!(config2.name, "zn");
+
+        // Test with prefixed env var
+        let yaml_prefix_syntax = r#"
+        name: pre${TEST_ZONE_NAME}
+        pods:
+        - name: main-pod
+          containers:
+          - name: app
+            image: app-image
+        "#;
+        let config2 = ZoneConfig::from_contents(yaml_prefix_syntax).unwrap();
+        assert_eq!(config2.name, "prezn");
+
+        // Test with a regular string (no substitution)
+        let yaml_no_env = r#"
+        name: zn
+        pods:
+        - name: main-pod
+          containers:
+          - name: app
+            image: app-image
+        "#;
+
+        let config3 = ZoneConfig::from_contents(yaml_no_env).unwrap();
+        assert_eq!(config3.name, "zn");
+
+        // Test error when environment variable doesn't exist
+        let yaml_missing_env = r#"
+        name: ${NONEXISTENT_VAR}
+        pods:
+        - name: main-pod
+          containers:
+          - name: app
+            image: app-image
+        "#;
+
+        let result = ZoneConfig::from_contents(yaml_missing_env);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Environment variable 'NONEXISTENT_VAR' not found"));
+
+        env::remove_var("TEST_ZONE_NAME");
+    }
+
+    #[test]
     fn test_get_main_pod() {
         // only one pod exists
         let yaml_single_pod = r#"
-        name: test-zone
+        name: testzone
         pods:
         - name: single-pod
           containers:
@@ -966,7 +1034,7 @@ pods:
 
         // multiple pods, one named "main-pod"
         let yaml_with_main = r#"
-        name: test-zone
+        name: testzone
         pods:
         - name: pod1
           containers:
@@ -988,7 +1056,7 @@ pods:
 
         // multiple pods, none named "main-pod"
         let yaml_without_main = r#"
-        name: test-zone
+        name: testzone
         pods:
         - name: pod1
           containers:
@@ -1005,7 +1073,7 @@ pods:
 
         // no pods
         let yaml_no_pods = r#"
-        name: test-zone
+        name: testzone
         pods: []
         "#;
 
@@ -1013,64 +1081,67 @@ pods:
         assert!(config.is_err());
     }
 
-    #[test]
-    fn test_pod_get_outlets_with_repl() {
-        // Setup pod with multiple outlets including a "repl" outlet
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            public: false,
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
+    mod get_outlets {
+        use super::*;
+
+        #[test]
+        fn test_pod_get_outlets_with_repl() {
+            // Setup pod with multiple outlets including a "repl" outlet
+            let pod = Pod {
+                name: "test-pod".to_string(),
+                public: false,
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "app-image".to_string(),
+                    ..Default::default()
+                }],
+                portals: Portals {
+                    inlets: vec![],
+                    outlets: vec![
+                        Outlet {
+                            name: Some("db".to_string()),
+                            to: "postgres:5432".to_string(),
+                            ..Default::default()
+                        },
+                        Outlet {
+                            name: Some("repl".to_string()),
+                            to: "console:1234".to_string(),
+                            ..Default::default()
+                        },
+                        Outlet {
+                            name: Some("cache".to_string()),
+                            to: "redis:6379".to_string(),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
                 ..Default::default()
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![
-                    Outlet {
-                        name: Some("db".to_string()),
-                        to: "postgres:5432".to_string(),
-                        ..Default::default()
-                    },
-                    Outlet {
-                        name: Some("repl".to_string()),
-                        to: "console:1234".to_string(),
-                        ..Default::default()
-                    },
-                    Outlet {
-                        name: Some("cache".to_string()),
-                        to: "redis:6379".to_string(),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            },
-            ..Default::default()
-        };
+            };
 
-        let outlets = pod.get_outlets();
+            let outlets = pod.get_outlets();
 
-        // The "repl" outlet should be separated
-        assert!(outlets.repl.is_some());
-        let repl = outlets.repl.unwrap();
-        assert_eq!(repl.name, Some("repl".to_string()));
-        assert_eq!(repl.to, "console:1234");
+            // The "repl" outlet should be separated
+            assert!(outlets.repl.is_some());
+            let repl = outlets.repl.unwrap();
+            assert_eq!(repl.name, Some("repl".to_string()));
+            assert_eq!(repl.to, "console:1234");
 
-        // The rest vector should have the other two outlets
-        assert_eq!(outlets.rest.len(), 2);
-        assert!(outlets
-            .rest
-            .iter()
-            .any(|o| o.name == Some("db".to_string())));
-        assert!(outlets
-            .rest
-            .iter()
-            .any(|o| o.name == Some("cache".to_string())));
-    }
+            // The rest vector should have the other two outlets
+            assert_eq!(outlets.rest.len(), 2);
+            assert!(outlets
+                .rest
+                .iter()
+                .any(|o| o.name == Some("db".to_string())));
+            assert!(outlets
+                .rest
+                .iter()
+                .any(|o| o.name == Some("cache".to_string())));
+        }
 
-    #[test]
-    fn test_pod_get_outlets_multiple_yaml() {
-        let config = r"
+        #[test]
+        fn test_pod_get_outlets_multiple_yaml() {
+            let config = r"
 name: example05
 pods:
   - name: main-pod
@@ -1086,249 +1157,250 @@ pods:
           to: localhost:9001
           ";
 
-        let parsed = ZoneConfig::from_contents(config).unwrap();
-        let pod = &parsed.pods[0];
-        let outlets = pod.get_outlets();
-        assert_eq!(
-            outlets.repl.as_ref().unwrap().name,
-            Some("repl".to_string())
-        );
-        assert_eq!(outlets.repl.as_ref().unwrap().to, "localhost:9000");
-        assert_eq!(outlets.rest.len(), 1);
-        assert_eq!(outlets.rest[0].name, Some("custom".to_string()));
-        assert_eq!(outlets.rest[0].to, "localhost:9001");
-    }
+            let parsed = ZoneConfig::from_contents(config).unwrap();
+            let pod = &parsed.pods[0];
+            let outlets = pod.get_outlets();
+            assert_eq!(
+                outlets.repl.as_ref().unwrap().name,
+                Some("repl".to_string())
+            );
+            assert_eq!(outlets.repl.as_ref().unwrap().to, "localhost:9000");
+            assert_eq!(outlets.rest.len(), 1);
+            assert_eq!(outlets.rest[0].name, Some("custom".to_string()));
+            assert_eq!(outlets.rest[0].to, "localhost:9001");
+        }
 
-    #[test]
-    fn test_pod_get_outlets_single_outlet_named() {
-        // Setup pod with a single named outlet (not named "repl")
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            public: false,
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
-                ..Default::default()
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![Outlet {
-                    name: Some("single".to_string()),
-                    to: "service:8080".to_string(),
+        #[test]
+        fn test_pod_get_outlets_single_outlet_named() {
+            // Setup pod with a single named outlet (not named "repl")
+            let pod = Pod {
+                name: "test-pod".to_string(),
+                public: false,
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "app-image".to_string(),
                     ..Default::default()
                 }],
+                portals: Portals {
+                    inlets: vec![],
+                    outlets: vec![Outlet {
+                        name: Some("single".to_string()),
+                        to: "service:8080".to_string(),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        };
+            };
 
-        let outlets = pod.get_outlets();
+            let outlets = pod.get_outlets();
 
-        // When there's only one named outlet, it should not be used as the repl
-        assert!(outlets.repl.is_none());
+            // When there's only one named outlet, it should not be used as the repl
+            assert!(outlets.repl.is_none());
 
-        // The rest vector should be empty
-        assert_eq!(outlets.rest.len(), 1);
-        assert_eq!(outlets.rest.len(), 1);
-        assert_eq!(outlets.rest[0].name, Some("single".to_string()));
-        assert_eq!(outlets.rest[0].to, "service:8080");
-    }
+            // The rest vector should be empty
+            assert_eq!(outlets.rest.len(), 1);
+            assert_eq!(outlets.rest.len(), 1);
+            assert_eq!(outlets.rest[0].name, Some("single".to_string()));
+            assert_eq!(outlets.rest[0].to, "service:8080");
+        }
 
-    #[test]
-    fn test_pod_get_outlets_single_outlet_unnamed() {
-        // Setup pod with a single unnamed outlet (not named "repl")
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            public: false,
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
-                ..Default::default()
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![Outlet {
-                    name: None,
-                    to: "service:8080".to_string(),
+        #[test]
+        fn test_pod_get_outlets_single_outlet_unnamed() {
+            // Setup pod with a single unnamed outlet (not named "repl")
+            let pod = Pod {
+                name: "test-pod".to_string(),
+                public: false,
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "app-image".to_string(),
                     ..Default::default()
                 }],
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
-        let outlets = pod.get_outlets();
-
-        // When there's only one outlet, it should be used as the repl
-        assert!(outlets.repl.is_some());
-        let repl = outlets.repl.unwrap();
-        assert_eq!(repl.name, None);
-        assert_eq!(repl.to, "service:8080");
-
-        // The rest vector should be empty
-        assert_eq!(outlets.rest.len(), 0);
-    }
-
-    #[test]
-    fn test_pod_get_outlets_unnamed_outlets() {
-        // Setup pod with unnamed outlets
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            public: false,
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
-                ..Default::default()
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![
-                    Outlet {
-                        to: "service1:8080".to_string(),
+                portals: Portals {
+                    inlets: vec![],
+                    outlets: vec![Outlet {
+                        name: None,
+                        to: "service:8080".to_string(),
                         ..Default::default()
-                    },
-                    Outlet {
-                        to: "service2:9090".to_string(),
-                        ..Default::default()
-                    },
-                ],
+                    }],
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        };
+            };
 
-        let outlets = pod.get_outlets();
+            let outlets = pod.get_outlets();
 
-        // No "repl" outlet exists
-        assert!(outlets.repl.is_none());
+            // When there's only one outlet, it should be used as the repl
+            assert!(outlets.repl.is_some());
+            let repl = outlets.repl.unwrap();
+            assert_eq!(repl.name, None);
+            assert_eq!(repl.to, "service:8080");
 
-        // The rest vector should have the other outlet
-        assert_eq!(outlets.rest.len(), 2);
-        assert_eq!(outlets.rest[0].to, "service1:8080");
-        assert_eq!(outlets.rest[1].to, "service2:9090");
-    }
+            // The rest vector should be empty
+            assert_eq!(outlets.rest.len(), 0);
+        }
 
-    #[test]
-    fn test_pod_get_outlets_no_outlets() {
-        // Setup pod with no outlets
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            public: false,
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
+        #[test]
+        fn test_pod_get_outlets_unnamed_outlets() {
+            // Setup pod with unnamed outlets
+            let pod = Pod {
+                name: "test-pod".to_string(),
+                public: false,
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "app-image".to_string(),
+                    ..Default::default()
+                }],
+                portals: Portals {
+                    inlets: vec![],
+                    outlets: vec![
+                        Outlet {
+                            to: "service1:8080".to_string(),
+                            ..Default::default()
+                        },
+                        Outlet {
+                            to: "service2:9090".to_string(),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
                 ..Default::default()
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![],
+            };
+
+            let outlets = pod.get_outlets();
+
+            // No "repl" outlet exists
+            assert!(outlets.repl.is_none());
+
+            // The rest vector should have the other outlet
+            assert_eq!(outlets.rest.len(), 2);
+            assert_eq!(outlets.rest[0].to, "service1:8080");
+            assert_eq!(outlets.rest[1].to, "service2:9090");
+        }
+
+        #[test]
+        fn test_pod_get_outlets_no_outlets() {
+            // Setup pod with no outlets
+            let pod = Pod {
+                name: "test-pod".to_string(),
+                public: false,
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "app-image".to_string(),
+                    ..Default::default()
+                }],
+                portals: Portals {
+                    inlets: vec![],
+                    outlets: vec![],
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        };
+            };
 
-        let outlets = pod.get_outlets();
+            let outlets = pod.get_outlets();
 
-        // No outlets means no repl
-        assert!(outlets.repl.is_none());
+            // No outlets means no repl
+            assert!(outlets.repl.is_none());
 
-        // The rest vector should be empty
-        assert_eq!(outlets.rest.len(), 0);
-    }
+            // The rest vector should be empty
+            assert_eq!(outlets.rest.len(), 0);
+        }
 
-    #[test]
-    fn test_pod_get_outlets_multiple_no_repl() {
-        // Setup pod with multiple outlets but no "repl"
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            public: false,
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
+        #[test]
+        fn test_pod_get_outlets_multiple_no_repl() {
+            // Setup pod with multiple outlets but no "repl"
+            let pod = Pod {
+                name: "test-pod".to_string(),
+                public: false,
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "app-image".to_string(),
+                    ..Default::default()
+                }],
+                portals: Portals {
+                    inlets: vec![],
+                    outlets: vec![
+                        Outlet {
+                            name: Some("db".to_string()),
+                            to: "postgres:5432".to_string(),
+                            ..Default::default()
+                        },
+                        Outlet {
+                            name: Some("cache".to_string()),
+                            to: "redis:6379".to_string(),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
                 ..Default::default()
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![
-                    Outlet {
-                        name: Some("db".to_string()),
-                        to: "postgres:5432".to_string(),
-                        ..Default::default()
-                    },
-                    Outlet {
-                        name: Some("cache".to_string()),
-                        to: "redis:6379".to_string(),
-                        ..Default::default()
-                    },
-                ],
+            };
+
+            let outlets = pod.get_outlets();
+
+            // No "repl" outlet exists, and since there are multiple outlets,
+            // none gets chosen for repl (first one doesn't become repl)
+            assert!(outlets.repl.is_none());
+
+            // The rest vector should have both outlets
+            assert_eq!(outlets.rest.len(), 2);
+            assert!(outlets
+                .rest
+                .iter()
+                .any(|o| o.name == Some("db".to_string())));
+            assert!(outlets
+                .rest
+                .iter()
+                .any(|o| o.name == Some("cache".to_string())));
+        }
+
+        #[test]
+        fn test_pod_get_outlets_with_explicit_http_and_logs() {
+            // Setup pod with http and logs outlets explicitly defined
+            let pod = Pod {
+                name: "test-pod".to_string(),
+                public: false,
+                containers: vec![Container {
+                    name: "app".to_string(),
+                    image: "app-image".to_string(),
+                    ..Default::default()
+                }],
+                portals: Portals {
+                    inlets: vec![],
+                    outlets: vec![
+                        Outlet {
+                            name: Some("http".to_string()),
+                            to: "custom-host:8080".to_string(),
+                            ..Default::default()
+                        },
+                        Outlet {
+                            name: Some("logs".to_string()),
+                            to: "logger:1234".to_string(),
+                            pod_name: Some("logging-service".to_string()),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        };
+            };
 
-        let outlets = pod.get_outlets();
+            let outlets = pod.get_outlets();
 
-        // No "repl" outlet exists, and since there are multiple outlets,
-        // none gets chosen for repl (first one doesn't become repl)
-        assert!(outlets.repl.is_none());
+            // Verify the http outlet was correctly assigned
+            assert_eq!(outlets.http.name, Some("http".to_string()));
+            assert_eq!(outlets.http.to, "custom-host:8080");
+            assert!(outlets.http.pod_name.is_none());
 
-        // The rest vector should have both outlets
-        assert_eq!(outlets.rest.len(), 2);
-        assert!(outlets
-            .rest
-            .iter()
-            .any(|o| o.name == Some("db".to_string())));
-        assert!(outlets
-            .rest
-            .iter()
-            .any(|o| o.name == Some("cache".to_string())));
-    }
+            // Verify the logs outlet was correctly assigned
+            assert_eq!(outlets.logs.name, Some("logs".to_string()));
+            assert_eq!(outlets.logs.to, "logger:1234");
+            assert_eq!(outlets.logs.pod_name, Some("logging-service".to_string()));
 
-    #[test]
-    fn test_pod_get_outlets_with_explicit_http_and_logs() {
-        // Setup pod with http and logs outlets explicitly defined
-        let pod = Pod {
-            name: "test-pod".to_string(),
-            public: false,
-            containers: vec![Container {
-                name: "app".to_string(),
-                image: "app-image".to_string(),
-                ..Default::default()
-            }],
-            portals: Portals {
-                inlets: vec![],
-                outlets: vec![
-                    Outlet {
-                        name: Some("http".to_string()),
-                        to: "custom-host:8080".to_string(),
-                        ..Default::default()
-                    },
-                    Outlet {
-                        name: Some("logs".to_string()),
-                        to: "logger:1234".to_string(),
-                        pod_name: Some("logging-service".to_string()),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
-        let outlets = pod.get_outlets();
-
-        // Verify the http outlet was correctly assigned
-        assert_eq!(outlets.http.name, Some("http".to_string()));
-        assert_eq!(outlets.http.to, "custom-host:8080");
-        assert!(outlets.http.pod_name.is_none());
-
-        // Verify the logs outlet was correctly assigned
-        assert_eq!(outlets.logs.name, Some("logs".to_string()));
-        assert_eq!(outlets.logs.to, "logger:1234");
-        assert_eq!(outlets.logs.pod_name, Some("logging-service".to_string()));
-
-        // Verify rest contains no items
-        assert_eq!(outlets.rest.len(), 0);
+            // Verify rest contains no items
+            assert_eq!(outlets.rest.len(), 0);
+        }
     }
 
     #[test]
@@ -1384,13 +1456,13 @@ pods:
         }
     }
 
-    mod env_var_transformation {
+    mod env_section {
         use super::*;
 
         #[test]
         fn test_transform_env_vars_from_map() {
             let input_yaml = r#"
-            name: test-zone
+            name: testzone
             pods:
             - name: main-pod
               containers:
@@ -1451,7 +1523,7 @@ pods:
         #[test]
         fn test_transform_env_vars_from_list_of_keyvalue() {
             let input_yaml = r#"
-            name: test-zone
+            name: testzone
             pods:
             - name: main-pod
               containers:
@@ -1513,7 +1585,7 @@ pods:
         #[test]
         fn test_transform_env_vars_with_empty_env_field() {
             let yaml = r#"
-            name: test-zone
+            name: testzone
             pods:
             - name: main-pod
               containers:
