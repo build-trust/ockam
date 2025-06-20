@@ -11,8 +11,8 @@ doc = false
 
 [dependencies]
 miette = "7.5.0"
-ockam = { path = "../rust/ockam/ockam", version = "^0.154.0" }
-ockam_api = { path = "../rust/ockam/ockam_api", version = "^0.97.0" }
+ockam = { path = "../rust/ockam/ockam", version = "^0.155.0" }
+ockam_api = { path = "../rust/ockam/ockam_api", version = "^0.98.0" }
 once_cell = "1.21.3"
 pyo3 = { version = "0.24.1", features = ["abi3-py312", "experimental-async", "serde"] }
 pyo3-async-runtimes = { git = "https://github.com/davide-baldo/pyo3-async-runtimes.git", branch = "davide-baldo/avoid-gil-in-async-threads", features = ["attributes", "tokio-runtime"] }

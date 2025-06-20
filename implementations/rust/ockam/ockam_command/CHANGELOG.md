@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.155.0 - 2025-06-20
+
+### Added
+
+- Add minimum bats tests for python examples
+- Substitute env var in zone name field in zone config
+- Add identity import/export commands
+- Updated dependencies
+
 ## 0.154.0 - 2025-06-17
 
 ### Added
