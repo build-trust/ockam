@@ -1,6 +1,6 @@
 [package]
 name = "ockam_api"
-version = "0.97.0"
+version = "0.98.0"
 authors = ["Ockam Developers"]
 categories = [
   "cryptography",
@@ -141,7 +141,7 @@ default-features = false
 features = ["no_std", "alloc"]
 
 [dependencies.ockam_vault]
-version = "0.133.0"
+version = "0.134.0"
 path = "../ockam_vault"
 default-features = false
 # FIXME: ockam_vault's dependency curve25519-dalek has non-additive features which
@@ -149,19 +149,19 @@ default-features = false
 features = ["std", "storage"]
 
 [dependencies.ockam_vault_aws]
-version = "0.59.0"
+version = "0.60.0"
 path = "../ockam_vault_aws"
 default-features = false
 features = ["std"]
 
 [dependencies.ockam]
-version = "^0.154.0"
+version = "^0.155.0"
 path = "../ockam"
 default-features = false
 features = ["std", "ockam_transport_tcp", "ockam_transport_udp", "storage"]
 
 [dependencies.ockam_abac]
-version = "0.81.0"
+version = "0.82.0"
 path = "../ockam_abac"
 default-features = false
 
