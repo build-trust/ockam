@@ -9,6 +9,7 @@ async def main(node):
     restaurants = SearchableKnowledge(
         "restaurants",
         model=Model("ollama/nomic-embed-text"),
+        max_knowledge_size=4096,
     )
     await restaurants.add_text(
         "Tony's Pizzeria Menu",
@@ -38,7 +39,6 @@ async def main(node):
         instructions="Assistant to solve some complex task ...",
         model=Model(name="ollama_chat/llama3.2"),
         knowledge=restaurants,
-        max_knowledge_size=4096,
     )
 
     reply = await agent.send("What's the price of a pepperoni pizza?", scope="a", conversation="1")

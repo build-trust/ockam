@@ -60,11 +60,13 @@ class RemoteManager:
             request.instructions,
             request.name,
             request.model,
+            request.memory_model,
+            request.memory_embeddings_model,
             request.tools,
             request.planner,
             request.exposed_as,
             request.knowledge,
-            request.max_knowledge_size,
+            request.max_iterations,
         )
 
         return StartAgentResponse("ok")
@@ -77,8 +79,12 @@ class RemoteManager:
             request.instructions,
             request.number_of_agents,
             request.model,
+            request.memory_model,
+            request.memory_embeddings_model,
             request.tools,
             request.planner,
+            request.knowledge,
+            request.max_iterations,
         )
 
         names = [agent.name for agent in agents]
@@ -128,14 +134,58 @@ class RemoteManagerClient:
 
         return response.identifier
 
-    async def start_agent(self, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size):
+    async def start_agent(
+        self,
+        instructions,
+        name,
+        model,
+        memory_model,
+        memory_embeddings_model,
+        tools,
+        planner,
+        exposed_as,
+        knowledge,
+        max_iterations,
+    ):
         await self.send_request(
-            StartAgentRequest(instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size)
+            StartAgentRequest(
+                instructions,
+                name,
+                model,
+                memory_model,
+                memory_embeddings_model,
+                tools,
+                planner,
+                exposed_as,
+                knowledge,
+                max_iterations,
+            )
         )
 
-    async def start_agents(self, instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size):
+    async def start_agents(
+        self,
+        instructions,
+        number_of_agents,
+        model,
+        memory_model,
+        memory_embeddings_model,
+        tools,
+        planner,
+        knowledge,
+        max_iterations,
+    ):
         response = await self.send_request(
-            StartAgentsRequest(instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size)
+            StartAgentsRequest(
+                instructions,
+                number_of_agents,
+                model,
+                memory_model,
+                memory_embeddings_model,
+                tools,
+                planner,
+                knowledge,
+                max_iterations,
+            )
         )
 
         return response.names

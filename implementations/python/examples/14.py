@@ -9,6 +9,7 @@ async def main(node):
     ockam_documentation = SearchableKnowledge(
         "ockam_documentation",
         model=Model("ollama/nomic-embed-text"),
+        max_knowledge_size=4096,
     )
 
     base_url = "https://raw.githubusercontent.com/build-trust/ockam-documentation/refs/heads/main"
@@ -34,7 +35,6 @@ async def main(node):
         instructions="Assistant to solve some complex task ...",
         model=Model(name="ollama_chat/llama3.2"),
         knowledge=ockam_documentation,
-        max_knowledge_size=4096,
     )
 
     reply = await agent.send("What's ockam?", scope="a", conversation="1")

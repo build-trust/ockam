@@ -1,9 +1,11 @@
-from typing import Protocol, List
+from typing import Protocol, List, Optional
 from .search import SearchHit, TextPiece
 
 
 class KnowledgeProvider(Protocol):
-    async def search(self, query: str) -> List[SearchHit]: ...
+    async def search_knowledge(
+        self, scope: Optional[str], conversation: Optional[str], query: str
+    ) -> Optional[str]: ...
 
 
 class Storage(Protocol):
