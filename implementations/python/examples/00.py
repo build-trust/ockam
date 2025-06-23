@@ -1,4 +1,4 @@
-from ockam import Agent, Flow, Node, START, END, TRY_AGAIN
+from ockam import Agent, Flow, Node, START, END, FlowOperation
 
 
 async def main(node):
@@ -51,7 +51,7 @@ async def main(node):
             You are an English quality check agent.
 
             If the input is correct English, has good grammar, and a friendly tone,
-            output lower case string - `{TRY_AGAIN}`
+            output lower case string - `{FlowOperation.TRY_AGAIN}`
 
             Otherwise, output lower case string - `continue`
 
@@ -66,11 +66,11 @@ async def main(node):
             You are a French quality check agent.
 
             If the input is correct french, has good grammar, and a friendly tone,
-            output lower case string - `{TRY_AGAIN}`
+            output lower case string - `{FlowOperation.TRY_AGAIN}`
 
             Otherwise output lower case string - `continue`
 
-            Don't say anything else other than `{TRY_AGAIN}` or `continue`.
+            Don't say anything else other than `{FlowOperation.TRY_AGAIN}` or `continue`.
         """,
     )
 
@@ -81,11 +81,11 @@ async def main(node):
             You are a Spanish quality check agent.
 
             If the input is correct spanish, has good grammar, and a friendly tone,
-            output lower case string - `{TRY_AGAIN}`
+            output lower case string - `{FlowOperation.TRY_AGAIN}`
 
             Otherwise output lower case string - `continue`
 
-            Don't say anything else other than `{TRY_AGAIN}` or `continue`.
+            Don't say anything else other than `{FlowOperation.TRY_AGAIN}` or `continue`.
         """,
     )
 
@@ -96,11 +96,11 @@ async def main(node):
             You are a Hindi quality check agent.
 
             If the input is correct hindi, has good grammar, and a friendly tone,
-            output lower case string - `{TRY_AGAIN}`
+            output lower case string - `{FlowOperation.TRY_AGAIN}`
 
             Otherwise, output lower case string - `continue`
 
-            Don't say anything else other than `{TRY_AGAIN}` or `continue`.
+            Don't say anything else other than `{FlowOperation.TRY_AGAIN}` or `continue`.
         """,
     )
 
@@ -121,7 +121,7 @@ async def main(node):
     flow.add(
         english_quality_check,
         {
-            TRY_AGAIN: english_support,
+            FlowOperation.TRY_AGAIN: english_support,
             "continue": END,
         },
     )
@@ -130,7 +130,7 @@ async def main(node):
     flow.add(
         french_quality_check,
         {
-            TRY_AGAIN: french_support,
+            FlowOperation.TRY_AGAIN: french_support,
             "continue": END,
         },
     )
@@ -139,7 +139,7 @@ async def main(node):
     flow.add(
         spanish_quality_check,
         {
-            TRY_AGAIN: spanish_support,
+            FlowOperation.TRY_AGAIN: spanish_support,
             "continue": END,
         },
     )
@@ -148,7 +148,7 @@ async def main(node):
     flow.add(
         hindi_quality_check,
         {
-            TRY_AGAIN: hindi_support,
+            FlowOperation.TRY_AGAIN: hindi_support,
             "continue": END,
         },
     )
