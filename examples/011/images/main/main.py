@@ -1,4 +1,4 @@
-from ockam import HttpServer, Node, Zone
+from ockam import HttpServer, Node, NodeDep, Zone
 from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig
 
 from fastapi import FastAPI
@@ -193,7 +193,7 @@ async def analyze(node):
 
 def split_list_into_n_parts(lst, n):
     q, r = divmod(len(lst), n)
-    return [lst[i * q + min(i, r) : (i + 1) * q + min(i + 1, r)] for i in range(n)]
+    return [lst[i * q + min(i, r): (i + 1) * q + min(i + 1, r)] for i in range(n)]
 
 
 async def list_folders():
@@ -229,29 +229,30 @@ async def list_workers(node):
     return workers
 
 
-class Api:
-    def __init__(self):
-        self.api = FastAPI()
-
-    def routes(self, node):
-        @self.api.get("/")
-        async def index():
-            return FileResponse("index.html")
-
-        @self.api.post("/analyze")
-        async def post_analyze():
-            response = await analyze(node)
-            return JSONResponse(content=response)
-
-        @self.api.get("/runners/workers")
-        async def get_workers():
-            workers = await list_workers(node)
-            return JSONResponse(content={"workers": workers})
-
-        @self.api.get("/runners")
-        async def get_runners():
-            runners = await Zone.nodes(node, filter="runner")
-            return JSONResponse(content={"runners": [r.name for r in runners]})
+app = FastAPI()
 
 
-Node.start(http_server=HttpServer(api=Api()), cache_secure_channels=True)
+@app.get("/")
+async def index():
+    return FileResponse("index.html")
+
+
+@app.post("/analyze")
+async def post_analyze(node: NodeDep):
+    response = await analyze(node)
+    return JSONResponse(content=response)
+
+
+@app.get("/runners/workers")
+async def get_workers(node: NodeDep):
+    workers = await list_workers(node)
+    return JSONResponse(content={"workers": workers})
+
+
+@app.get("/runners")
+async def get_runners(node: NodeDep):
+    runners = await Zone.nodes(node, filter="runner")
+    return JSONResponse(content={"runners": [r.name for r in runners]})
+
+
+Node.start(http_server=HttpServer(app=app), cache_secure_channels=True)

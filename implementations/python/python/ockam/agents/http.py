@@ -6,10 +6,12 @@ from dataclasses import asdict, is_dataclass
 from enum import Enum
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
+from typing import Annotated
 
 from .socket_address import parse_host_and_port
 from ..agents import AgentReference
 from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet, Phase, Reference, FlowReference
+from ..nodes.local import LocalNode
 
 """
     This class starts an HTTP server allowing a user to interact with a node and its agents.
@@ -32,18 +34,24 @@ class HttpServer:
             cls._logger = get_logger("http")
             return cls._logger
 
-    def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", log_level: str = "error", api=None):
+    def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", app: FastAPI = None):
         self.logger = HttpServer.class_logger()
         self.node = None
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
         self.set_host_and_port(listen_address)
-        self.log_level = log_level
-        self.app = FastAPI()
-        self.api = api
 
-    def get_node(self):
-        return self.node
+        if not app:
+            self.app = FastAPI()
+        else:
+            self.app = app
+
+        self.app.middleware("http")(self.inject_node)
+        self._setup_routes()
+
+    async def inject_node(self, request: Request, call_next):
+        request.state.node = self.node
+        return await call_next(request)
 
     def _setup_routes(self):
         if os.path.exists("index.html"):
@@ -110,7 +118,7 @@ class HttpServer:
         ):
             self.logger.info(f"send a message to agent '{name}'")
             await find_agent(node, name)
-            await send_message_to_reference(AgentReference(name, node), message, stream, content_size, timeout)
+            return await send_message_to_reference(AgentReference(name, node), message, stream, content_size, timeout)
 
         @self.app.post("/flows/{name}")
         async def send_message_to_flow(
@@ -123,7 +131,7 @@ class HttpServer:
         ):
             self.logger.info(f"send a message to flow '{name}'")
             await find_worker(node, name)
-            await send_message_to_reference(FlowReference(name, node), message, stream, content_size, timeout)
+            return await send_message_to_reference(FlowReference(name, node), message, stream, content_size, timeout)
 
         async def find_agent(node, name):
             agents = await node.list_agents()
@@ -199,13 +207,11 @@ class HttpServer:
             self.logger.info(f"get tool by name: {name}")
             return find_tool(node, name)
 
-        # mount the custom routes
-        if self.api:
-            self.api.routes(self.node)
-            self.app.mount("/", self.api.api)
+    def get_node(self):
+        return self.node
 
     async def serve(self):
-        config = uvicorn.Config(self.app, host=self.host, port=self.port, log_level=self.log_level)
+        config = uvicorn.Config(self.app, host=self.host, port=self.port)
         server = uvicorn.Server(config)
         await server.serve()
 
@@ -219,8 +225,16 @@ class HttpServer:
 
     async def start(self, node):
         self.node = node
-        self._setup_routes()
         asyncio.create_task(self.serve())
+
+
+# Retrieve the local node from the request state
+def get_local_node(request: Request) -> LocalNode:
+    return LocalNode(request.state.node)
+
+
+# LocalNode as a dependency
+NodeDep = Annotated[LocalNode, Depends(get_local_node)]
 
 
 def default(obj):
