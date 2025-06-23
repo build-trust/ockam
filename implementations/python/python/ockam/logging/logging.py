@@ -22,6 +22,14 @@ def get_logging_config() -> dict[str, int | bool | dict | str | None]:
     return create_logging_config(LOG_LEVELS, FORMAT)
 
 
+def set_log_level(module_name: str, level: str):
+    """
+    Set the log level for a specific module.
+    """
+    global LOG_LEVELS
+    LOG_LEVELS[module_name] = level.upper()
+
+
 def set_log_levels(log_levels: str):
     global LOG_LEVELS
     LOG_LEVELS = create_log_levels(log_levels)

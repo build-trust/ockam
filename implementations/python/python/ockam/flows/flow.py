@@ -20,7 +20,7 @@ from ..nodes.message import (
 
 class Flow:
     @classmethod
-    def logger(cls):
+    def class_logger(cls):
         from ..logging.logging import get_logger
 
         return get_logger("flow")
@@ -31,7 +31,7 @@ class Flow:
         else:
             validate_name(name)
 
-        self.logger = Flow.logger()
+        self.logger = Flow.class_logger()
         self.name = name
         self.iteration_timeout = iteration_timeout
         self.iteration_limit = iteration_limit
@@ -60,7 +60,7 @@ class Flow:
 
 class FlowWorker:
     def __init__(self, name: str, node: LocalNodeProtocol, flow: Flow, iteration_limit: int, iteration_timeout: int):
-        self.logger = Flow.logger()
+        self.logger = Flow.class_logger()
         self.name = name
         self.node = node
         self.flow = flow

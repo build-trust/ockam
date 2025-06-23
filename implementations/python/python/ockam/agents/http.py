@@ -2,7 +2,6 @@ import asyncio
 import json
 import os
 import uvicorn
-
 from dataclasses import asdict, is_dataclass
 from enum import Enum
 from fastapi import FastAPI, Depends, HTTPException, Request
@@ -10,8 +9,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 
 from .socket_address import parse_host_and_port
 from ..agents import AgentReference
-from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet, Phase
-
+from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet, Phase, Reference, FlowReference
 
 """
     This class starts an HTTP server allowing a user to interact with a node and its agents.
@@ -25,7 +23,7 @@ class HttpServer:
     _logger = None
 
     @classmethod
-    def logger(cls):
+    def class_logger(cls):
         if cls._logger:
             return cls._logger
         else:
@@ -35,7 +33,7 @@ class HttpServer:
             return cls._logger
 
     def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", log_level: str = "error", api=None):
-        self.logger = HttpServer.logger()
+        self.logger = HttpServer.class_logger()
         self.node = None
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
@@ -112,9 +110,46 @@ class HttpServer:
         ):
             self.logger.info(f"send a message to agent '{name}'")
             await find_agent(node, name)
+            await send_message_to_reference(AgentReference(name, node), message, stream, content_size, timeout)
 
+        @self.app.post("/flows/{name}")
+        async def send_message_to_flow(
+            name: str,
+            message: Request,
+            stream: bool = False,
+            content_size: int = 50,
+            timeout: int = 60,
+            node=Depends(self.get_node),
+        ):
+            self.logger.info(f"send a message to flow '{name}'")
+            await find_worker(node, name)
+            await send_message_to_reference(FlowReference(name, node), message, stream, content_size, timeout)
+
+        async def find_agent(node, name):
+            agents = await node.list_agents()
+            agent = next((a for a in agents if a.get("name") == name), None)
+            if agent is None:
+                raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
+            return agent
+
+        async def find_worker(node, name):
+            workers = await node.list_workers()
+            worker = next((w for w in workers if w.get("name") == name), None)
+            if worker is None:
+                raise HTTPException(status_code=404, detail=f"Worker '{name}' not found")
+            return worker
+
+        async def find_tool(node, name):
+            tools = await node.list_tools()
+            tool = next((t for t in tools if t.get("name") == name), None)
+            if tool is None:
+                raise HTTPException(status_code=404, detail=f"Tool '{name}' not found")
+            return tool
+
+        async def send_message_to_reference(
+            reference: Reference, message: Request, stream: bool = False, content_size: int = 50, timeout: int = 60
+        ):
             try:
-                agent = AgentReference(name, node)
                 message_json = await message.json()
                 if "message" in message_json:
                     msg = message_json["message"]
@@ -128,10 +163,10 @@ class HttpServer:
                     async def stream_response():
                         received_snippet = None
 
-                        async for response in agent.send_stream(msg, scope, conversation, timeout=timeout):
+                        async for response in reference.send_stream(msg, scope, conversation, timeout=timeout):
                             received = response.snippet
-                            # even if we make a streaming request, the response might not be streaming if the downstream
-                            # agent does not support streaming
+                            # even if we make a streaming request, the response might not be streaming if a downstream
+                            # service does not support streaming
                             if type(response) is StreamedConversationSnippet:
                                 # if phase is missing or None, set "executing" phase
                                 if not hasattr(received, "phase") or received.phase is None:
@@ -149,9 +184,9 @@ class HttpServer:
 
                     return StreamingResponse(stream_response(), media_type="application/json")
                 else:
-                    return await agent.send(msg, scope, conversation, timeout=timeout)
+                    return await reference.send(msg, scope, conversation, timeout=timeout)
             except Exception as e:
-                self.logger.error(f"failed to send message to agent '{name}': {e}")
+                self.logger.error(f"failed to send message to '{reference.name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to send message")
 
         @self.app.get("/tools")
@@ -168,20 +203,6 @@ class HttpServer:
         if self.api:
             self.api.routes(self.node)
             self.app.mount("/", self.api.api)
-
-        async def find_agent(node, name):
-            agents = await node.list_agents()
-            agent = next((a for a in agents if a.get("name") == name), None)
-            if agent is None:
-                raise HTTPException(status_code=404, detail=f"Agent '{name}' not found")
-            return agent
-
-        async def find_tool(node, name):
-            tools = await node.list_tools()
-            tool = next((t for t in tools if t.get("name") == name), None)
-            if tool is None:
-                raise HTTPException(status_code=404, detail=f"Tool '{name}' not found")
-            return tool
 
     async def serve(self):
         config = uvicorn.Config(self.app, host=self.host, port=self.port, log_level=self.log_level)

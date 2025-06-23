@@ -3,7 +3,7 @@ from .clusters import Cluster, Zone
 from .flows import Flow, FlowOperation, START, END
 from .nodes.message import FlowReference
 from .memory import Memory
-from .logging import info, warning, error, debug, set_log_levels, get_logger
+from .logging import info, warning, error, debug, set_log_level, set_log_levels, get_logger
 from .models import Model
 from .nodes import Node, RemoteNode, LocalNode, LocalNodeProtocol, MailboxProtocol, WorkerProtocol, ContextProtocol
 from .nodes.manager import RemoteManager
@@ -51,6 +51,7 @@ __all__ = [
     "warning",
     "error",
     "debug",
+    "set_log_level",
     "set_log_levels",
     # from .ockam_in_rust_for_python
     "Mailbox",

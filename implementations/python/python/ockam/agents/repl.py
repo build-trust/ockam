@@ -6,7 +6,6 @@ import os
 from ockam.nodes.message import StreamedConversationSnippet
 from ockam.agents.socket_address import parse_host_and_port
 
-
 DEFAULT_HOST = os.environ.get("DEFAULT_HOST_REPL", "127.0.0.1")
 DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_REPL", "7000"))
 
@@ -15,7 +14,7 @@ class Repl:
     _logger = None
 
     @classmethod
-    def logger(cls):
+    def class_logger(cls):
         if cls._logger:
             return cls._logger
         else:
@@ -27,7 +26,7 @@ class Repl:
     def __init__(
         self, agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=120, stream=True
     ):
-        self.logger = Repl.logger()
+        self.logger = Repl.class_logger()
         self.functions = functions or {}
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
@@ -55,7 +54,7 @@ class Repl:
     async def start(
         agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=None, stream=True
     ):
-        Repl.logger().info("starting the REPL")
+        Repl.class_logger().info("starting the REPL")
         repl = Repl(agent_reference, listen_address, functions, timeout, stream)
         # start the repl in a separate thread since we might also have a HTTP server running
         asyncio.create_task(repl.start_impl())

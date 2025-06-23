@@ -13,7 +13,7 @@ class Tool(InvokableTool):
     _logger = None
 
     @classmethod
-    def logger(cls):
+    def class_logger(cls):
         if cls._logger:
             return cls._logger
         else:
@@ -23,7 +23,7 @@ class Tool(InvokableTool):
             return cls._logger
 
     def __init__(self, func):
-        self.logger = Tool.logger()
+        self.logger = Tool.class_logger()
         name, spec = function_spec(func)
         self.func = wrap(func)
         self.name = name

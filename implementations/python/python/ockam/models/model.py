@@ -105,13 +105,13 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
 
                 cluster_id = os.environ.get("CLUSTER")
                 if not cluster_id:
-                    Model.logger().warning(
+                    Model.class_logger().warning(
                         "CLUSTER is not set. Cannot automatically manage inference profiles. Returning None."
                     )
                     return None
 
             except Exception as e:
-                Model.logger().warning(f"Could not construct Bedrock ARN: {e}")
+                Model.class_logger().warning(f"Could not construct Bedrock ARN: {e}")
                 return None
 
     sanitized_model_name = original_name.replace(":", "_").replace(".", "_")
@@ -134,7 +134,7 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
                             _inference_profile_cache[cache_key] = arn
                             return arn
             except Exception as e:
-                Model.logger().warning(f"An error occurred while listing existing inference profiles: {e}")
+                Model.class_logger().warning(f"An error occurred while listing existing inference profiles: {e}")
                 return None
 
             # Determine the source ARN for the new profile
@@ -169,7 +169,7 @@ class Model:
     _logger = None
 
     @classmethod
-    def logger(cls):
+    def class_logger(cls):
         if cls._logger:
             return cls._logger
         else:
@@ -179,7 +179,7 @@ class Model:
             return cls._logger
 
     def __init__(self, name, **kwargs):
-        self.logger = Model.logger()
+        self.logger = Model.class_logger()
         if os.environ.get("LITELLM_PROXY_API_BASE"):
             provider = "litellm_proxy"
         elif os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE"):
@@ -232,7 +232,7 @@ class Model:
                     if arn:
                         self.kwargs["model_id"] = arn
                     else:
-                        Model.logger().warning(
+                        Model.class_logger().warning(
                             f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly."
                         )
 
