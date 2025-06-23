@@ -71,6 +71,8 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
         "loggers": {
             "asyncio": {"handlers": ["default"], "level": levels.get("asyncio", "WARNING"), "propagate": False},
             "uvicorn": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
+            "uvicorn.error": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
+            "uvicorn.access": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
             "http": {"handlers": ["default"], "level": levels.get("http", "WARNING"), "propagate": False},
             "httpcore": {"handlers": ["default"], "level": levels.get("httpcore", "WARNING"), "propagate": False},
             "httpx": {"handlers": ["default"], "level": levels.get("httpx", "WARNING"), "propagate": False},
