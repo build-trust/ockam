@@ -1,4 +1,4 @@
-from ockam import HttpServer, Node, Zone
+from ockam import HttpServer, Node, NodeDep, Zone
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
@@ -38,7 +38,7 @@ class CodeAnalyzer:
                     with open(full_path, "r", encoding="utf-8") as f:
                         content = f.read()
                         relative_path = os.path.relpath(full_path, extracted)
-                        relative_path = "./" + relative_path[len(f"{repo}-{branch}/") :]
+                        relative_path = "./" + relative_path[len(f"{repo}-{branch}/"):]
                         files.append((relative_path, content))
 
         shutil.rmtree(extracted)
@@ -140,7 +140,7 @@ async def analyze(node, repos):
 
 def split_list_into_n_parts(lst, n):
     q, r = divmod(len(lst), n)
-    return [lst[i * q + min(i, r) : (i + 1) * q + min(i + 1, r)] for i in range(n)]
+    return [lst[i * q + min(i, r): (i + 1) * q + min(i + 1, r)] for i in range(n)]
 
 
 async def list_workers(node):
@@ -154,47 +154,48 @@ async def list_workers(node):
     return workers
 
 
-class Api:
-    def __init__(self):
-        self.api = FastAPI()
-
-    def routes(self, node):
-        @self.api.get("/")
-        async def index():
-            return FileResponse("index.html")
-
-        @self.api.post("/analyze")
-        async def post_analyze():
-            repos = [
-                "pallets/flask",
-                "pallets/click",
-                "pallets/werkzeug",
-                "pallets/jinja",
-                "pallets/markupsafe",
-                "pallets/itsdangerous",
-                "psf/requests",
-                "pandas-dev/pandas",
-                "simonw/files-to-prompt",
-                "simonw/sqlite-utils",
-                "pytest-dev/pytest",
-                "celery/celery",
-                "psf/black",
-                "jazzband/pip-tools",
-                "python-pillow/Pillow",
-                "python-poetry/poetry",
-            ]
-            response = await analyze(node, repos)
-            return JSONResponse(content=response)
-
-        @self.api.get("/runners/workers")
-        async def get_workers():
-            workers = await list_workers(node)
-            return JSONResponse(content={"workers": workers})
-
-        @self.api.get("/runners")
-        async def get_runners():
-            runners = await Zone.nodes(node, filter="runner")
-            return JSONResponse(content={"runners": [r.name for r in runners]})
+app = FastAPI()
 
 
-Node.start(http_server=HttpServer(api=Api()), cache_secure_channels=True)
+@app.get("/")
+async def index():
+    return FileResponse("index.html")
+
+
+@app.post("/analyze")
+async def post_analyze(node: NodeDep):
+    repos = [
+        "pallets/flask",
+        "pallets/click",
+        "pallets/werkzeug",
+        "pallets/jinja",
+        "pallets/markupsafe",
+        "pallets/itsdangerous",
+        "psf/requests",
+        "pandas-dev/pandas",
+        "simonw/files-to-prompt",
+        "simonw/sqlite-utils",
+        "pytest-dev/pytest",
+        "celery/celery",
+        "psf/black",
+        "jazzband/pip-tools",
+        "python-pillow/Pillow",
+        "python-poetry/poetry",
+    ]
+    response = await analyze(node, repos)
+    return JSONResponse(content=response)
+
+
+@app.get("/runners/workers")
+async def get_workers(node: NodeDep):
+    workers = await list_workers(node)
+    return JSONResponse(content={"workers": workers})
+
+
+@app.get("/runners")
+async def get_runners(node: NodeDep):
+    runners = await Zone.nodes(node, filter="runner")
+    return JSONResponse(content={"runners": [r.name for r in runners]})
+
+
+Node.start(http_server=HttpServer(app=app), cache_secure_channels=True)

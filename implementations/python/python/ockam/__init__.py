@@ -1,4 +1,4 @@
-from .agents import Agent, AgentReference, HttpServer, Repl
+from .agents import Agent, AgentReference, HttpServer, NodeDep, Repl
 from .clusters import Cluster, Zone
 from .flows import Flow, FlowOperation, START, END
 from .nodes.message import FlowReference
@@ -35,6 +35,7 @@ __all__ = [
     "Agent",
     "AgentReference",
     "HttpServer",
+    "NodeDep",
     "Repl",
     # from .clusters
     "Cluster",
