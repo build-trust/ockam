@@ -1,6 +1,10 @@
 from typing import List, Optional
 
 import litellm
+from litellm import Router
+
+from copy import deepcopy
+
 import os
 import boto3
 import threading
@@ -42,6 +46,13 @@ PROVIDER_ALIASES = {
         "gemma3": "ollama_chat/gemma3",
         "gemma3:27b": "ollama_chat/gemma3:27b",
         "nomic-embed-text": "ollama/nomic-embed-text",
+    },
+    "ollama_chat": {
+        "deepseek-r1": "ollama_chat/deepseek-r1",
+        "llama3.2": "ollama_chat/llama3.2",
+        "llama3.3": "ollama_chat/llama3.3",
+        "gemma3": "ollama_chat/gemma3",
+        "gemma3:27b": "ollama_chat/gemma3:27b",
     },
     "bedrock": {
         "claude-3-5-haiku-v1": "bedrock/anthropic.claude-3-5-haiku-20241022-v1:0",
@@ -91,6 +102,16 @@ init_lock = threading.Lock()
 _inference_profile_cache = {}
 _cache_lock = threading.Lock()
 
+# slightly modify the parameters to accommodate services
+litellm.modify_params = True
+
+model_list = []
+for model_name in ALL_PROVIDER_ALLOWED_FULL_NAMES:
+    model_list.append({"model_name": model_name, "litellm_params": {"model": model_name}})
+
+router = Router(model_list=model_list, default_max_parallel_requests=400)
+
+
 def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional[str]:
     global region, account_id, cluster_id, init_lock
     with init_lock:
@@ -119,15 +140,15 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
         if cache_key in _inference_profile_cache:
             return _inference_profile_cache[cache_key]
         else:
-            inference_profile_name = f'{cluster_id}_{sanitized_model_name}'
-            bedrock_client = boto3.client('bedrock', region_name=region)
+            inference_profile_name = f"{cluster_id}_{sanitized_model_name}"
+            bedrock_client = boto3.client("bedrock", region_name=region)
             # Check if profile already exists
             try:
-                paginator = bedrock_client.get_paginator('list_inference_profiles')
-                for page in paginator.paginate(typeEquals='APPLICATION'):
-                    for profile in page.get('inferenceProfileSummaries', []):
-                        if profile['inferenceProfileName'] == inference_profile_name:
-                            arn = profile['inferenceProfileArn']
+                paginator = bedrock_client.get_paginator("list_inference_profiles")
+                for page in paginator.paginate(typeEquals="APPLICATION"):
+                    for profile in page.get("inferenceProfileSummaries", []):
+                        if profile["inferenceProfileName"] == inference_profile_name:
+                            arn = profile["inferenceProfileArn"]
                             # Cache the result
                             _inference_profile_cache[cache_key] = arn
                             return arn
@@ -138,21 +159,21 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
             # Determine the source ARN for the new profile
             if model_identifier in BEDROCK_INFERENCE_PROFILE_MAP:
                 source_profile_id = BEDROCK_INFERENCE_PROFILE_MAP[model_identifier]
-                model_source_arn = f'arn:aws:bedrock:{region}:{account_id}:inference-profile/{source_profile_id}'
+                model_source_arn = f"arn:aws:bedrock:{region}:{account_id}:inference-profile/{source_profile_id}"
             else:
                 # This is a standard foundation model
-                model_source_arn = f'arn:aws:bedrock:{region}::foundation-model/{model_identifier}'
+                model_source_arn = f"arn:aws:bedrock:{region}::foundation-model/{model_identifier}"
             # Create the profile
             try:
                 response = bedrock_client.create_inference_profile(
                     inferenceProfileName=inference_profile_name,
-                    modelSource={'copyFrom': model_source_arn},
+                    modelSource={"copyFrom": model_source_arn},
                     tags=[
-                        {'key': 'ockam.ai/clusterID', 'value': cluster_id},
-                        {'key': 'ockam.ai/modelID', 'value': model_identifier}
-                    ]
+                        {"key": "ockam.ai/clusterID", "value": cluster_id},
+                        {"key": "ockam.ai/modelID", "value": model_identifier},
+                    ],
                 )
-                created_arn = response['inferenceProfileArn']
+                created_arn = response["inferenceProfileArn"]
                 # Cache the newly created ARN
                 _inference_profile_cache[cache_key] = created_arn
                 return created_arn
@@ -162,8 +183,9 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
             except Exception as e:
                 return None
 
+
 class Model:
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, max_input_tokens=None, **kwargs):
         if os.environ.get("LITELLM_PROXY_API_BASE"):
             provider = "litellm_proxy"
         elif os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE"):
@@ -190,6 +212,12 @@ class Model:
             )
 
         self.name = resolved_name
+
+        # TODO: test and uncomment
+        # if not max_input_tokens:
+        #     max_input_tokens = litellm.get_max_tokens(self.name)
+
+        self.max_input_tokens = max_input_tokens
         self.kwargs = kwargs
         self.kwargs["drop_params"] = True
 
@@ -214,7 +242,27 @@ class Model:
                     if arn:
                         self.kwargs["model_id"] = arn
                     else:
-                        warn(f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly.")
+                        warn(
+                            f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly."
+                        )
+
+    def count_tokens(self, messages: List[dict] | List[ConversationMessage], tools) -> int:
+        messages, kwargs = self.prepare_llm_call(messages)
+
+        # FIXME: Do kwargs we provide to acompletion could potentially affect this calculation?
+        return litellm.token_counter(self.name, messages=messages, tools=tools)
+
+    def prepare_llm_call(self, messages: List[dict] | List[ConversationMessage], **kwargs):
+        messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())
+
+        # parameters provided in kwargs will override the default parameters
+        kwargs = {**self.kwargs, **kwargs}
+
+        # sometimes an empty tools list is interpreted as "please hallucinate tools",
+        if "tools" in kwargs and len(kwargs["tools"]) == 0:
+            del kwargs["tools"]
+
+        return messages, kwargs
 
     def support_tools(self):
         if "deepseek" in self.name:
@@ -225,31 +273,28 @@ class Model:
         return "bedrock" not in self.name and "litellm_proxy" not in self.name
 
     async def complete_chat(self, messages: List[dict] | List[ConversationMessage], stream: bool = False, **kwargs):
-        messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())
+        messages, kwargs = self.prepare_llm_call(messages, **kwargs)
 
-        # slightly modify the parameters to accommodate services
-        litellm.modify_params = True
-
-        # parameters provided in kwargs will override the default parameters
-        kwargs = {**self.kwargs, **kwargs}
-
-        # sometimes an empty tools list is interpreted as "please hallucinate tools",
-        if "tools" in kwargs and len(kwargs["tools"]) == 0:
-            del kwargs["tools"]
-
-        return await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        return await self.router().acompletion(self.name, messages=messages, stream=stream, **kwargs)
 
     async def embeddings(self, text: List[str], **kwargs) -> List[List[float]]:
         # parameters provided in kwargs will override the default parameters
         kwargs = {**self.kwargs, **kwargs}
 
-        embedding = await litellm.aembedding(self.name, text, **kwargs)
+        embedding = await self.router().aembedding(self.name, text, **kwargs)
         return [embedding["embedding"] for embedding in embedding.data]
+
+    def router(self):
+        global router
+
+        return router
 
 
 def normalize_messages(
     messages: List[dict] | List[ConversationMessage], tools_supported: bool, forced_assistant_answer_supported: bool
 ) -> List[dict]:
+    messages = deepcopy(messages)
+
     # convert if the messages are typed as ConversationMessage
     if len(messages) > 0:
         if not isinstance(messages[0], dict):

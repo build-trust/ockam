@@ -9,15 +9,29 @@ class IdentifierResponse:
 
 
 class StartAgentRequest:
-    def __init__(self, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size):
+    def __init__(
+        self,
+        instructions,
+        name,
+        model,
+        memory_model,
+        memory_embeddings_model,
+        tools,
+        planner,
+        exposed_as,
+        knowledge,
+        max_iterations,
+    ):
         self.instructions = instructions
         self.name = name
         self.model = model
+        self.memory_model = memory_model
+        self.memory_embeddings_model = memory_embeddings_model
         self.tools = tools
         self.planner = planner
         self.exposed_as = exposed_as
         self.knowledge = knowledge
-        self.max_knowledge_size = max_knowledge_size
+        self.max_iterations = max_iterations
 
 
 class StartAgentResponse:
@@ -26,14 +40,27 @@ class StartAgentResponse:
 
 
 class StartAgentsRequest:
-    def __init__(self, instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size):
+    def __init__(
+        self,
+        instructions,
+        number_of_agents,
+        model,
+        memory_model,
+        memory_embeddings_model,
+        tools,
+        planner,
+        knowledge,
+        max_iterations,
+    ):
         self.instructions = instructions
         self.number_of_agents = number_of_agents
         self.model = model
+        self.memory_model = memory_model
+        self.memory_embeddings_model = memory_embeddings_model
         self.tools = tools
         self.planner = planner
         self.knowledge = knowledge
-        self.max_knowledge_size = max_knowledge_size
+        self.max_iterations = max_iterations
 
 
 class StartAgentsResponse:

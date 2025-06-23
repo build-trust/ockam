@@ -3158,7 +3158,7 @@ dependencies = [
 
 [[package]]
 name = "ockam"
-version = "0.152.0"
+version = "0.154.0"
 dependencies = [
  "hex",
  "ockam_abac",
@@ -3200,7 +3200,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_api"
-version = "0.95.0"
+version = "0.97.0"
 dependencies = [
  "base64-url",
  "bytes",
