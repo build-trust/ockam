@@ -106,7 +106,7 @@ class FlowWorker:
         if not snippet.conversation:
             snippet.conversation = secrets.token_hex(16)
 
-        self.logger.debug(f"INIT: {snippet}\n\n")
+        self.logger.debug(f"Init: {snippet}\n\n")
 
         self.flow.state.reset()
 

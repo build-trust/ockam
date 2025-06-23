@@ -1,5 +1,8 @@
+from contextlib import contextmanager
+
 import os
 import logging.config
+from typing import Protocol
 
 DEFAULT_LOG_FORMAT = os.getenv(
     "DEFAULT_LOG_FORMAT", "%(asctime)s %(log_color)s%(levelname)5s%(reset)s %(name)-14s %(message)s"
@@ -73,7 +76,6 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
             "uvicorn": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
             "uvicorn.error": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
             "uvicorn.access": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
-            "http": {"handlers": ["default"], "level": levels.get("http", "WARNING"), "propagate": False},
             "httpcore": {"handlers": ["default"], "level": levels.get("httpcore", "WARNING"), "propagate": False},
             "httpx": {"handlers": ["default"], "level": levels.get("httpx", "WARNING"), "propagate": False},
             "LiteLLM": {"handlers": ["default"], "level": levels.get("LiteLLM", "WARNING"), "propagate": False},
@@ -87,6 +89,7 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
                 "level": levels.get("model") or levels.get("default"),
                 "propagate": False,
             },
+            "http": {"handlers": ["ockam"], "level": levels.get("http") or levels.get("default"), "propagate": False},
             "node": {"handlers": ["ockam"], "level": levels.get("node") or levels.get("default"), "propagate": False},
             "tool": {"handlers": ["ockam"], "level": levels.get("tool") or levels.get("default"), "propagate": False},
         },
@@ -143,3 +146,31 @@ def debug(msg, *args, **kwargs):
 def error(msg, *args, **kwargs):
     logger = logging.getLogger("node")
     logger.error(msg, stacklevel=2, *args, **kwargs)
+
+
+class LoggerAware(Protocol):
+    logger: logging.Logger
+
+
+class InfoContext(LoggerAware):
+    @contextmanager
+    def info(self, before_msg, after_msg):
+        self.logger.info(before_msg)
+        try:
+            yield
+        except Exception as e:
+            self.logger.info(f"{e}")
+            return
+        self.logger.info(after_msg)
+
+
+class DebugContext(LoggerAware):
+    @contextmanager
+    def debug(self, before_msg, after_msg):
+        self.logger.debug(before_msg)
+        try:
+            yield
+        except Exception as e:
+            self.logger.debug(f"{e}")
+            return
+        self.logger.debug(after_msg)

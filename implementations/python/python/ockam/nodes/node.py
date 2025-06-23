@@ -68,15 +68,16 @@ class Node:
             else:
                 asyncio.create_task(http_server.start(node))
 
+            Node.logger().info(f"Started node '{name}'")
             await main(node)
 
         try:
-            Node.logger().info(f"start node '{name}'")
+            Node.logger().info(f"Starting node '{name}'")
             RustNode.start(
                 start_node, name=name, ticket=ticket, allow=allow, cache_secure_channels=cache_secure_channels, **kwargs
             )
         except KeyboardInterrupt:
-            Node.logger().debug("shutting down node due to KeyboardInterrupt")
+            Node.logger().debug("Shutting down node due to KeyboardInterrupt")
             Node.logger().debug(f"\nNode {name} shutting down")
 
 
