@@ -10,6 +10,7 @@ import boto3
 import threading
 
 from ..nodes.message import ConversationMessage
+from ..logging.logging import InfoContext, DebugContext
 
 PROVIDER_ALIASES = {
     "litellm_proxy": {
@@ -186,7 +187,7 @@ def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional
                 return None
 
 
-class Model:
+class Model(InfoContext, DebugContext):
     _logger = None
 
     @classmethod
@@ -227,7 +228,7 @@ class Model:
                 f"Model '{original_name}' (resolved to '{resolved_name}') is not supported or enabled by any configured provider."
             )
 
-        self.logger.debug(f"the resolved model name is '{resolved_name}'")
+        self.logger.debug(f"The resolved model name is '{resolved_name}'")
         self.name = resolved_name
 
         # TODO: test and uncomment
@@ -290,13 +291,15 @@ class Model:
         return "bedrock" not in self.name and "litellm_proxy" not in self.name
 
     async def complete_chat(self, messages: List[dict] | List[ConversationMessage], stream: bool = False, **kwargs):
-        self.logger.info(f"send {len(messages)} messages to model '{self.original_name}'")
-        self.logger.debug(f"the messages are: {messages} (stream={stream})")
+        self.logger.info(f"Processing {len(messages)} messages with model '{self.original_name}'")
+        self.logger.debug(f"Sending the following messages to the model: {messages} (stream={stream})")
 
         messages, kwargs = self.prepare_llm_call(messages, **kwargs)
 
         response = await self.router().acompletion(self.name, messages=messages, stream=stream, **kwargs)
-        self.logger.debug(f"got a response from the model '{self.original_name}': {response}")
+        self.logger.debug(f"Got a response from model '{self.original_name}': {response}")
+        self.logger.info(f"Finished processing messages with model '{self.original_name}'")
+
         return response
 
     async def embeddings(self, text: List[str], **kwargs) -> List[List[float]]:

@@ -17,6 +17,7 @@ from ..tools.protocol import InvokableTool
 from .agent_memory_knowledge import AgentMemoryKnowledge
 from ..knowledge.noop import NoopKnowledge
 from ..nodes import RemoteNode, LocalNodeProtocol
+from ..logging.logging import InfoContext, DebugContext
 from ..planning import Planner
 from ..knowledge import KnowledgeProvider
 from ..memory import Memory
@@ -260,7 +261,7 @@ class AgentStateMachine:
             yield result
 
 
-class Agent:
+class Agent(InfoContext, DebugContext):
     _logger = None
     tools: Dict[str, InvokableTool]
     memory_knowledge: Optional[AgentMemoryKnowledge]
@@ -291,11 +292,11 @@ class Agent:
         maximum_iterations: int,
     ):
         self.logger = Agent.class_logger()
-        self.logger.info(f"start agent '{name}'")
-        self.node = node
+        with self.info(f"Starting agent '{name}'", f"Started agent '{name}'"):
+            self.node = node
 
-        self.tools = tools
-        self.tool_specs = tool_specs
+            self.tools = tools
+            self.tool_specs = tool_specs
 
         self.name = name
         self.model = model
@@ -303,19 +304,19 @@ class Agent:
         self.memory_embeddings_model = memory_embeddings_model
         self.memory_knowledge = None
 
-        self.memory = memory
-        memory.set_instructions(system_message(instructions))
+            self.memory = memory
+            memory.set_instructions(system_message(instructions))
 
         self.planner = planner
         self.maximum_iterations = maximum_iterations
 
         self.knowledge = knowledge
 
-        self.converter = MessageConverter.create(node)
+            self.converter = MessageConverter.create(node)
 
     async def handle_message(self, context, message):
         try:
-            self.logger.debug(f"agent '{self.name}' received: {message}")
+            self.logger.debug(f"Agent '{self.name}' received: {message}")
 
             message = self.converter.message_from_json(message)
             handlers = {
@@ -334,7 +335,7 @@ class Agent:
                 if handler is not None:
                     reply = await handler(message)
                 else:
-                    self.logger.error(f"unexpected message: {message}")
+                    self.logger.error(f"Unexpected message: {message}")
                     reply = Error(f"Unexpected Message: {message}")
 
                 if reply is not None:
@@ -501,8 +502,16 @@ class Agent:
         self, scope, conversation, contextual_knowledge, stream: bool = False
     ) -> AsyncGenerator[Tuple[Optional[Exception], bool, AssistantMessage], None]:
         input_context = await self.determine_input_context(scope, conversation, contextual_knowledge)
-
+        self.logger.info(
+            f"Sending {len(input_context)} messages from agent '{self.name}' to model '{self.model.original_name}'"
+        )
         response = await self.model.complete_chat(tools=self.tool_specs, messages=input_context, stream=stream)
+        messages = [choice.message for choice in response.choices]
+        plural = "s" if len(messages) > 1 else ""
+        self.logger.info(
+            f"Received {len(messages)} message{plural} from model '{self.model.original_name}' for agent '{self.name}'"
+        )
+
         if stream:
             tool_calls: Dict[int, ToolCall] = {}
             async for chunk in response:
@@ -550,7 +559,7 @@ class Agent:
                 role = delta.role
 
             if choice.finish_reason is not None:
-                self.logger.debug(f"finished streaming reply with reason {choice.get('finish_reason', 'unknown')}")
+                self.logger.debug(f"Finished streaming reply with reason {choice.get('finish_reason', 'unknown')}")
                 finished = True
                 response = {"role": role}
             else:
@@ -742,7 +751,7 @@ class Agent:
 
         await node.start_spawner(name, agent_creator, key_extractor, None, exposed_as)
 
-        Agent.class_logger().debug(f"successfully started agent {name}")
+        Agent.class_logger().debug(f"Successfully started agent {name}")
 
 
 def key_extractor(message):

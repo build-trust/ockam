@@ -12,6 +12,7 @@ from .socket_address import parse_host_and_port
 from ..agents import AgentReference
 from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet, Phase, Reference, FlowReference
 from ..nodes.local import LocalNode
+from ..logging.logging import InfoContext
 
 """
     This class starts an HTTP server allowing a user to interact with a node and its agents.
@@ -21,7 +22,7 @@ DEFAULT_HOST = os.environ.get("DEFAULT_HOST_HTTP", "0.0.0.0")
 DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_HTTP", "8000"))
 
 
-class HttpServer:
+class HttpServer(InfoContext):
     _logger = None
 
     @classmethod
@@ -62,35 +63,43 @@ class HttpServer:
 
         @self.app.get("/agents")
         async def get_agents(node=Depends(self.get_node)):
-            self.logger.info("get agents")
-            return {"agents": await node.list_agents()}
+            with self.info("Retrieving agents", "Retrieved agents"):
+                return {"agents": await node.list_agents()}
 
         @self.app.get("/workers")
         async def get_workers(node=Depends(self.get_node)):
-            self.logger.info("get workers")
-            return {"workers": await node.list_workers()}
+            with self.info("Retrieving workers", "Retrieved workers"):
+                return {"workers": await node.list_workers()}
 
         @self.app.get("/agents/{name}")
         async def get_agent_by_name(name: str, node=Depends(self.get_node)):
-            self.logger.info(f"get agent by name: {name}")
-            return await find_agent(node, name)
+            with self.info(f"Retrieving agent with name '{name}'", f"Retrieved agent with name '{name}'"):
+                return await find_agent(node, name)
 
         @self.app.get("/agents/{name}/conversations")
         async def get_conversations_by_agent_name(name: str, node=Depends(self.get_node)):
-            self.logger.info(f"get conversations by agent name: {name}")
-            return await get_agent_by_name_and_scope_and_conversation_impl(name, None, None, node)
+            with self.info(
+                f"Retrieving conversations for agent '{name}'", f"Retrieved conversations for agent '{name}'"
+            ):
+                return await get_agent_by_name_and_scope_and_conversation_impl(name, None, None, node)
 
         @self.app.get("/agents/{name}/scopes/{scope}/conversations")
         async def get_conversations_by_agent_name_and_scope(name: str, scope: str, node=Depends(self.get_node)):
-            self.logger.info(f"get conversations by agent {name} and scope {scope}")
-            return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, None, node)
+            with self.info(
+                f"Retrieving conversations for agent '{name}' and scope '{scope}'",
+                f"Retrieved conversations for agent '{name}' and scope '{scope}'",
+            ):
+                return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, None, node)
 
         @self.app.get("/agents/{name}/scopes/{scope}/conversations/{conversation}")
         async def get_agent_by_name_and_scope_and_conversation(
             name: str, scope: str, conversation: str, node=Depends(self.get_node)
         ):
-            self.logger.info(f"getting conversations by agent {name}, scope {scope} and conversation {conversation}")
-            return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, conversation, node)
+            with self.info(
+                f"Retrieving conversations for agent '{name}', scope '{scope}' and conversation '{conversation}'",
+                f"Retrieved conversations for agent '{name}', scope '{scope}' and conversation '{conversation}'",
+            ):
+                return await get_agent_by_name_and_scope_and_conversation_impl(name, scope, conversation, node)
 
         async def get_agent_by_name_and_scope_and_conversation_impl(
             name: str, scope: None | str, conversation: None | str, node
@@ -116,9 +125,11 @@ class HttpServer:
             timeout: int = 60,
             node=Depends(self.get_node),
         ):
-            self.logger.info(f"send a message to agent '{name}'")
-            await find_agent(node, name)
-            return await send_message_to_reference(AgentReference(name, node), message, stream, content_size, timeout)
+            with self.info(f"Sending a message to agent '{name}'", f"Sent a message to agent '{name}'"):
+                await find_agent(node, name)
+                return await send_message_to_reference(
+                    AgentReference(name, node), message, stream, content_size, timeout
+                )
 
         @self.app.post("/flows/{name}")
         async def send_message_to_flow(
@@ -129,9 +140,11 @@ class HttpServer:
             timeout: int = 60,
             node=Depends(self.get_node),
         ):
-            self.logger.info(f"send a message to flow '{name}'")
-            await find_worker(node, name)
-            return await send_message_to_reference(FlowReference(name, node), message, stream, content_size, timeout)
+            with self.info(f"Sending a message to flow '{name}'", f"Sent a message to flow '{name}'"):
+                await find_worker(node, name)
+                return await send_message_to_reference(
+                    FlowReference(name, node), message, stream, content_size, timeout
+                )
 
         async def find_agent(node, name):
             agents = await node.list_agents()
@@ -194,25 +207,27 @@ class HttpServer:
                 else:
                     return await reference.send(msg, scope, conversation, timeout=timeout)
             except Exception as e:
-                self.logger.error(f"failed to send message to '{reference.name}': {e}")
+                self.logger.error(f"Failed to send message to '{reference.name}': {e}")
                 raise HTTPException(status_code=500, detail="Failed to send message")
 
         @self.app.get("/tools")
         async def get_tools(node=Depends(self.get_node)):
-            self.logger.info("get the exposed tools")
-            return node.list_tools()
+            with self.info("Get the exposed tools", "Retrieved the exposed tools"):
+                return node.list_tools()
 
         @self.app.get("/tools/{name}")
         async def get_tool_by_name(name: str, node=Depends(self.get_node)):
-            self.logger.info(f"get tool by name: {name}")
-            return find_tool(node, name)
+            with self.info(f"Get tool: {name}", f"Retrieved tool: {name}"):
+                return find_tool(node, name)
 
     def get_node(self):
         return self.node
 
     async def serve(self):
+        self.logger.info("Starting the http server")
         config = uvicorn.Config(self.app, host=self.host, port=self.port)
         server = uvicorn.Server(config)
+        self.logger.info("Started the http server")
         await server.serve()
 
     def set_host_and_port(self, listen_address):

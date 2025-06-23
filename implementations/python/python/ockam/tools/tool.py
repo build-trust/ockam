@@ -7,9 +7,10 @@ from functools import wraps
 from docstring_parser import parse
 
 from .protocol import InvokableTool
+from ..logging.logging import InfoContext
 
 
-class Tool(InvokableTool):
+class Tool(InvokableTool, InfoContext):
     _logger = None
 
     @classmethod
@@ -36,19 +37,19 @@ class Tool(InvokableTool):
         return self._spec
 
     async def invoke(self, json_argument: Optional[str]) -> str:
-        self.logger.info(f"invoke tool '{self.name}'")
-        self.logger.debug(f"the arguments are: {json_argument}")
-        try:
-            if json_argument is None or json_argument == "":
-                args = {}
-            else:
-                args = json.loads(json_argument)
-            tool_response = str(await self.func(**args))
-            self.logger.debug("the tool call succeeded: {tool_response}")
-        except Exception as e:
-            tool_response = f"the tool call failed with error: {e}"
-            self.logger.error(tool_response)
-        return tool_response
+        with self.info(f"Invoke tool: '{self.name}'", f"invoked tool: '{self.name}'"):
+            self.logger.debug(f"The tool arguments are: {json_argument}")
+            try:
+                if json_argument is None or json_argument == "":
+                    args = {}
+                else:
+                    args = json.loads(json_argument)
+                tool_response = str(await self.func(**args))
+                self.logger.debug(f"The tool call succeeded: {tool_response}")
+            except Exception as e:
+                tool_response = f"The tool call failed with error: {e}"
+                self.logger.error(tool_response)
+            return tool_response
 
 
 def wrap(f) -> callable:

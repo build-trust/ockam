@@ -54,7 +54,7 @@ class Repl:
     async def start(
         agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=None, stream=True
     ):
-        Repl.class_logger().info("starting the REPL")
+        Repl.class_logger().info("Starting the repl")
         repl = Repl(agent_reference, listen_address, functions, timeout, stream)
         # start the repl in a separate thread since we might also have a HTTP server running
         asyncio.create_task(repl.start_impl())
@@ -68,7 +68,7 @@ class Repl:
             raise ValueError(f"Invalid listen_address: {listen_address}")
 
     async def list_functions(self, writer):
-        self.logger.debug("list functions")
+        self.logger.debug("List functions")
         functions_list = "\n".join([f"{name}" for name in self.functions.keys()])
         await self.write_repl_message(writer, functions_list)
 
@@ -211,11 +211,12 @@ class Repl:
 
     async def start_impl(self):
         self.server = await asyncio.start_server(self.handle_client, self.host, self.port)
+        Repl.class_logger().info("Started the repl")
         async with self.server:
             await self.server.serve_forever()
 
     async def stop(self):
-        self.logger.info("stop the REPL")
+        self.logger.info("Stop the repl")
         if self.server:
             self.server.close()
             await self.server.wait_closed()
