@@ -1,6 +1,10 @@
 from typing import List, Optional
 
 import litellm
+from litellm import Router
+
+from copy import deepcopy
+
 import os
 import boto3
 import threading
@@ -41,6 +45,13 @@ PROVIDER_ALIASES = {
         "gemma3": "ollama_chat/gemma3",
         "gemma3:27b": "ollama_chat/gemma3:27b",
         "nomic-embed-text": "ollama/nomic-embed-text",
+    },
+    "ollama_chat": {
+        "deepseek-r1": "ollama_chat/deepseek-r1",
+        "llama3.2": "ollama_chat/llama3.2",
+        "llama3.3": "ollama_chat/llama3.3",
+        "gemma3": "ollama_chat/gemma3",
+        "gemma3:27b": "ollama_chat/gemma3:27b",
     },
     "bedrock": {
         "claude-3-5-haiku-v1": "bedrock/anthropic.claude-3-5-haiku-20241022-v1:0",
@@ -89,6 +100,16 @@ init_lock = threading.Lock()
 
 _inference_profile_cache = {}
 _cache_lock = threading.Lock()
+
+
+# slightly modify the parameters to accommodate services
+litellm.modify_params = True
+
+model_list = []
+for model_name in ALL_PROVIDER_ALLOWED_FULL_NAMES:
+    model_list.append({"model_name": model_name, "litellm_params": {"model": model_name}})
+
+router = Router(model_list=model_list, default_max_parallel_requests=400)
 
 
 def construct_bedrock_arn(model_identifier: str, original_name: str) -> Optional[str]:
@@ -178,7 +199,7 @@ class Model:
             cls._logger = get_logger("model")
             return cls._logger
 
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, max_input_tokens=None, **kwargs):
         self.logger = Model.class_logger()
         if os.environ.get("LITELLM_PROXY_API_BASE"):
             provider = "litellm_proxy"
@@ -208,6 +229,12 @@ class Model:
 
         self.logger.debug(f"the resolved model name is '{resolved_name}'")
         self.name = resolved_name
+
+        # TODO: test and uncomment
+        # if not max_input_tokens:
+        #     max_input_tokens = litellm.get_max_tokens(self.name)
+
+        self.max_input_tokens = max_input_tokens
         self.kwargs = kwargs
         self.kwargs["drop_params"] = True
 
@@ -236,6 +263,24 @@ class Model:
                             f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly."
                         )
 
+    def count_tokens(self, messages: List[dict] | List[ConversationMessage], tools) -> int:
+        messages, kwargs = self.prepare_llm_call(messages)
+
+        # FIXME: Do kwargs we provide to acompletion could potentially affect this calculation?
+        return litellm.token_counter(self.name, messages=messages, tools=tools)
+
+    def prepare_llm_call(self, messages: List[dict] | List[ConversationMessage], **kwargs):
+        messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())
+
+        # parameters provided in kwargs will override the default parameters
+        kwargs = {**self.kwargs, **kwargs}
+
+        # sometimes an empty tools list is interpreted as "please hallucinate tools",
+        if "tools" in kwargs and len(kwargs["tools"]) == 0:
+            del kwargs["tools"]
+
+        return messages, kwargs
+
     def support_tools(self):
         if "deepseek" in self.name:
             return False
@@ -248,19 +293,9 @@ class Model:
         self.logger.info(f"send {len(messages)} messages to model '{self.original_name}'")
         self.logger.debug(f"the messages are: {messages} (stream={stream})")
 
-        messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())
+        messages, kwargs = self.prepare_llm_call(messages, **kwargs)
 
-        # slightly modify the parameters to accommodate services
-        litellm.modify_params = True
-
-        # parameters provided in kwargs will override the default parameters
-        kwargs = {**self.kwargs, **kwargs}
-
-        # sometimes an empty tools list is interpreted as "please hallucinate tools",
-        if "tools" in kwargs and len(kwargs["tools"]) == 0:
-            del kwargs["tools"]
-
-        response = await litellm.acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        response = await self.router().acompletion(self.name, messages=messages, stream=stream, **kwargs)
         self.logger.debug(f"got a response from the model '{self.original_name}': {response}")
         return response
 
@@ -268,13 +303,20 @@ class Model:
         # parameters provided in kwargs will override the default parameters
         kwargs = {**self.kwargs, **kwargs}
 
-        embedding = await litellm.aembedding(self.name, text, **kwargs)
+        embedding = await self.router().aembedding(self.name, text, **kwargs)
         return [embedding["embedding"] for embedding in embedding.data]
+
+    def router(self):
+        global router
+
+        return router
 
 
 def normalize_messages(
     messages: List[dict] | List[ConversationMessage], tools_supported: bool, forced_assistant_answer_supported: bool
 ) -> List[dict]:
+    messages = deepcopy(messages)
+
     # convert if the messages are typed as ConversationMessage
     if len(messages) > 0:
         if not isinstance(messages[0], dict):

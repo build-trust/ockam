@@ -1,85 +1,13 @@
-import aiofiles
-import aiohttp
-from urllib.parse import urlparse
 from typing import Optional, List
 
 from .chunkers import Chunker, NaiveChunker
 from .extractors import TextExtractor, create_extractor
 from .protocol import KnowledgeProvider, Storage
 from .in_memory import InMemory
-from .search import TextPiece, SearchHit
+from .search import TextPiece, SearchHit, SearchResults
+from .util import download_url
 from ..models import Model
 from ..ockam_in_rust_for_python import debug
-
-
-class KnowledgeAggregator(KnowledgeProvider):
-    """
-    This class aggregates multiple knowledge providers and allows searching across all of them.
-    """
-
-    def __init__(self, knowledge_providers: List[KnowledgeProvider]):
-        self.knowledge_providers = knowledge_providers
-
-    async def search(self, query: str) -> List[SearchHit]:
-        results = []
-        for provider in self.knowledge_providers:
-            results.extend(await provider.search(query))
-        return results
-
-
-class Knowledge(KnowledgeProvider):
-    """
-    This class serves as a basic knowledge provider that can store and retrieve whole documents.
-    All the documents within the specified knowledge are returned when a search is performed.
-    A document name can be specified to retrieve only a specific document.
-    """
-
-    def __init__(
-        self,
-        name: str,
-        storage: Storage = InMemory(),
-        text_extractor: TextExtractor = None,
-        document_name: Optional[str] = None,
-    ):
-        """
-        Initializes a Knowledge instance.
-
-        :param name: A string representing the unique name or identifier for the instance.
-        :param storage: An optional instance of Storage, defaulting to InMemory, which
-            defines the storage mechanism for the object.
-        :param text_extractor: An optional instance of TextExtractor for extracting text,
-            defaulting to None. If None, a default text extractor is created.
-        :param document_name: An optional string specifying the name of a document to
-            associate with the instance, defaulting to None.
-        """
-        if text_extractor is None:
-            text_extractor = create_extractor()
-        self.name = name
-        self.storage = storage
-        self.document_name = document_name
-        self.text_extractor = text_extractor
-
-    async def search(self, _query: str) -> List[SearchHit]:
-        return await self.storage.documents(
-            self.name,
-            document_name=self.document_name,
-        )
-
-    async def add_document(self, document_name: str, document_url: str, content_type: Optional[str] = None):
-        content = await download_url(document_url)
-        whole_document = await self.text_extractor.extract_text(content, content_type)
-        await self.storage.store_document(
-            self.name,
-            document_name,
-            whole_document,
-        )
-
-    async def add_text(self, document_name: str, text: str):
-        await self.storage.store_document(
-            self.name,
-            document_name,
-            text,
-        )
 
 
 class SearchableKnowledge(KnowledgeProvider):
@@ -92,6 +20,7 @@ class SearchableKnowledge(KnowledgeProvider):
         chunker: Chunker = NaiveChunker(),
         max_results: int = 10,
         max_distance: float = 0.2,
+        max_knowledge_size: int = 4096,
     ):
         """
         This class allows to store and search for text documents using vector search.
@@ -124,6 +53,8 @@ class SearchableKnowledge(KnowledgeProvider):
         self.chunker = chunker
         self.max_results = max_results
         self.max_distance = max_distance
+        self.search_results = SearchResults()
+        self.max_knowledge_size = max_knowledge_size
 
     async def add_text(self, document_name: str, text: str, content_type: Optional[str] = None):
         whole_document = await self.text_extractor.extract_text(text, content_type)
@@ -182,16 +113,26 @@ class SearchableKnowledge(KnowledgeProvider):
         debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.name}'")
         return hits
 
+    async def search_knowledge(self, _scope: Optional[str], conversation: Optional[str], query: str) -> Optional[str]:
+        if not query or len(query) == 0:
+            return None
 
-async def download_url(url: str) -> bytes:
-    parsed_url = urlparse(url)
-    match parsed_url.scheme:
-        case "http" | "https":
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    response.raise_for_status()
-                    return await response.read()
-        case "file" | "":
-            async with aiofiles.open(parsed_url.path, mode="rb") as f:
-                return await f.read()
-    raise ValueError(f"Unsupported URL scheme: {parsed_url.scheme}. Supported schemes are 'http', 'https', and 'file'.")
+        hits = await self.search(query)
+        # TODO: Should it be cleared here at some point?
+        self.search_results.add(hits)
+        while True:
+            view = self.search_results.view()
+            if len(view) > 0:
+                contextual_knowledge = ""
+                for document_name, text_pieces in view.items():
+                    contextual_knowledge += f"Document name: {document_name}\n"
+                    for text_piece in text_pieces:
+                        contextual_knowledge += f"- {text_piece}\n"
+                    contextual_knowledge += "\n"
+                if len(contextual_knowledge) <= self.max_knowledge_size:
+                    break
+            else:
+                contextual_knowledge = None
+                break
+            self.search_results.reduce_size()
+        return contextual_knowledge

@@ -1,15 +1,24 @@
 import json
 import traceback
-from typing import Optional, AsyncGenerator, Tuple, Dict, List
+
+from typing import List
 from enum import Enum
 
+from copy import deepcopy
+from typing import Optional, AsyncGenerator, Tuple, Dict
+
+
 import secrets
+import copy
+
 
 from .conversation_response import ConversationResponse
+from ..tools.protocol import InvokableTool
+from .agent_memory_knowledge import AgentMemoryKnowledge
+from ..knowledge.noop import NoopKnowledge
 from ..nodes import RemoteNode, LocalNodeProtocol
 from ..planning import Planner
-from ..tools.protocol import InvokableTool
-from ..knowledge import SearchResults, KnowledgeProvider
+from ..knowledge import KnowledgeProvider
 from ..memory import Memory
 from ..models import Model
 from ..nodes import NodeProtocol
@@ -165,11 +174,11 @@ class AgentStateMachine:
             self.state = AgentState.FINISHED
 
         self.tool_calls = []
-        async for error, finished, model_response in self.agent.complete_chat(
+        async for err, finished, model_response in self.agent.complete_chat(
             self.scope, self.conversation, self.contextual_knowledge, stream=self.stream
         ):
-            if error:
-                yield self.streaming_response.make_snippet(error)
+            if err:
+                yield self.streaming_response.make_snippet(err)
                 self.state = AgentState.FINISHED
                 return
 
@@ -254,6 +263,7 @@ class AgentStateMachine:
 class Agent:
     _logger = None
     tools: Dict[str, InvokableTool]
+    memory_knowledge: Optional[AgentMemoryKnowledge]
 
     @classmethod
     def class_logger(cls):
@@ -271,12 +281,14 @@ class Agent:
         name: str,
         instructions: str,
         model: Model,
+        memory_model: Optional[Model],
+        memory_embeddings_model: Optional[Model],
         tool_specs: List[dict],
         tools: Dict[str, InvokableTool],
         planner: Planner,
         memory: Memory,
         knowledge: KnowledgeProvider,
-        max_knowledge_size: int,
+        maximum_iterations: int,
     ):
         self.logger = Agent.class_logger()
         self.logger.info(f"start agent '{name}'")
@@ -287,16 +299,17 @@ class Agent:
 
         self.name = name
         self.model = model
+        self.memory_model = memory_model
+        self.memory_embeddings_model = memory_embeddings_model
+        self.memory_knowledge = None
 
         self.memory = memory
         memory.set_instructions(system_message(instructions))
 
         self.planner = planner
-        self.maximum_iterations = 14
+        self.maximum_iterations = maximum_iterations
 
         self.knowledge = knowledge
-        self.max_knowledge_size = max_knowledge_size
-        self.search_results = SearchResults()
 
         self.converter = MessageConverter.create(node)
 
@@ -359,13 +372,13 @@ class Agent:
         messages = snippet.messages
 
         query = ""
-        for message in messages:
+        for message in reversed(messages):
             if message.role == ConversationRole.USER:
+                # TODO: Why we only use the last message to query knowledge?
                 query = message.content
+                break
 
-        contextual_knowledge = None
-        if self.knowledge is not None:
-            contextual_knowledge = await self.add_knowledge_search(query)
+        contextual_knowledge = await self.knowledge.search_knowledge(scope, conversation, query)
 
         # Create and initialize the state machine
         state_machine = AgentStateMachine(
@@ -388,34 +401,10 @@ class Agent:
         messages: list[dict] = self.memory.get_messages_only(scope, conversation)
         return [self.converter.conversation_message_from_dict(m) for m in messages]
 
-    async def add_knowledge_search(self, query: str) -> Optional[str]:
-        """
-        Search the knowledge base for relevant information and adds it to the search results.
-        """
-        # Check if knowledge is None or query is empty
-        if self.knowledge is None or not query or len(query) == 0:
-            return None
-
-        hits = await self.knowledge.search(query)
-        self.search_results.add(hits)
-        while True:
-            view = self.search_results.view()
-            if len(view) > 0:
-                contextual_knowledge = ""
-                for document_name, text_pieces in view.items():
-                    contextual_knowledge += f"Document name: {document_name}\n"
-                    for text_piece in text_pieces:
-                        contextual_knowledge += f"- {text_piece}\n"
-                    contextual_knowledge += "\n"
-                if len(contextual_knowledge) <= self.max_knowledge_size:
-                    break
-            else:
-                contextual_knowledge = None
-                break
-            self.search_results.reduce_size()
-        return contextual_knowledge
-
     async def remember(self, scope: str, conversation: str, message: ConversationMessage):
+        # TODO: at some point memory becomes bigger than context window and we need to start pusing memories
+        # into Knowledge
+        # self.history_knowledge.add(messages=[model_response], user_id=scope)
         if not isinstance(message, dict):
             message = self.converter.message_to_dict(message)
         self.memory.add_message(scope, conversation, message)
@@ -423,20 +412,97 @@ class Agent:
     async def message_history(self, scope: str, conversation: str) -> list[dict]:
         return self.memory.get_messages(scope, conversation)
 
-    async def complete_chat(
-        self, scope, conversation, contextual_knowledge, stream: bool = False
-    ) -> AsyncGenerator[Tuple[Optional[Exception], bool, AssistantMessage], None]:
-        message_history = await self.message_history(scope, conversation)
+    async def determine_input_context(self, scope, conversation, contextual_knowledge):
+        # Try to use full history and reduce it until it fits into the context window
 
-        if contextual_knowledge is not None:
-            message_history = [
+        prompt_size = 1
+        if contextual_knowledge:
+            prompt_size += 1
+            contextual_knowledge = [
                 {
                     "role": "system",
                     "content": "The following knowledge could be useful to answer properly:\n" + contextual_knowledge,
                 }
-            ] + message_history
+            ]
+        else:
+            contextual_knowledge = []
 
-        response = await self.model.complete_chat(tools=self.tool_specs, messages=message_history, stream=stream)
+        # TODO: contextual_knowledge go after the initial prompt?
+        message_history = contextual_knowledge + await self.message_history(scope, conversation)
+
+        if not self.model.max_input_tokens:
+            return message_history
+
+        # FIXME: this should be fixed in the future for the case when model has max_input_tokens but we don't want
+        #  to use memory in that case we should raise error only when we exceed max_input_tokens
+        if not self.memory_model or not self.memory_embeddings_model:
+            raise ValueError("Max input tokens exceeded and no memory model is available")
+
+        prompts = deepcopy(message_history[:prompt_size])
+        visible_message_history = deepcopy(message_history[prompt_size:])
+        skipped_message_history = []
+
+        query = None
+        for message in reversed(message_history):
+            if message.get("role", None) == "user":
+                # TODO: Why we only use the last message to query knowledge?
+                query = deepcopy(message.get("content", None))
+                break
+
+        iterations = 0
+        max_iterations = int((len(visible_message_history) + 1) / 2) - 1
+
+        while True:
+            self.memory_knowledge = await AgentMemoryKnowledge.create(self.memory_model, self.memory_embeddings_model)
+            for i in range(0, len(skipped_message_history), 2):
+                self.logger.info(f"ADDING MESSAGES to knowledge: {skipped_message_history[i : i + 2]}")
+                await self.memory_knowledge.add(
+                    scope=scope, conversation=conversation, messages=skipped_message_history[i : i + 2]
+                )
+
+            # We should actually clear knowledge in this function each time...
+            memory_knowledge = await self.memory_knowledge.search(scope, conversation, query)
+            self.logger.info(f"RELATED MEMORY for query: {query}:\n{memory_knowledge}.")
+            if memory_knowledge:
+                # FIXME: Use tool role, maybe need to prepend tool call before that
+                memory_knowledge = [
+                    {
+                        "role": "system",
+                        "content": f"The following information from your past interactions with the user could be useful to answer properly:\n{memory_knowledge}",
+                    }
+                ]
+            else:
+                memory_knowledge = []
+
+            self.logger.info(f"VISIBLE_MEMORY_HISTORY: {visible_message_history}")
+            input_context = prompts + memory_knowledge + visible_message_history
+            number_of_tokens = self.model.count_tokens(
+                tools=self.tool_specs,
+                messages=input_context,
+            )
+
+            self.logger.info(
+                f"Skipped {iterations} turns out of {max_iterations} and now has {number_of_tokens} tokens. Input context: {input_context}"
+            )
+
+            if number_of_tokens <= self.model.max_input_tokens:
+                return input_context
+
+            # FIXME: Assuming turn is 2 messages is wrong, but works as initial implementation
+            skipped_message_history.extend(deepcopy(visible_message_history[:2]))
+            visible_message_history = deepcopy(visible_message_history[2:])
+
+            if not visible_message_history:
+                raise ValueError("Max input tokens exceeded and no message fits into the context window")
+
+            iterations += 1
+
+    async def complete_chat(
+        self, scope, conversation, contextual_knowledge, stream: bool = False
+    ) -> AsyncGenerator[Tuple[Optional[Exception], bool, AssistantMessage], None]:
+        input_context = await self.determine_input_context(scope, conversation, contextual_knowledge)
+
+        response = await self.model.complete_chat(tools=self.tool_specs, messages=input_context, stream=stream)
         if stream:
             tool_calls: Dict[int, ToolCall] = {}
             async for chunk in response:
@@ -528,11 +594,13 @@ class Agent:
         instructions: str,
         name: Optional[str] = None,
         model: Model = None,
+        memory_model: Optional[Model] = None,
+        memory_embeddings_model: Optional[Model] = None,
         tools: Optional[List[InvokableTool]] = None,
         planner: Planner = None,
         exposed_as: Optional[str] = None,
-        knowledge: Optional[KnowledgeProvider] = None,
-        max_knowledge_size: int = 4096,
+        knowledge: KnowledgeProvider = NoopKnowledge(),
+        max_iterations: int = 14,
     ):
         if name is None:
             name = secrets.token_hex(12)
@@ -545,11 +613,30 @@ class Agent:
         match node:
             case node if isinstance(node, LocalNodeProtocol):
                 await Agent.start_agent_impl(
-                    node, instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+                    node,
+                    instructions,
+                    name,
+                    model,
+                    memory_model,
+                    memory_embeddings_model,
+                    tools,
+                    planner,
+                    exposed_as,
+                    knowledge,
+                    max_iterations,
                 )
             case node if isinstance(node, RemoteNode):
                 await node.start_agent(
-                    instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
+                    instructions,
+                    name,
+                    model,
+                    memory_model,
+                    memory_embeddings_model,
+                    tools,
+                    planner,
+                    exposed_as,
+                    knowledge,
+                    max_iterations,
                 )
                 Agent.class_logger().info(f"Successfully started agent {name} on a remote node")
             case _:
@@ -567,10 +654,12 @@ class Agent:
         instructions: str,
         number_of_agents: int,
         model: Model = None,
+        memory_model: Optional[Model] = None,
+        memory_embeddings_model: Optional[Model] = None,
         tools: Optional[list] = None,
         planner=None,
         knowledge: Optional[KnowledgeProvider] = None,
-        max_knowledge_size: int = 4096,
+        max_iterations: int = 14,
     ):
         if model is None:
             model = Model(name="llama3.2")
@@ -582,12 +671,30 @@ class Agent:
                 for i in range(number_of_agents):
                     name = secrets.token_hex(12)
                     await Agent.start_agent_impl(
-                        node, instructions, name, model, tools, planner, None, knowledge, max_knowledge_size
+                        node,
+                        instructions,
+                        name,
+                        model,
+                        memory_model,
+                        memory_embeddings_model,
+                        tools,
+                        copy.deepcopy(planner),
+                        None,
+                        copy.deepcopy(knowledge),
+                        max_iterations,
                     )
                     agents.append(AgentReference(name, node))
             case node if isinstance(node, RemoteNode):
                 names = await node.start_agents(
-                    instructions, number_of_agents, model, tools, planner, knowledge, max_knowledge_size
+                    instructions,
+                    number_of_agents,
+                    model,
+                    memory_model,
+                    memory_embeddings_model,
+                    tools,
+                    planner,
+                    knowledge,
+                    max_iterations,
                 )
 
                 for name in names:
@@ -605,11 +712,13 @@ class Agent:
         instructions: str,
         name: Optional[str],
         model: Model,
+        memory_model: Optional[Model],
+        memory_embeddings_model: Optional[Model],
         tools: Optional[List[InvokableTool]],
         planner: Planner,
         exposed_as: Optional[str],
         knowledge: Optional[KnowledgeProvider],
-        max_knowledge_size: int,
+        max_iterations: int,
     ):
         tools_specs, tools = await prepare_tools(node, tools)
         # the memory is shared between all the agent workers
@@ -617,7 +726,18 @@ class Agent:
 
         def agent_creator():
             return Agent(
-                node, name, instructions, model, tools_specs, tools, planner, memory, knowledge, max_knowledge_size
+                node,
+                name,
+                instructions,
+                model,
+                memory_model,
+                memory_embeddings_model,
+                tools_specs,
+                tools,
+                planner,
+                memory,
+                knowledge,
+                max_iterations,
             )
 
         await node.start_spawner(name, agent_creator, key_extractor, None, exposed_as)
