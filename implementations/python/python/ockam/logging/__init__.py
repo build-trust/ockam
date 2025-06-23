@@ -1,4 +1,4 @@
-from .logging import info, debug, error, warning, set_log_levels, get_logger
+from .logging import info, debug, error, warning, set_log_level, set_log_levels, get_logger
 from .colored_formatter import OckamColoredFormatter
 
 __all__ = [
@@ -9,5 +9,6 @@ __all__ = [
     "debug",
     "error",
     "get_logger",
+    "set_log_level",
     "set_log_levels",
 ]

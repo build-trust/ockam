@@ -256,7 +256,7 @@ class Agent:
     tools: Dict[str, InvokableTool]
 
     @classmethod
-    def logger(cls):
+    def class_logger(cls):
         if cls._logger:
             return cls._logger
         else:
@@ -278,7 +278,7 @@ class Agent:
         knowledge: KnowledgeProvider,
         max_knowledge_size: int,
     ):
-        self.logger = Agent.logger()
+        self.logger = Agent.class_logger()
         self.logger.info(f"start agent '{name}'")
         self.node = node
 
@@ -551,7 +551,7 @@ class Agent:
                 await node.start_agent(
                     instructions, name, model, tools, planner, exposed_as, knowledge, max_knowledge_size
                 )
-                Agent.logger().info(f"Successfully started agent {name} on a remote node")
+                Agent.class_logger().info(f"Successfully started agent {name} on a remote node")
             case _:
                 raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
@@ -593,7 +593,7 @@ class Agent:
                 for name in names:
                     agents.append(AgentReference(name, node))
 
-                Agent.logger().info("Successfully started agents on a remote node")
+                Agent.class_logger().info("Successfully started agents on a remote node")
             case _:
                 raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
@@ -622,7 +622,7 @@ class Agent:
 
         await node.start_spawner(name, agent_creator, key_extractor, None, exposed_as)
 
-        Agent.logger().debug(f"successfully started agent {name}")
+        Agent.class_logger().debug(f"successfully started agent {name}")
 
 
 def key_extractor(message):
