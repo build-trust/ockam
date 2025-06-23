@@ -22,11 +22,11 @@ format:
 	uv run ruff format examples python tests --exit-non-zero-on-format
 
 release-linux:
-	docker run --rm -v "$(shell pwd)/..":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
-	docker run --rm -v "$(shell pwd)/..":/io --platform linux/arm64 ghcr.io/pyo3/maturin build --release --target aarch64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
+	docker run --rm -v "$(shell pwd)":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/implementations/python/Cargo.toml
+	docker run --rm -v "$(shell pwd)":/io --platform linux/arm64 ghcr.io/pyo3/maturin build --release --target aarch64-unknown-linux-gnu --manifest-path /io/implementations/python/Cargo.toml
 
 build-image-amd64:
-	docker run --rm -v "$(shell pwd)/..":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/python/Cargo.toml
+	docker run --rm -v "$(shell pwd)":/io --platform linux/amd64 ghcr.io/pyo3/maturin build --release --target x86_64-unknown-linux-gnu --manifest-path /io/implementations/python/Cargo.toml
 	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
 
 	docker pull cgr.dev/chainguard/python:latest-dev
@@ -34,11 +34,11 @@ build-image-amd64:
 
 	docker build --platform linux/amd64 \
 		-t ghcr.io/build-trust/ockam-python-dev:latest \
-		-t ghcr.io/build-trust/ockam-python-dev:$(SHORT_COMMIT_HASH) --file Dockerfile.dev .
+		-t ghcr.io/build-trust/ockam-python-dev:$(SHORT_COMMIT_HASH) --file ./implementations/python/Dockerfile.dev .
 
 	docker build --platform linux/amd64 \
 		-t ghcr.io/build-trust/ockam-python:latest \
-		-t ghcr.io/build-trust/ockam-python:$(SHORT_COMMIT_HASH) .
+		-t ghcr.io/build-trust/ockam-python:$(SHORT_COMMIT_HASH) --file ./implementations/python/Dockerfile .
 
 release-image-amd64-hash:
 	$(eval SHORT_COMMIT_HASH := $(shell git rev-parse --short=9 HEAD))
