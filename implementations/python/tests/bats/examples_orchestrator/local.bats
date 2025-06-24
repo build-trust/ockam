@@ -25,7 +25,7 @@ teardown() {
   export ECHO_NODE="node-$(random_hex_str)"
   export CLIENT_NODE="node-$(random_hex_str)"
 
-  bash -c "ENROLLMENT_TICKET=$($OCKAM cluster ticket --relay $ECHO_NODE --zone $ZONE_NAME) \
+  bash -c "ENROLLMENT_TICKET=$($OCKAM zone ticket --relay $ECHO_NODE --zone $ZONE_NAME) \
     DEFAULT_PORT_HTTP=8002 \
     CLUSTER=$CLUSTER \
     NODE=$ECHO_NODE \
@@ -34,7 +34,7 @@ teardown() {
     uv run ./examples/04-echo.py &"
   sleep 1
 
-  run_success bash -c "ENROLLMENT_TICKET=$($OCKAM cluster ticket --relay $ECHO_NODE --zone $ZONE_NAME) \
+  run_success bash -c "ENROLLMENT_TICKET=$($OCKAM zone ticket --relay $ECHO_NODE --zone $ZONE_NAME) \
     DEFAULT_PORT_HTTP=8001 \
     CLUSTER=$CLUSTER \
     NODE=$CLIENT_NODE \

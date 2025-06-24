@@ -11,6 +11,7 @@ pub mod list;
 mod outlet;
 pub(crate) mod repl;
 pub(crate) mod secret;
+mod ticket;
 pub mod watcher;
 pub mod zone_config;
 
@@ -28,6 +29,7 @@ use crate::zone::list::ListCommand;
 use crate::zone::outlet::OutletCommand;
 use crate::zone::repl::ReplCommand;
 use crate::zone::secret::SecretCommand;
+use crate::zone::ticket::TicketCommand;
 use crate::{docs, Command, CommandGlobalOpts};
 
 const LONG_ABOUT: &str = include_str!("./static/long_about.txt");
@@ -54,6 +56,7 @@ impl ZoneCommand {
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
             ZoneSubcommand::Init(c) => c.run(ctx, opts).await.map(|_| ()),
+            ZoneSubcommand::Ticket(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Secret(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Create(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Deploy(c) => c.run(ctx, opts).await.map(|_| ()),
@@ -71,6 +74,7 @@ impl ZoneCommand {
 #[allow(clippy::large_enum_variant)]
 pub enum ZoneSubcommand {
     Init(InitCommand),
+    Ticket(TicketCommand),
     Secret(SecretCommand),
     #[command(hide = true)]
     Create(CreateCommand),
@@ -89,6 +93,7 @@ impl ZoneSubcommand {
     pub fn name(&self) -> String {
         match self {
             ZoneSubcommand::Init(c) => c.name(),
+            ZoneSubcommand::Ticket(c) => c.name(),
             ZoneSubcommand::Secret(c) => c.name(),
             ZoneSubcommand::Create(c) => c.name(),
             ZoneSubcommand::Deploy(c) => c.name(),

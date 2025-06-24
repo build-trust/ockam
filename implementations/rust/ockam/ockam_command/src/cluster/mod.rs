@@ -1,14 +1,12 @@
 pub mod common_args;
 pub(crate) mod enroll;
 pub(crate) mod show;
-pub(crate) mod ticket;
 pub mod utils;
 
 use clap::{Args, Subcommand};
 
 use enroll::EnrollCommand;
 use ockam_node::Context;
-use ticket::TicketCommand;
 
 use crate::cluster::show::ShowCommand;
 use crate::{docs, Command, CommandGlobalOpts};
@@ -37,7 +35,6 @@ impl ClusterCommand {
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self.subcommand {
             ClusterSubcommand::Enroll(c) => c.run(ctx, opts).await,
-            ClusterSubcommand::Ticket(c) => c.run(ctx, opts).await.map(|_| ()),
             ClusterSubcommand::Show(c) => c.run(ctx, opts).await,
         }
     }
@@ -47,7 +44,6 @@ impl ClusterCommand {
 #[allow(clippy::large_enum_variant)]
 pub enum ClusterSubcommand {
     Enroll(EnrollCommand),
-    Ticket(TicketCommand),
     Show(ShowCommand),
 }
 
@@ -55,7 +51,6 @@ impl ClusterSubcommand {
     pub fn name(&self) -> String {
         match self {
             ClusterSubcommand::Enroll(c) => c.name(),
-            ClusterSubcommand::Ticket(c) => c.name(),
             ClusterSubcommand::Show(c) => c.name(),
         }
     }

@@ -7,9 +7,9 @@ use miette::{miette, IntoDiagnostic};
 use ockam_api::nodes::InMemoryNode;
 use ockam_node::Context;
 
-use super::utils::{get_api_client, get_cluster};
 use crate::cluster::common_args::HttpApiArgs;
-use crate::zone::common_args::ZoneNameLongOrConfigArg;
+use crate::cluster::utils::{get_api_client, get_cluster};
+use crate::zone::common_args::ZoneNameOrConfigArg;
 use crate::{docs, node_command::InMemoryNodeCommand, Command, CommandGlobalOpts, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/ticket/long_about.txt");
@@ -25,7 +25,7 @@ after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct TicketCommand {
     #[command(flatten)]
-    pub zone: ZoneNameLongOrConfigArg,
+    pub zone: ZoneNameOrConfigArg,
 
     #[command(flatten)]
     pub http_api: HttpApiArgs,
@@ -93,13 +93,13 @@ impl Command<String> for TicketCommand {
 }
 
 impl TicketCommand {
-    //a bit of copy-pasted from project ticket command. But no tls, enroller, etc.
+    // Similar to `project ticket` command, but without tls, enroller, etc.
     fn attributes(&self) -> Result<BTreeMap<String, String>> {
         let mut attributes = BTreeMap::new();
         for attr in &self.attributes {
             let mut parts = attr.splitn(2, '=');
             let key = parts.next().ok_or(miette!("key expected"))?;
-            // If no value is provided we assume that the attribute is a boolean attribute set to "true"
+            // If no value is provided, we assume that the attribute is a boolean attribute set to "true"
             let value = parts.next().unwrap_or("true");
             attributes.insert(key.to_string(), value.to_string());
         }
