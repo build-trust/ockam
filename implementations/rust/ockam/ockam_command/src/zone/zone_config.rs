@@ -12,6 +12,22 @@ pub struct ZoneConfig {
     pub pods: Vec<Pod>,
 }
 
+impl Default for ZoneConfig {
+    fn default() -> Self {
+        let _self = ZoneConfig {
+            name: "zone".to_string(),
+            pods: vec![Pod {
+                name: Self::MAIN_POD_NAME.to_string(),
+                ..Default::default()
+            }],
+        };
+        Self::from_contents(
+            &serde_yaml::to_string(&_self).expect("failed to serialize default zone config"),
+        )
+        .expect("failed to parse default zone config")
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Pod {
     pub name: String,
@@ -60,9 +76,9 @@ pub struct Outlet {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub to: String,
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pod_name: Option<String>,
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub inlet_from: Option<String>,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,

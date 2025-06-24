@@ -18,6 +18,7 @@ use ockam_abac::PolicyExpression;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::CliState;
 use ockam_node::Context;
+use std::str::FromStr;
 use std::sync::Arc;
 
 const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
@@ -40,7 +41,7 @@ pub struct InletCommand {
 
     /// References the name of TCP Outlet created in the Zone and the Relay name.
     #[arg(long)]
-    pub pod: String,
+    pub pod: Option<String>,
 
     // == Node Options ==
     #[command(flatten)]
@@ -59,10 +60,8 @@ pub struct InletCommand {
     // == TCP Inlet Options ==
     /// Address on which to accept TCP connections, in the format `<scheme>://<host>:<port>`.
     /// At least the port must be provided. The default scheme is `tcp` and the default host is `127.0.0.1`.
-    /// If the argument is not set, a random port will be used on the default address `tcp://127.0.0.1`.
-    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, default_value_t = tcp_inlet_default_from_addr(), value_parser = hostname_parser
-    )]
-    pub from: SchemeHostnamePort,
+    #[arg(long, display_order = 900, id = "SOCKET_ADDRESS", hide_default_value = true, value_parser = hostname_parser)]
+    pub from: Option<SchemeHostnamePort>,
 
     /// Name of the TCP Outlet service to connect to.
     #[arg(long, id = "ROUTE")]
@@ -94,17 +93,18 @@ impl InMemoryNodeCommand for InletNodeCommand {
         let use_http_api = self.command.http_api.use_http_api();
         let api_client = get_api_client(&node, use_http_api).await?;
         let cluster = self.command.cluster.get_cluster(ctx, &node).await?;
-        let zone_name = self.command.zone.zone_name()?;
+        let zone_config = self.command.zone.zone_config()?;
+        let zone_name = zone_config.name;
         let enrollment_ticket = self
             .command
             .enrollment_ticket
             .get(ctx, &*api_client, &cluster, &zone_name, None)
             .await?;
-        let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod);
-        let outlet_name = self.command.to.as_ref().unwrap_or(&self.command.pod);
+        let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod());
+        let outlet_name = self.command.to.as_deref().unwrap_or(self.command.pod());
         let mut node_config = serde_json::json!({
             "tcp-inlet": {
-                "from": self.command.from.to_string(),
+                "from": self.command.from().to_string(),
                 "to": outlet_name,
                 "via": relay_name
             }
@@ -156,11 +156,228 @@ impl Command for InletCommand {
     const NAME: &'static str = "zone inlet";
 
     async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> Result<()> {
+        let command = self.parse_args()?;
         let command = InletNodeCommand {
             opts: opts.clone(),
-            command: self.clone(),
+            command,
         };
         command.execute(ctx, opts.state.clone()).await?;
         Ok(())
+    }
+}
+
+impl InletCommand {
+    fn pod(&self) -> &str {
+        self.pod
+            .as_ref()
+            .expect("Pod name should be set by parse_args")
+    }
+
+    fn from(&self) -> &SchemeHostnamePort {
+        self.from
+            .as_ref()
+            .expect("From address should be set by parse_args")
+    }
+
+    fn parse_args(mut self) -> miette::Result<Self> {
+        // At least `--to` or `--pod` must be provided
+        if self.to.is_none() && self.pod.is_none() {
+            return Err(miette::miette!(
+                "You must provide at least the `--to` or the `--pod` argument."
+            ));
+        }
+
+        // If `--to` is provided, try to derive `--pod` and `--from` if needed
+        if let Some(to) = &self.to {
+            if self.pod.is_none() || self.from.is_none() {
+                let zone_config = self.zone.zone_config().unwrap_or_default();
+                'l: for pod in zone_config.pods.iter() {
+                    for outlet in pod.portals.outlets.iter() {
+                        if let Some(name) = &outlet.name {
+                            if to == name {
+                                if self.pod.is_none() {
+                                    self.pod = outlet.pod_name.clone();
+                                }
+                                if self.from.is_none() {
+                                    self.from = Some(SchemeHostnamePort::from_str(&outlet.to)?);
+                                }
+                                break 'l;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // If `--pod` is not set at this point, return an error
+        if self.pod.is_none() {
+            return Err(miette::miette!(
+                "Couldn't determine a value for `--pod`. Please provide the argument explicitly."
+            ));
+        }
+
+        // If `--from` is not set at this point, set it to the default value
+        if self.from.is_none() {
+            self.from = Some(tcp_inlet_default_from_addr());
+        }
+
+        Ok(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::zone::zone_config::{Outlet, Pod, Portals, ZoneConfig};
+
+    fn create_zone_config(
+        pod_name: &str,
+        outlet_pod: Option<&str>,
+        outlet_name: Option<&str>,
+        outlet_to: &str,
+    ) -> ZoneConfig {
+        let pod = Pod {
+            name: pod_name.to_string(),
+            portals: Portals {
+                outlets: vec![Outlet {
+                    pod_name: outlet_pod.map(|p| p.to_string()),
+                    name: outlet_name.map(|n| n.to_string()),
+                    to: outlet_to.to_string(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        ZoneConfig {
+            name: "zone".to_string(),
+            pods: vec![pod],
+        }
+    }
+
+    mod parse_args {
+        use super::*;
+
+        #[test]
+        fn test_parse_args_missing_required_args() {
+            let command = InletCommand::default();
+            let result = command.parse_args();
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("You must provide at least the `--to` or the `--pod` argument"));
+        }
+
+        #[test]
+        fn test_parse_args_with_to_finds_pod_and_config() {
+            let zone_config = ZoneConfig::default();
+            let zone_arg = ZoneNameOrConfigArg {
+                zone_config: Some(serde_yaml::to_string(&zone_config).unwrap()),
+                ..Default::default()
+            };
+            let logs_outlet = zone_config.pods[0].get_outlets().logs;
+            assert!(logs_outlet.name.is_some());
+
+            let command = InletCommand {
+                to: logs_outlet.name.clone(),
+                zone: zone_arg,
+                ..Default::default()
+            };
+
+            let result = command.parse_args();
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.pod.unwrap(), logs_outlet.pod_name.unwrap());
+            assert_eq!(parsed.to.unwrap(), logs_outlet.name.unwrap());
+            assert_eq!(
+                parsed.from.unwrap().to_string(),
+                format!("tcp://{}", logs_outlet.to)
+            );
+        }
+
+        #[test]
+        fn test_parse_args_with_to_finds_pod_and_no_config() {
+            let zone_config = ZoneConfig::default();
+            let logs_outlet = zone_config.pods[0].get_outlets().logs;
+            assert!(logs_outlet.name.is_some());
+
+            let command = InletCommand {
+                to: logs_outlet.name.clone(),
+                zone: ZoneNameOrConfigArg::default(),
+                ..Default::default()
+            };
+
+            let result = command.parse_args();
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.pod.unwrap(), logs_outlet.pod_name.unwrap());
+            assert_eq!(parsed.to.unwrap(), logs_outlet.name.unwrap());
+            assert_eq!(
+                parsed.from.unwrap().to_string(),
+                format!("tcp://{}", logs_outlet.to)
+            );
+        }
+
+        #[test]
+        fn test_parse_args_with_pod_sets_default_from() {
+            // Setup command with pod but no from
+            let command = InletCommand {
+                pod: Some("test_pod".to_string()),
+                ..Default::default()
+            };
+
+            let result = command.parse_args();
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert!(parsed.from.is_some());
+            assert_eq!(parsed.from.unwrap(), tcp_inlet_default_from_addr());
+        }
+
+        #[test]
+        fn test_parse_args_with_to_but_no_matching_pod() {
+            // Setup command with to, but zone config has no matching outlet
+            let command = InletCommand {
+                to: Some("tcp://example.com:5000".to_string()),
+                zone: ZoneNameOrConfigArg {
+                    zone_config: Some(
+                        serde_yaml::to_string(&create_zone_config(
+                            "main-pod",
+                            None,
+                            None,
+                            "tcp://other.com:6000",
+                        ))
+                        .unwrap(),
+                    ),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+
+            let result = command.parse_args();
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("Couldn't determine a value for `--pod`"));
+        }
+
+        #[test]
+        fn test_parse_args_keeps_explicit_values() {
+            // Setup command with both to and pod explicitly provided
+            let command = InletCommand {
+                to: Some("tcp://example.com:4000".to_string()),
+                pod: Some("explicit_pod".to_string()),
+                from: Some(SchemeHostnamePort::from_str("tcp://localhost:1234").unwrap()),
+                ..Default::default()
+            };
+
+            let result = command.parse_args();
+            assert!(result.is_ok());
+            let parsed = result.unwrap();
+            assert_eq!(parsed.pod.unwrap(), "explicit_pod");
+            assert_eq!(parsed.from.unwrap().to_string(), "tcp://localhost:1234");
+        }
     }
 }

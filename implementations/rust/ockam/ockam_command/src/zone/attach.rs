@@ -199,11 +199,11 @@ impl AttachCommand {
         let inlet_command = InletCommand {
             zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
             http_api: self.http_api.clone(),
-            pod: pod_name.to_string(),
+            pod: Some(pod_name.to_string()),
             enrollment_ticket: EnrollmentTicketConfigArg {
                 enrollment_ticket: None,
             },
-            from: from.clone(),
+            from: Some(from.clone()),
             to: Some(to.to_string()),
             background: true,
             no_ctrlc_handler: true,

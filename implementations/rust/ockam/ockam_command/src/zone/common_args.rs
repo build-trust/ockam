@@ -24,7 +24,17 @@ impl ZoneConfigArg {
 
     pub fn zone_config_path(&self) -> crate::Result<PathBuf> {
         match &self.zone_config {
-            Some(path) => Ok(PathBuf::from(path)),
+            Some(path) => {
+                let path = PathBuf::from(path);
+                if path.exists() {
+                    Ok(path)
+                } else {
+                    Err(miette!(
+                        "Zone config file not found at the specified path: {}",
+                        path.display()
+                    ))
+                }
+            }
             None => {
                 let paths = vec![PathBuf::from("./ockam.yaml"), PathBuf::from("./ockam.yml")];
                 for path in paths {
@@ -33,16 +43,31 @@ impl ZoneConfigArg {
                     }
                 }
                 Err(miette!(
-                    "Zone config file not found. Please provide a zone name or a zone config file."
+                    "Zone config file not found. Please provide a zone name or a zone config file path."
                 ))
             }
         }
     }
 
     pub fn zone_config(&self) -> crate::Result<ZoneConfig> {
-        let zone_config_path = self.zone_config_path()?;
-        ZoneConfig::from_file(&zone_config_path)
-            .map_err(|e| miette!("Failed to load zone config file: {}", e))
+        let contents = match self.zone_config_path() {
+            Ok(path) => {
+                if let Ok(contents) = std::fs::read_to_string(&path) {
+                    contents
+                } else {
+                    return Err(miette!("Zone config file not found or is not readable"));
+                }
+            }
+            Err(err) => {
+                if let Some(contents) = &self.zone_config {
+                    contents.clone()
+                } else {
+                    return Err(err);
+                }
+            }
+        };
+        ZoneConfig::from_contents(&contents)
+            .map_err(|e| miette!("Failed to parse zone config file: {}", e))
     }
 
     pub fn zone_name(&self) -> crate::Result<String> {
