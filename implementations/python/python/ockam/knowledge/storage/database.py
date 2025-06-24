@@ -9,13 +9,15 @@ from psycopg.rows import Row
 from ..search import TextPiece, SearchHit
 from .protocol import Storage
 
+from ..protocol import Document
+
 # Relevant database schema:
 """
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS document_pieces (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
-    namespace TEXT,
+    scope TEXT,
     name TEXT,
     text TEXT,
     embedding vector NOT NULL
@@ -23,7 +25,7 @@ CREATE TABLE IF NOT EXISTS document_pieces (
 CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
-    namespace TEXT,
+    scope TEXT,
     name TEXT,
     text TEXT
 );
@@ -81,57 +83,57 @@ class Database(Storage):
             await cursor.execute("DELETE FROM document_pieces")
             await self.connection.commit()
 
-    async def store_document(self, namespace: str, id: str, name: str, text: str) -> None:
+    async def store_document(self, scope: str, id: str, name: str, text: str) -> None:
         await self.initialize()
 
         async with self.connection.cursor() as cursor:
             await cursor.execute(
-                "INSERT INTO documents (tenant_id, namespace, id, name, text) VALUES (%s, %s, %s, %s, %s)",
-                (self.tenant_id, namespace, id, name, text),
+                "INSERT INTO documents (tenant_id, scope, id, name, text) VALUES (%s, %s, %s, %s, %s)",
+                (self.tenant_id, scope, id, name, text),
             )
             await self.connection.commit()
 
-    async def documents(self, namespace: str, id: Optional[str] = None) -> List[SearchHit]:
+    async def documents(self, scope: str, id: Optional[str] = None) -> List[Document]:
         await self.initialize()
 
         async with self.connection.cursor() as cursor:
             if id:
                 await cursor.execute(
-                    "SELECT id, name, text FROM documents WHERE tenant_id = %s AND namespace = %s AND document_id = %s",
-                    (self.tenant_id, namespace, id),
+                    "SELECT id, name, text FROM documents WHERE tenant_id = %s AND scope = %s AND document_id = %s",
+                    (self.tenant_id, scope, id),
                 )
                 result: Optional[Row] = await cursor.fetchone()
                 if result:
-                    return [SearchHit(result[0], result[1])]
+                    return [Document(id=result[0], name=result[1], content=result[2], content_type="text/plain")]
                 else:
                     raise Exception(f"Document {id} not found.")
             else:
-                await cursor.execute("SELECT id, name, text FROM documents WHERE tenant_id = %s AND namespace = %s", (self.tenant_id, namespace,))
+                await cursor.execute("SELECT id, name, text FROM documents WHERE tenant_id = %s AND scope = %s", (self.tenant_id, scope,))
                 results: List[Row] = await cursor.fetchall()
-                return [SearchHit(result[0], result[1], result[2]) for result in results]
+                return [Document(id=result[0], name=result[1], content=result[2], content_type="text/plain") for result in results]
 
-    async def store_text_piece(self, namespace: str, id: str, name: str, pieces: List[TextPiece]) -> None:
+    async def store_text_piece(self, scope: str, id: str, name: str, pieces: List[TextPiece]) -> None:
         await self.initialize()
 
         async with self.connection.cursor() as cursor:
             for piece in pieces:
                 await cursor.execute(
-                    "INSERT INTO document_pieces (tenant_id, namespace, id, name, text, embedding) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (self.tenant_id, namespace, id, name, piece.text, piece.embedding),
+                    "INSERT INTO document_pieces (tenant_id, scope, id, name, text, embedding) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (self.tenant_id, scope, id, name, piece.text, piece.embedding),
                 )
             await self.connection.commit()
 
-    async def search_text(self, namespace: str, embedding: List[float], max_results: int, max_distance: float) -> List[SearchHit]:
+    async def search_text(self, scope: str, embedding: List[float], max_results: int, max_distance: float) -> List[SearchHit]:
         await self.initialize()
 
         async with self.connection.cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT id, name, text, (embedding <=> %s::sparsevec) as distance FROM document_pieces
-                WHERE tenant_id = %s AND namespace = %s AND (embedding <=> %s::sparsevec) <= %s
+                WHERE tenant_id = %s AND scope = %s AND (embedding <=> %s::sparsevec) <= %s
                 ORDER BY distance LIMIT %s
                 """,
-                (embedding, self.tenant_id, namespace, embedding, max_distance * 2.0, max_results),
+                (embedding, self.tenant_id, scope, embedding, max_distance * 2.0, max_results),
             )
             results = await cursor.fetchall()
             # returned cosine distance is in the range [0, 2]

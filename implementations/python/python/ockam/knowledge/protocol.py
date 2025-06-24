@@ -1,5 +1,4 @@
-from typing import Protocol, List, Optional
-from .search import SearchHit
+from typing import Protocol, Optional
 import secrets
 
 
@@ -31,9 +30,25 @@ class Document:
         return Document(name, url=url, content_type=content_type, id=id)
 
 
+class ProviderSearchResult(Protocol):
+    def render(self) -> Optional[str]:
+        """
+        Renders the search result into a string format.
+
+        :return: A string representation of the search result.
+        """
+        ...
+
+    def reduce_size(self) -> None:
+        """
+        Reduces the size of the search result.
+        This method removes the oldest or least relevant results.
+        """
+        ...
+
 
 class KnowledgeProvider(Protocol):
-    async def search(self, query: str) -> List[SearchHit]:
+    async def search(self, query: str) -> ProviderSearchResult:
         """
         Asynchronously searches for results that are most relevant to the provided query.
         It uses an embedding model to convert the query into an embedding vector for efficient
@@ -45,4 +60,3 @@ class KnowledgeProvider(Protocol):
         :return: A list of search results that match the criteria.
         :rtype: list
         """
-

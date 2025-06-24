@@ -9,8 +9,8 @@ from ockam.knowledge.protocol import Document
 async def main(node):
     restaurants = Memory("restaurants")
 
-    await restaurants.add_document(
-        Document.inline(
+    await restaurants.add(
+        Document(
             "Tony's Pizzeria Menu",
             """
             1. Margherita - $10
@@ -23,7 +23,7 @@ async def main(node):
         )
     )
 
-    await restaurants.add_document(
+    await restaurants.add(
         Document.inline(
             "Diner Menu",
             """

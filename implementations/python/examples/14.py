@@ -1,5 +1,4 @@
-from ockam import Agent, Model, Node, Memory, Retrieval
-from ockam.knowledge.protocol import Document
+from ockam import Agent, Model, Node, Memory, Document, SEARCHABLE
 
 """
     This example shows how a model can be enriched with knowledge coming from documents retrieved online.
@@ -20,13 +19,13 @@ async def main(node):
     ]
 
     for document in documents:
-        await ockam_documentation.add_document(
-            Document.url(
-                document,
-                f"{base_url}/{document}",
+        await ockam_documentation.add(
+            Document(
+                name=document,
+                url=f"{base_url}/{document}",
                 content_type="text/markdown",
             ),
-            retrieval=Retrieval.SEARCHABLE_PIECES
+            retrieval=SEARCHABLE
         )
 
     agent = await Agent.start(

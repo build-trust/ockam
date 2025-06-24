@@ -3,7 +3,7 @@ from ockam import Agent, Memory, Model, Node
 
 async def main(node):
     pioneer_docs = Memory("pioneer_ai_documents")
-    await pioneer_docs.add_document(
+    await pioneer_docs.add(
         "Ownership in Pioneer.ai",
         "http://localhost:5555/ownership.md",
         content_type="text/markdown",

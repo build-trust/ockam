@@ -1,16 +1,44 @@
 import aiofiles
 import aiohttp
 from urllib.parse import urlparse
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from .chunkers import Chunker, NaiveChunker
 from .extractors import TextExtractor, create_extractor
-from .protocol import KnowledgeProvider, Document
+from .protocol import KnowledgeProvider, Document, ProviderSearchResult
 from .storage import Storage, create_storage
 from .search import TextPiece, SearchHit
 from ..models import Model
 from ..ockam_in_rust_for_python import debug
 
+
+class ProviderSearchResultAggregator(ProviderSearchResult):
+    results: List[ProviderSearchResult]
+    last_index: int = 0
+    def __init__(self, results=None):
+        if results is None:
+            results = []
+        self.results = results
+
+    def __add__(self, other):
+        if isinstance(other, ProviderSearchResultAggregator):
+            return ProviderSearchResultAggregator(self.results + other.results)
+        else:
+            raise TypeError(f"Cannot add {type(other)} to ProviderSearchResultAggregator")
+    def render(self) -> Optional[str]:
+        aggregated_result = ""
+        for result in self.results:
+            rendered_result = result.render()
+            if rendered_result:
+                aggregated_result += f"{rendered_result}\n"
+        return aggregated_result if aggregated_result else None
+
+    def reduce_size(self) -> None:
+        # reduce size using round-robin
+        self.results[self.last_index].reduce_size()
+        self.last_index += 1
+        if self.last_index >= len(self.results):
+            self.last_index = 0
 
 class KnowledgeProviderAggregator(KnowledgeProvider):
     """
@@ -20,12 +48,35 @@ class KnowledgeProviderAggregator(KnowledgeProvider):
     def __init__(self, knowledge_providers: List[KnowledgeProvider]):
         self.knowledge_providers = knowledge_providers
 
-    async def search(self, query: str) -> List[SearchHit]:
+    async def search(self, query: str) -> ProviderSearchResult:
         results = []
         for provider in self.knowledge_providers:
-            results.extend(await provider.search(query))
-        return results
+            result = await provider.search(query)
+            if result:
+                results.append(result)
+        return ProviderSearchResultAggregator(results)
 
+
+class SimpleKnowledgeProviderResult(ProviderSearchResult):
+    def __init__(self, documents: List[Document]):
+        self.documents = documents
+
+    def render(self) -> Optional[str]:
+        if not self.documents:
+            return None
+        result = "I've found the following documents in the knowledge base:\n"
+        for document in self.documents:
+            result += f""""
+Document Name: {document.name}
+DOCUMENT BEGIN
+{document.content}
+DOCUMENT END
+
+"""
+        return result
+
+    def reduce_size(self) -> None:
+        pass
 
 class SimpleKnowledgeProvider(KnowledgeProvider):
     """
@@ -36,7 +87,7 @@ class SimpleKnowledgeProvider(KnowledgeProvider):
 
     def __init__(
         self,
-        namespace: str,
+        scope: str,
         storage: Optional[Storage] = None,
         text_extractor: TextExtractor = None,
         document_id: Optional[str] = None,
@@ -44,7 +95,7 @@ class SimpleKnowledgeProvider(KnowledgeProvider):
         """
         Initializes a Knowledge instance.
 
-        :param namespace: A string representing the unique name or identifier for the instance.
+        :param scope: A string representing the unique name or identifier for the instance.
         :param storage: An optional instance of Storage, defaulting to InMemory, which
             defines the storage mechanism for the object.
         :param text_extractor: An optional instance of TextExtractor for extracting text,
@@ -59,18 +110,18 @@ class SimpleKnowledgeProvider(KnowledgeProvider):
         if text_extractor is None:
             text_extractor = create_extractor()
 
-        self.namespace = namespace
+        self.scope = scope
         self.storage = storage
         self.document_id = document_id
         self.text_extractor = text_extractor
 
-    async def search(self, _query: str) -> List[SearchHit]:
-        return await self.storage.documents(
-            self.namespace,
+    async def search(self, _query: str) -> SimpleKnowledgeProviderResult:
+        return SimpleKnowledgeProviderResult(await self.storage.documents(
+            self.scope,
             self.document_id,
-        )
+        ))
 
-    async def add_document(self, document: Document):
+    async def add(self, document: Document):
         if document.url is not None:
             content = await download_url(document.url)
             whole_document = await self.text_extractor.extract_text(content, document.content_type)
@@ -78,16 +129,54 @@ class SimpleKnowledgeProvider(KnowledgeProvider):
             whole_document = await self.text_extractor.extract_text(document.content, document.content_type)
 
         await self.storage.store_document(
-            self.namespace,
+            self.scope,
             document.id,
             document.name,
             whole_document,
         )
+class SearchableKnowledgeProviderResult(ProviderSearchResult):
+    def __init__(self, hits: List[SearchHit]):
+        """
+        Initializes a SearchableKnowledgeProviderResult with a list of search hits.
+        :param hits: A sorted list of SearchHit objects representing the search results.
+        """
+        self.hits = hits
+
+    def _view(self) -> Dict[str, List[str]]:
+        view: Dict[str, List[str]] = {}
+        for hit in self.hits:
+            if hit.document_name not in view:
+                view[hit.document_name] = [hit.text_piece]
+            else:
+                if hit.text_piece not in view[hit.document_name]:
+                    view[hit.document_name].append(hit.text_piece)
+        return view
+
+    def render(self) -> Optional[str]:
+        if not self.hits:
+            return None
+
+        view = self._view()
+        result = "I've found the following snippets in the knowledge base:\n"
+        for document_name, snippet_list in view.items():
+            result += f"Document Name: {document_name}\n"
+            for snippet in snippet_list:
+                result += f""""
+SNIPPET BEGIN
+{snippet}
+SNIPPET END
+"""
+        return result
+
+    def reduce_size(self) -> None:
+        if self.hits:
+            # the hits are sorted by distance, so we can just remove the last one
+            self.hits.pop()
 
 class SearchableKnowledgeProvider(KnowledgeProvider):
     def __init__(
         self,
-        namespace: str,
+        scope: str,
         model: Model = None,
         storage: Optional[Storage] = None,
         text_extractor: Optional[TextExtractor] = None,
@@ -98,8 +187,8 @@ class SearchableKnowledgeProvider(KnowledgeProvider):
         """
         This class allows to store and search for text documents using vector search.
 
-        :param namespace: The name of the system instance.
-        :type namespace: str
+        :param scope: The name of the system instance.
+        :type scope: str
         :param model: The model being utilized for processing operations.
         :type model: Model
         :param storage: Mechanism to store data.
@@ -123,7 +212,7 @@ class SearchableKnowledgeProvider(KnowledgeProvider):
         if text_extractor is None:
             text_extractor = create_extractor()
 
-        self.namespace = namespace
+        self.scope = scope
         self.model = model
         self.storage = storage
         self.text_extractor = text_extractor
@@ -131,7 +220,7 @@ class SearchableKnowledgeProvider(KnowledgeProvider):
         self.max_results = max_results
         self.max_distance = max_distance
 
-    async def add_document(self, document: Document):
+    async def add(self, document: Document):
         """
         Read a document using the unstructured library and add it to the knowledge base.
 
@@ -151,17 +240,17 @@ class SearchableKnowledgeProvider(KnowledgeProvider):
 
         text_pieces = [TextPiece(text, embedding) for text, embedding in zip(text_pieces, embeddings)]
         await self.storage.store_text_piece(
-            self.namespace,
+            self.scope,
             document.id,
             document.name,
             text_pieces,
         )
 
-    async def search(self, query: str) -> List[SearchHit]:
+    async def search(self, query: str) -> ProviderSearchResult:
         embeddings = await self.model.embeddings([query])
-        hits = await self.storage.search_text(self.namespace, embeddings[0], self.max_results, self.max_distance)
-        debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.namespace}'")
-        return hits
+        hits = await self.storage.search_text(self.scope, embeddings[0], self.max_results, self.max_distance)
+        debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.scope}'")
+        return SearchableKnowledgeProviderResult(hits)
 
 
 async def download_url(url: str) -> bytes:

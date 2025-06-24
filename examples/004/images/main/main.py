@@ -13,7 +13,7 @@ async def main(node):
 
     us_federal_code = StaticKnowledgeProvider("us_federal_code")
     for name, url in docs.items():
-        await us_federal_code.add_document(name, url, content_type="text/markdown")
+        await us_federal_code.add(name, url, content_type="text/markdown")
 
     await Agent.start(
         node=node,

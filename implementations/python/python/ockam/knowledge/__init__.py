@@ -1,7 +1,7 @@
 from .memory import Memory, Retrieval
 from .providers import KnowledgeProviderAggregator, SearchableKnowledgeProvider, SimpleKnowledgeProvider
 from .protocol import KnowledgeProvider
-from .search import SearchHit, SearchResults, TextPiece
+from .search import SearchHit, TextPiece
 from .storage.in_memory import InMemory
 from .storage.database import Database
 from .storage import create_storage
@@ -18,7 +18,6 @@ __all__ = [
     "KnowledgeProviderAggregator",
     "SearchableKnowledgeProvider",
     "SearchHit",
-    "SearchResults",
     "TextPiece",
     "TextExtractor",
     "Chunker",

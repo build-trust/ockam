@@ -4,6 +4,7 @@ from scipy.spatial.distance import cosine
 
 from ..search import SearchHit, TextPiece
 from .protocol import Storage
+from ..protocol import Document
 
 
 class InMemory(Storage):
@@ -14,37 +15,37 @@ class InMemory(Storage):
         self.text_pieces = {}
         self.whole_documents = {}
 
-    async def store_document(self, namespace: str, id: str, name: str, text: str) -> None:
+    async def store_document(self, scope: str, id: str, name: str, text: str) -> None:
         self.whole_documents[id] = (name,text)
 
-    async def documents(self, namespace: str, id: Optional[str] = None) -> List[SearchHit]:
+    async def documents(self, scope: str, id: Optional[str] = None) -> List[Document]:
         if id:
             if id in self.whole_documents:
                 document = self.whole_documents[id]
-                return [SearchHit(id, document[0], document[1])]
+                return [Document(id=id, name=document[0], content=document[1], content_type="text/plain")]
             else:
                 raise Exception(f"Document {id} not found.")
-        return [SearchHit(document_id, document[0], document[1]) for document_id, document in self.whole_documents.items()]
+        return [Document(id=id, name=document[0], content=document[1], content_type="text/plain") for id, document in self.whole_documents.items()]
 
-    async def store_text_piece(self, namespace: str, id: str, name: str, pieces: List[TextPiece]) -> None:
-        if namespace not in self.text_pieces:
-            self.text_pieces[namespace] = {}
+    async def store_text_piece(self, scope: str, id: str, name: str, pieces: List[TextPiece]) -> None:
+        if scope not in self.text_pieces:
+            self.text_pieces[scope] = {}
 
-        if id not in self.text_pieces[namespace]:
-            self.text_pieces[namespace][id] = (name, [])
+        if id not in self.text_pieces[scope]:
+            self.text_pieces[scope][id] = (name, [])
 
         processed_pieces: List[Tuple[str, np.ndarray]] = [(piece.text, np.array(piece.embedding, dtype=np.float32)) for piece in pieces]
-        self.text_pieces[namespace][id][1].extend(processed_pieces)
+        self.text_pieces[scope][id][1].extend(processed_pieces)
 
     async def search_text(
-        self, namespace: str, embedding: List[float], max_results: int, max_distance: float
+        self, scope: str, embedding: List[float], max_results: int, max_distance: float
     ) -> List[SearchHit]:
-        if namespace not in self.text_pieces:
+        if scope not in self.text_pieces:
             return []
 
         embedding_array: np.ndarray = np.array(embedding, dtype=np.float32)
         hits: List[SearchHit] = []
-        for document_id, document_pieces in self.text_pieces[namespace].items():
+        for document_id, document_pieces in self.text_pieces[scope].items():
             name = document_pieces[0]
             pieces = document_pieces[1]
             for piece in pieces:

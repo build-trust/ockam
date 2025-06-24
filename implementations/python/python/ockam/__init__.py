@@ -1,6 +1,7 @@
 from .agents import Agent, AgentReference, HttpServer, Repl
 from .clusters import Cluster, Zone
 from .flows import Flow, FlowOperation, START, END
+from .knowledge.protocol import Document
 from .nodes.message import FlowReference
 from .history import ConversationHistory
 from .logging import info, warning, error, debug, set_log_levels, get_logger
@@ -16,8 +17,12 @@ from .knowledge import (
     Retrieval,
 )
 from .gather import gather
+from .knowledge.memory import Retrieval
 
 from .ockam_in_rust_for_python import Mailbox, McpClient, McpServer
+
+SEARCHABLE = Retrieval.SEARCHABLE
+WHOLE = Retrieval.WHOLE
 
 __doc__ = ""
 __all__ = [
@@ -49,7 +54,7 @@ __all__ = [
     # from .tools
     "McpTool",
     "Tool",
-    # from .memory
+    # from .history
     "ConversationHistory",
     # from .models
     "Model",
@@ -70,9 +75,12 @@ __all__ = [
     "DynamicPlanner",
     # from .squads
     "Squad",
-    # from .knowledge
+    # from .memory
     "Memory",
     "Retrieval",
+    "Document",
+    "SEARCHABLE",
+    "WHOLE",
     # from .gather
     "gather",
 ]

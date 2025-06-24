@@ -7,6 +7,7 @@ import secrets
 
 from ..knowledge import Memory
 from .conversation_response import ConversationResponse
+from ..knowledge.providers import ProviderSearchResultAggregator
 from ..nodes import RemoteNode, LocalNodeProtocol
 from ..planning import Planner
 
@@ -142,7 +143,7 @@ class AgentStateMachine:
             if next_step is None:
                 break
             plan_completed = False
-            self.contextual_knowledge = await self.agent.add_knowledge_search(next_step.content)
+            self.contextual_knowledge = await self.agent.memory.search(next_step.content)
             if next_step.phase == Phase.PLANNING:
                 await self.agent.remember(self.scope, self.conversation, next_step)
             if self.stream:
@@ -361,9 +362,9 @@ class Agent:
             if message.role == ConversationRole.USER:
                 query = message.content
 
-        contextual_knowledge = None
+        contextual_knowledge: ProviderSearchResultAggregator = ProviderSearchResultAggregator()
         if self.memory is not None:
-            contextual_knowledge = await self.add_knowledge_search(query)
+            contextual_knowledge = await self.memory.search(query)
 
         # Create and initialize the state machine
         state_machine = AgentStateMachine(
@@ -394,7 +395,6 @@ class Agent:
         if self.memory is None or not query or len(query) == 0:
             return None
 
-        await self.memory.add_query(query)
         return self.memory.render_text()
 
     async def remember(self, scope: str, conversation: str, message: ConversationMessage):
@@ -410,11 +410,12 @@ class Agent:
     ) -> AsyncGenerator[Tuple[Optional[Exception], bool, AssistantMessage], None]:
         message_history = await self.message_history(scope, conversation)
 
-        if contextual_knowledge is not None:
+        knowledge = contextual_knowledge.render()
+        if knowledge is not None:
             message_history = [
                 {
                     "role": "system",
-                    "content": "The following knowledge could be useful to answer properly:\n" + contextual_knowledge,
+                    "content": "The following knowledge could be useful to answer properly:\n" + knowledge,
                 }
             ] + message_history
 
