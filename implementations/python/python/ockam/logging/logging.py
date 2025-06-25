@@ -11,6 +11,14 @@ FORMAT = DEFAULT_LOG_FORMAT + (" [%(pathname)s:%(lineno)d]" if os.getenv("OCKAM_
 
 LOG_LEVELS = {}
 
+LEVELS: dict[str, int] = {
+    "critical": logging.CRITICAL,
+    "error": logging.ERROR,
+    "warning": logging.WARNING,
+    "info": logging.INFO,
+    "debug": logging.DEBUG,
+}
+
 
 def get_logging_config() -> dict[str, int | bool | dict | str | None]:
     # Disable logging if explicitly set to 0; otherwise, assume it's enabled
@@ -74,8 +82,21 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
         "loggers": {
             "asyncio": {"handlers": ["default"], "level": levels.get("asyncio", "WARNING"), "propagate": False},
             "uvicorn": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
-            "uvicorn.error": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
-            "uvicorn.access": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
+            "uvicorn.error": {
+                "handlers": ["default"],
+                "level": levels.get("uvicorn.error", "WARNING"),
+                "propagate": False,
+            },
+            "uvicorn.access": {
+                "handlers": ["default"],
+                "level": levels.get("uvicorn.access", "WARNING"),
+                "propagate": False,
+            },
+            "uvicorn.asgi": {
+                "handlers": ["default"],
+                "level": levels.get("uvicorn.asgi", "WARNING"),
+                "propagate": False,
+            },
             "httpcore": {"handlers": ["default"], "level": levels.get("httpcore", "WARNING"), "propagate": False},
             "httpx": {"handlers": ["default"], "level": levels.get("httpx", "WARNING"), "propagate": False},
             "LiteLLM": {"handlers": ["default"], "level": levels.get("LiteLLM", "WARNING"), "propagate": False},

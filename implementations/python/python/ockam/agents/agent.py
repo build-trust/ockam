@@ -174,7 +174,7 @@ class AgentStateMachine:
 
         self.tool_calls = []
         async for err, finished, model_response in self.agent.complete_chat(
-                self.scope, self.conversation, self.contextual_knowledge, stream=self.stream
+            self.scope, self.conversation, self.contextual_knowledge, stream=self.stream
         ):
             if err:
                 yield self.streaming_response.make_snippet(err)
@@ -275,19 +275,19 @@ class Agent(InfoContext, DebugContext):
             return cls._logger
 
     def __init__(
-            self,
-            node: LocalNodeProtocol,
-            name: str,
-            instructions: str,
-            model: Model,
-            memory_model: Optional[Model],
-            memory_embeddings_model: Optional[Model],
-            tool_specs: List[dict],
-            tools: Dict[str, InvokableTool],
-            planner: Planner,
-            memory: Memory,
-            knowledge: KnowledgeProvider,
-            maximum_iterations: int,
+        self,
+        node: LocalNodeProtocol,
+        name: str,
+        instructions: str,
+        model: Model,
+        memory_model: Optional[Model],
+        memory_embeddings_model: Optional[Model],
+        tool_specs: List[dict],
+        tools: Dict[str, InvokableTool],
+        planner: Planner,
+        memory: Memory,
+        knowledge: KnowledgeProvider,
+        maximum_iterations: int,
     ):
         self.logger = Agent.class_logger()
         with self.info(f"Starting agent '{name}'", f"Started agent '{name}'"):
@@ -353,7 +353,7 @@ class Agent(InfoContext, DebugContext):
         return GetConversationsResponse(self.memory.get_messages_only(message.scope, message.conversation))
 
     async def handle__conversation_snippet(
-            self, snippet: StreamedConversationSnippet | ConversationSnippet
+        self, snippet: StreamedConversationSnippet | ConversationSnippet
     ) -> AsyncGenerator[StreamedConversationSnippet | ConversationSnippet | Error, None]:
         stream = type(snippet) is StreamedConversationSnippet
         if stream:
@@ -454,9 +454,9 @@ class Agent(InfoContext, DebugContext):
         while True:
             self.memory_knowledge = await AgentMemoryKnowledge.create(self.memory_model, self.memory_embeddings_model)
             for i in range(0, len(skipped_message_history), 2):
-                self.logger.info(f"ADDING MESSAGES to knowledge: {skipped_message_history[i: i + 2]}")
+                self.logger.info(f"ADDING MESSAGES to knowledge: {skipped_message_history[i : i + 2]}")
                 await self.memory_knowledge.add(
-                    scope=scope, conversation=conversation, messages=skipped_message_history[i: i + 2]
+                    scope=scope, conversation=conversation, messages=skipped_message_history[i : i + 2]
                 )
 
             # We should actually clear knowledge in this function each time...
@@ -497,7 +497,7 @@ class Agent(InfoContext, DebugContext):
             iterations += 1
 
     async def complete_chat(
-            self, scope, conversation, contextual_knowledge, stream: bool = False
+        self, scope, conversation, contextual_knowledge, stream: bool = False
     ) -> AsyncGenerator[Tuple[Optional[Exception], bool, AssistantMessage], None]:
         input_context = await self.determine_input_context(scope, conversation, contextual_knowledge)
         self.logger.info(
@@ -597,17 +597,17 @@ class Agent(InfoContext, DebugContext):
 
     @staticmethod
     async def start(
-            node: NodeProtocol,
-            instructions: str,
-            name: Optional[str] = None,
-            model: Model = None,
-            memory_model: Optional[Model] = None,
-            memory_embeddings_model: Optional[Model] = None,
-            tools: Optional[List[InvokableTool]] = None,
-            planner: Planner = None,
-            exposed_as: Optional[str] = None,
-            knowledge: KnowledgeProvider = NoopKnowledge(),
-            max_iterations: int = 14,
+        node: NodeProtocol,
+        instructions: str,
+        name: Optional[str] = None,
+        model: Model = None,
+        memory_model: Optional[Model] = None,
+        memory_embeddings_model: Optional[Model] = None,
+        tools: Optional[List[InvokableTool]] = None,
+        planner: Planner = None,
+        exposed_as: Optional[str] = None,
+        knowledge: KnowledgeProvider = NoopKnowledge(),
+        max_iterations: int = 14,
     ):
         if name is None:
             name = secrets.token_hex(12)
@@ -657,16 +657,16 @@ class Agent(InfoContext, DebugContext):
 
     @staticmethod
     async def start_many(
-            node: NodeProtocol,
-            instructions: str,
-            number_of_agents: int,
-            model: Model = None,
-            memory_model: Optional[Model] = None,
-            memory_embeddings_model: Optional[Model] = None,
-            tools: Optional[list] = None,
-            planner=None,
-            knowledge: Optional[KnowledgeProvider] = None,
-            max_iterations: int = 14,
+        node: NodeProtocol,
+        instructions: str,
+        number_of_agents: int,
+        model: Model = None,
+        memory_model: Optional[Model] = None,
+        memory_embeddings_model: Optional[Model] = None,
+        tools: Optional[list] = None,
+        planner=None,
+        knowledge: Optional[KnowledgeProvider] = None,
+        max_iterations: int = 14,
     ):
         if model is None:
             model = Model(name="llama3.2")
@@ -715,17 +715,17 @@ class Agent(InfoContext, DebugContext):
 
     @staticmethod
     async def start_agent_impl(
-            node: LocalNodeProtocol,
-            instructions: str,
-            name: Optional[str],
-            model: Model,
-            memory_model: Optional[Model],
-            memory_embeddings_model: Optional[Model],
-            tools: Optional[List[InvokableTool]],
-            planner: Planner,
-            exposed_as: Optional[str],
-            knowledge: Optional[KnowledgeProvider],
-            max_iterations: int,
+        node: LocalNodeProtocol,
+        instructions: str,
+        name: Optional[str],
+        model: Model,
+        memory_model: Optional[Model],
+        memory_embeddings_model: Optional[Model],
+        tools: Optional[List[InvokableTool]],
+        planner: Planner,
+        exposed_as: Optional[str],
+        knowledge: Optional[KnowledgeProvider],
+        max_iterations: int,
     ):
         tools_specs, tools = await prepare_tools(node, tools)
         # the memory is shared between all the agent workers

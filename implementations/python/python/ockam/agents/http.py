@@ -12,7 +12,7 @@ from .socket_address import parse_host_and_port
 from ..agents import AgentReference
 from ..nodes.message import GetConversationsRequest, StreamedConversationSnippet, Phase, Reference, FlowReference
 from ..nodes.local import LocalNode
-from ..logging.logging import InfoContext
+from ..logging.logging import InfoContext, get_logging_config
 
 """
     This class starts an HTTP server allowing a user to interact with a node and its agents.
@@ -215,7 +215,9 @@ class HttpServer(InfoContext):
 
     async def serve(self):
         self.logger.info("Starting the http server")
-        config = uvicorn.Config(self.app, host=self.host, port=self.port)
+        config = uvicorn.Config(
+            self.app, host=self.host, port=self.port, log_config=get_logging_config(), access_log=True
+        )
         server = uvicorn.Server(config)
         self.logger.info("Started the http server")
         await server.serve()
