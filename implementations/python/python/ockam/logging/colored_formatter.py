@@ -17,20 +17,22 @@ class OckamColoredFormatter(colorlog.ColoredFormatter):
             record.levelname = f"{self.YELLOW} WARN{self.RESET}"
         return super().format(record)
 
-    def formatTime(self, record, datefmt=None):
+    def formatTime(self, record, datefmt=None) -> str:
         try:
             dt = datetime.fromtimestamp(record.created, UTC)
             if datefmt:
                 return dt.strftime(datefmt)
             return super().formatTime(record, datefmt)
         except Exception:
-            return ""
+            # during shutdown an exception can occur because the time cannot be formatted
+            return f"{record.created}"
 
-    def formatMessage(self, record):
+    def formatMessage(self, record) -> str:
         try:
+            record.name = f"{self.GREY}{record.name}{self.RESET}"
             original_asctime = self.formatTime(record, self.datefmt)
             record.asctime = f"{self.GREY}{original_asctime}{self.RESET}"
-            record.name = f"{self.GREY}{record.name}{self.RESET}"
             return super().formatMessage(record)
         except Exception:
-            return ""
+            # during shutdown an exception can occur because the time cannot be formatted
+            return super().formatMessage(record)

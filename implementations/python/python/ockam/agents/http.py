@@ -23,20 +23,10 @@ DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_HTTP", "8000"))
 
 
 class HttpServer(InfoContext):
-    _logger = None
-
-    @classmethod
-    def class_logger(cls):
-        if cls._logger:
-            return cls._logger
-        else:
-            from ..logging.logging import get_logger
-
-            cls._logger = get_logger("http")
-            return cls._logger
-
     def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", app: FastAPI = None):
-        self.logger = HttpServer.class_logger()
+        from ..logging.logging import get_logger
+
+        self.logger = get_logger("http")
         self.node = None
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
