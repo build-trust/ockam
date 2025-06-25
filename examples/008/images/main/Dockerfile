@@ -1,3 +1,3 @@
-FROM ghcr.io/build-trust/ockam-python:a4cf960e2
+FROM ghcr.io/build-trust/ockam-python:c0b8739d8
 COPY . .
 ENTRYPOINT ["python", "main.py"]
