@@ -22,3 +22,5 @@ vendor
 # examples
 secrets.yaml
 000
+# inference cache
+.recorded_inference
