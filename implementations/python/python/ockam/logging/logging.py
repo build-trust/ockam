@@ -113,6 +113,11 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
             "http": {"handlers": ["ockam"], "level": levels.get("http") or levels.get("default"), "propagate": False},
             "node": {"handlers": ["ockam"], "level": levels.get("node") or levels.get("default"), "propagate": False},
             "tool": {"handlers": ["ockam"], "level": levels.get("tool") or levels.get("default"), "propagate": False},
+            "mem0.memory.main": {
+                "handlers": ["default"],
+                "level": levels.get("mem0.memory.main") or levels.get("default"),
+                "propagate": False,
+            },
         },
         "root": {"level": levels.get("default"), "handlers": ["default"]},
     }
