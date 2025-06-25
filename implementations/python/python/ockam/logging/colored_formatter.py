@@ -35,4 +35,4 @@ class OckamColoredFormatter(colorlog.ColoredFormatter):
             return super().formatMessage(record)
         except Exception:
             # during shutdown an exception can occur because the time cannot be formatted
-            return super().formatMessage(record)
+            return record.message
