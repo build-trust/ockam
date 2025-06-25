@@ -99,10 +99,14 @@ teardown_home_dir() {
     export OCKAM_HOME="$dir"
     # If BATS_TEST_COMPLETED is not set, the test failed.
     # If BATS_TEST_SKIPPED is not set, then the test was not skipped.
-    if [[ -z "$BATS_TEST_COMPLETED" && -z "$BATS_TEST_SKIPPED" ]]; then
+    if [[ -z "$BATS_TEST_COMPLETED" && -z "$BATS_TEST_SKIPPED" && "$OCKAM_HOME" != "$OCKAM_HOME_BASE" ]]; then
       # Copy the CLI directory to $HOME/.bats-tests so it can be inspected.
       # For some reason, if the directory is moved instead of copied, the teardown function gets stuck.
-      echo "Failed test dir: $OCKAM_HOME" >&3
+      if [[ -z "$FAILED_DIRS" ]]; then
+        FAILED_DIRS="${OCKAM_HOME##*/}"
+      else
+        FAILED_DIRS="$FAILED_DIRS, ${OCKAM_HOME##*/}"
+      fi
       cp -r "$OCKAM_HOME" "$OCKAM_HOME_BASE/.bats-tests"
     fi
     run $OCKAM node delete --all --yes
@@ -115,6 +119,11 @@ teardown_home_dir() {
       rm -f "$pid_file"
     done
   done
+
+  if [[ -n "$FAILED_DIRS" ]]; then
+    echo "   Failed test dirs: $FAILED_DIRS" >&3
+  fi
+
   export OCKAM_HOME=$OCKAM_HOME_BASE
   run $OCKAM node delete --all --yes
 }
