@@ -92,18 +92,18 @@ wait_for_closed_port() {
   done
 }
 
-mkdir -p "$HOME/.bats-tests"
+mkdir -p "$OCKAM_HOME_BASE/.bats-tests"
 teardown_home_dir() {
   IFS=';' read -ra DIRS <<<"$HOME_DIRS"
   for dir in "${DIRS[@]}"; do
     export OCKAM_HOME="$dir"
     # If BATS_TEST_COMPLETED is not set, the test failed.
-    # If BATS_TEST_SKIPPED is not set, then the test was not skipped
+    # If BATS_TEST_SKIPPED is not set, then the test was not skipped.
     if [[ -z "$BATS_TEST_COMPLETED" && -z "$BATS_TEST_SKIPPED" ]]; then
       # Copy the CLI directory to $HOME/.bats-tests so it can be inspected.
-      # For some reason, if the directory is moved, the teardown function gets stuck.
+      # For some reason, if the directory is moved instead of copied, the teardown function gets stuck.
       echo "Failed test dir: $OCKAM_HOME" >&3
-      cp -r "$OCKAM_HOME" "$HOME/.bats-tests"
+      cp -r "$OCKAM_HOME" "$OCKAM_HOME_BASE/.bats-tests"
     fi
     run $OCKAM node delete --all --yes
 

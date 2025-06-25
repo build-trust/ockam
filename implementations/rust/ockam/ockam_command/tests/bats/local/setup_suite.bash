@@ -12,4 +12,5 @@ teardown_suite() {
   load ../load/base.bash
   teardown_python_server
   rm -rf $OCKAM_HOME_BASE/.tmp
+  find $OCKAM_HOME_BASE -type f -name "*.bin" -exec rm -f {} \;
 }
