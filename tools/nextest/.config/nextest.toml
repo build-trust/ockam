@@ -1,25 +1,11 @@
 [profile.default]
 slow-timeout = { period = "2m", terminate-after = 3, grace-period = "30s" }
+retries = 3
 
 [test-groups]
-sequential = { max-threads = 3 }
+sequential = { max-threads = 2 }
 
 [[profile.default.overrides]]
-filter = 'package(hello_ockam)'
-threads-required = 3
-test-group = 'sequential'
-
-[[profile.default.overrides]]
-filter = 'package(file_transfer)'
-threads-required = 3
-test-group = 'sequential'
-
-[[profile.default.overrides]]
-filter = 'package(tcp_inlet_and_outlet)'
-threads-required = 3
-test-group = 'sequential'
-
-[[profile.default.overrides]]
-filter = 'package(ockam_api)'
-threads-required = 3
+filter = 'package(hello_ockam) | package(file_transfer) | package(tcp_inlet_and_outlet) | package(ockam_api)'
+threads-required = 2
 test-group = 'sequential'
