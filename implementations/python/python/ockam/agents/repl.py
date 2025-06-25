@@ -11,22 +11,13 @@ DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_REPL", "7000"))
 
 
 class Repl:
-    _logger = None
-
-    @classmethod
-    def class_logger(cls):
-        if cls._logger:
-            return cls._logger
-        else:
-            from ..logging.logging import get_logger
-
-            cls._logger = get_logger("repl")
-            return cls._logger
-
     def __init__(
         self, agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=120, stream=True
     ):
-        self.logger = Repl.class_logger()
+        from ..logging.logging import get_logger
+
+        self.logger = get_logger("repl")
+        self.logger.info("Starting the repl")
         self.functions = functions or {}
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
@@ -54,7 +45,6 @@ class Repl:
     async def start(
         agent_reference, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", functions=None, timeout=None, stream=True
     ):
-        Repl.class_logger().info("Starting the repl")
         repl = Repl(agent_reference, listen_address, functions, timeout, stream)
         # start the repl in a separate thread since we might also have a HTTP server running
         asyncio.create_task(repl.start_impl())
@@ -211,7 +201,7 @@ class Repl:
 
     async def start_impl(self):
         self.server = await asyncio.start_server(self.handle_client, self.host, self.port)
-        Repl.class_logger().info("Started the repl")
+        self.logger.info("Started the repl")
         async with self.server:
             await self.server.serve_forever()
 
