@@ -5,6 +5,9 @@ from litellm import Router
 
 from copy import deepcopy
 
+import hashlib
+import dill
+import json
 import os
 import boto3
 import threading
@@ -102,6 +105,11 @@ init_lock = threading.Lock()
 _inference_profile_cache = {}
 _cache_lock = threading.Lock()
 
+# CACHE_INFERENCE is an environment variable that allows caching of inference results, it's meant
+# to be used in development and testing environments.
+# During streaming inference, the results will be consumed, cached and then returned at once, so that
+# any error during the execution will not cause the response to be lost.
+_cache_inference = os.environ.get("CACHE_INFERENCE", "").lower() in ["1", "true", "yes", "on"]
 
 # slightly modify the parameters to accommodate services
 litellm.modify_params = True
@@ -296,9 +304,53 @@ class Model(InfoContext, DebugContext):
 
         messages, kwargs = self.prepare_llm_call(messages, **kwargs)
 
-        response = await self.router().acompletion(self.name, messages=messages, stream=stream, **kwargs)
+        if stream:
+            return self._complete_chat_stream(messages, **kwargs)
+        else:
+            return await self._complete_chat(messages, **kwargs)
+
+    async def _complete_chat_stream(self, messages: List[dict], **kwargs):
+        if _cache_inference:
+            request_hash = self._hash_completion_request(self.name, messages, stream=True, kwargs=kwargs)
+            file = f".recorded_inference/{request_hash}.dill"
+            if os.path.exists(file):
+                chunks = dill.load(open(file, "rb"))
+                for chunk in chunks:
+                    yield chunk
+                return
+
+        if _cache_inference:
+            chunks = []
+            async for chunk in await self.router().acompletion(self.name, messages=messages, stream=True, **kwargs):
+                chunks.append(chunk)
+                if chunk.choices[0].finish_reason:
+                    break
+
+            os.makedirs(".recorded_inference", exist_ok=True)
+            with open(file, "wb") as f:
+                f.write(dill.dumps(chunks))
+
+            for chunk in chunks:
+                yield chunk
+        else:
+            await self.router().acompletion(self.name, messages=messages, stream=True, **kwargs)
+
+    async def _complete_chat(self, messages: List[dict], **kwargs):
+        if _cache_inference:
+            request_hash = self._hash_completion_request(self.name, messages, False, kwargs)
+            file = f".recorded_inference/{request_hash}.dill"
+            if os.path.exists(file):
+                response = dill.load(open(file, "rb"))
+                return response
+
+        response = await self.router().acompletion(self.name, messages=messages, stream=False, **kwargs)
         self.logger.debug(f"Got a response from model '{self.original_name}': {response}")
         self.logger.info(f"Finished processing messages with model '{self.original_name}'")
+
+        if _cache_inference:
+            os.makedirs(".recorded_inference", exist_ok=True)
+            with open(file, "wb") as f:
+                f.write(dill.dumps(response))
 
         return response
 
@@ -306,8 +358,30 @@ class Model(InfoContext, DebugContext):
         # parameters provided in kwargs will override the default parameters
         kwargs = {**self.kwargs, **kwargs}
 
+        if _cache_inference:
+            request_hash = self._hash_embedding_request(self.name, text, kwargs)
+            file = f".recorded_inference/{request_hash}.dill"
+            if os.path.exists(file):
+                embedding = dill.load(open(file, "rb"))
+                return [embedding["embedding"] for embedding in embedding.data]
+
         embedding = await self.router().aembedding(self.name, text, **kwargs)
+
+        if _cache_inference:
+            os.makedirs(".recorded_inference", exist_ok=True)
+            request_hash = self._hash_embedding_request(self.name, text, kwargs)
+            with open(f".recorded_inference/{request_hash}.dill", "wb") as f:
+                f.write(dill.dumps(embedding))
+
         return [embedding["embedding"] for embedding in embedding.data]
+
+    def _hash_completion_request(self, model_name: str, messages: List[dict], stream: bool, kwargs: dict) -> str:
+        request = json.dumps({"model": model_name, "messages": messages, "stream": stream, **kwargs}, sort_keys=True)
+        return hashlib.sha256(request.encode("utf-8")).hexdigest()
+
+    def _hash_embedding_request(self, model_name: str, text: List[str], kwargs: dict) -> str:
+        request = json.dumps({"model": model_name, "text": text, **kwargs}, sort_keys=True)
+        return hashlib.sha256(request.encode("utf-8")).hexdigest()
 
     def router(self):
         global router
