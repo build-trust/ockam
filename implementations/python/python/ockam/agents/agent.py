@@ -149,7 +149,6 @@ class AgentStateMachine:
             if next_step is None:
                 break
             plan_completed = False
-            self.contextual_knowledge = await self.agent.add_knowledge_search(next_step.content)
             if next_step.phase == Phase.PLANNING:
                 await self.agent.remember(self.scope, self.conversation, next_step)
             if self.stream:
