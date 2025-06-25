@@ -74,11 +74,11 @@ impl SqlxDatabase {
     pub async fn create_application_database(
         configuration: &DatabaseConfiguration,
     ) -> Result<Self> {
-        Self::create_impl(
-            configuration,
-            Some(ApplicationMigrationSet::new(configuration.database_type())),
-        )
-        .await
+        let migration_set = match configuration.database_type() {
+            DatabaseType::Sqlite => Some(ApplicationMigrationSet::new()),
+            DatabaseType::Postgres => None,
+        };
+        Self::create_impl(configuration, migration_set).await
     }
 
     /// Constructor for a sqlite database
@@ -117,15 +117,9 @@ impl SqlxDatabase {
     }
 
     /// Constructor for a local application postgres database with no data
+    /// For postgres only one database is used
     pub async fn create_new_application_postgres() -> Result<Self> {
-        match DatabaseConfiguration::postgres()? {
-            Some(configuration) => {
-                let db = Self::create_application_no_migration(&configuration).await?;
-                db.drop_all_postgres_tables().await?;
-                SqlxDatabase::create_application_database(&configuration).await
-            },
-            None => Err(Error::new(Origin::Core, Kind::NotFound, "There is no postgres database configuration, or it is incomplete. Please run ockam environment to check the database environment variables".to_string())),
-        }
+        Self::create_new_postgres().await
     }
 
     /// Constructor for a database persisted on disk, with a specific schema / migration
@@ -273,8 +267,7 @@ impl SqlxDatabase {
     /// The application database which contains the application configurations
     ///   => this database is NOT deleted on an `ockam reset` command!
     pub async fn application_in_memory(usage: &str) -> Result<Self> {
-        Self::in_memory_with_migration(usage, ApplicationMigrationSet::new(DatabaseType::Sqlite))
-            .await
+        Self::in_memory_with_migration(usage, ApplicationMigrationSet::new()).await
     }
 
     /// Create an in-memory database with a specific migration
