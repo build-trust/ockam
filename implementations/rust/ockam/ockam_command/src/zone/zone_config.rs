@@ -60,8 +60,10 @@ pub struct Outlet {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub to: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip)]
     pub pod_name: Option<String>,
+    #[serde(skip)]
+    pub inlet_from: Option<String>,
     #[serde(flatten)]
     pub other_fields: HashMap<String, Value>,
 }
@@ -191,6 +193,7 @@ impl ZoneConfig {
                     pod.portals.outlets.push(Outlet {
                         name: Some("http".to_string()),
                         to: "localhost:8000".to_string(),
+                        inlet_from: Some("localhost:32100".to_string()),
                         ..Default::default()
                     })
                 });
@@ -418,7 +421,7 @@ pub struct PodOutlets {
 
 impl Outlet {
     pub fn get_port(&self) -> Option<u16> {
-        SchemeHostnamePort::from_str(&self.to)
+        SchemeHostnamePort::from_str(self.inlet_from.as_ref().unwrap_or(&self.to))
             .ok()
             .map(|v| v.port())
     }
@@ -589,6 +592,42 @@ pods:
         assert!(local_images.contains(&"local-image:tag".to_string()));
         assert!(local_images.contains(&"another-local".to_string()));
         assert!(local_images.contains(&"trimmed-local".to_string()));
+    }
+
+    #[test]
+    fn test_default_outlets_are_added() {
+        // Minimal config with no outlets defined
+        let yaml = r#"
+        name: testzone
+        pods:
+        - name: main-pod
+          containers:
+          - name: app
+            image: app-image
+        "#;
+
+        let config = ZoneConfig::from_contents(yaml).unwrap();
+
+        let main_pod = config.get_main_pod().unwrap();
+        assert_eq!(main_pod.portals.outlets.len(), 2);
+
+        let http_outlet = main_pod
+            .portals
+            .outlets
+            .iter()
+            .find(|o| o.name.as_deref() == Some("http"))
+            .expect("Default http outlet not found");
+        assert_eq!(http_outlet.to, "localhost:8000");
+        assert_eq!(http_outlet.inlet_from, Some("localhost:32100".to_string()));
+
+        let logs_outlet = main_pod
+            .portals
+            .outlets
+            .iter()
+            .find(|o| o.name.as_deref() == Some("logs"))
+            .expect("Default logs outlet not found");
+        assert_eq!(logs_outlet.to, "localhost:3000");
+        assert_eq!(logs_outlet.pod_name, Some("logs-pod".to_string()));
     }
 
     mod validation {
