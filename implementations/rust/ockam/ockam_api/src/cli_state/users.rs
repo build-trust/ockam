@@ -33,4 +33,17 @@ impl CliState {
             ))?,
         }
     }
+
+    #[instrument(skip_all, level = Level::TRACE)]
+    pub async fn get_user(&self, email: &EmailAddress) -> Result<UserInfo> {
+        let repository = self.users_repository();
+        match repository.get_user(email).await? {
+            Some(user) => Ok(user),
+            None => Err(Error::new(
+                Origin::Api,
+                Kind::NotFound,
+                format!("there is no user with email {email}"),
+            ))?,
+        }
+    }
 }

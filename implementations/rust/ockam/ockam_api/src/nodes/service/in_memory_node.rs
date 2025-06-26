@@ -63,6 +63,10 @@ impl InMemoryNode {
         self.node_manager.ctx()
     }
 
+    pub fn name(&self) -> &str {
+        &self.node_manager.node_name
+    }
+
     pub fn state(&self) -> Arc<CliState> {
         self.node_manager.state()
     }
