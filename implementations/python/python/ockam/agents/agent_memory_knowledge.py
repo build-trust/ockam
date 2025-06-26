@@ -27,6 +27,12 @@ class AgentMemoryKnowledge:
         if not new_messages:
             return
 
+        for message in new_messages:
+            message.pop("phase", None)
+            message.pop("executing", None)
+            message.pop("scope", None)
+            message.pop("conversation", None)
+
         await self.mem0_knowledge.add(scope=scope, conversation=conversation, messages=new_messages)
 
         for message in new_messages:

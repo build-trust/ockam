@@ -898,7 +898,7 @@ wheels = [
 [[package]]
 name = "mem0ai"
 version = "0.1.111"
-source = { git = "https://github.com/build-trust/mem0.git?rev=8304988e3e74b18db45564eed5629c27db67ec63#8304988e3e74b18db45564eed5629c27db67ec63" }
+source = { git = "https://github.com/build-trust/mem0.git?rev=8b21e17263645c409ed135b8b76b08fe51e88663#8b21e17263645c409ed135b8b76b08fe51e88663" }
 dependencies = [
     { name = "openai" },
     { name = "posthog" },
@@ -1065,7 +1065,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.103.1" },
     { name = "filetype", specifier = ">=1.2.0" },
     { name = "litellm", git = "https://github.com/build-trust/litellm.git?rev=ba33a4d4b165c276f7eb6a681fbe1ba23466be2f" },
-    { name = "mem0ai", git = "https://github.com/build-trust/mem0.git?rev=8304988e3e74b18db45564eed5629c27db67ec63" },
+    { name = "mem0ai", git = "https://github.com/build-trust/mem0.git?rev=8b21e17263645c409ed135b8b76b08fe51e88663" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.6" },
     { name = "pylint" },
     { name = "pypdfium2", specifier = ">=4.30" },
