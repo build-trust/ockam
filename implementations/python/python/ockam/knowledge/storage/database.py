@@ -22,7 +22,7 @@ class Database(Storage):
         self.tenant_id = None
         self.initialize()
 
-    async def initialize(self) -> None:
+    def initialize(self) -> None:
         """
         Initialize the database connection from environment variables.
         """
