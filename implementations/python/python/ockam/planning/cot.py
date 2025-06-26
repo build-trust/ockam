@@ -1,6 +1,6 @@
 from typing import Optional, AsyncGenerator
 
-from ockam.nodes.message import ConversationRole, UserMessage, AssistantMessage, Phase
+from ockam.nodes.message import ConversationRole, UserMessage, AssistantMessage
 
 from .protocol import Planner, Plan
 from .utils import complete_think_chat
@@ -72,10 +72,10 @@ Make sure that the last step reaches the goal of the task.
                 AssistantMessage(
                     f"""<think>Alright, so I need to create a plan to address the task: "{self.query}". """
                 ),
-            ]
+            ],
         )
 
-        async for chunk in complete_think_chat(self.model, step_messages, self.stream, Phase.THINKING):
+        async for chunk in complete_think_chat(self.model, step_messages, self.stream):
             yield chunk
 
 

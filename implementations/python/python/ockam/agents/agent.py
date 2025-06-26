@@ -176,7 +176,7 @@ class AgentStateMachine:
             self.scope, self.conversation, self.contextual_knowledge, stream=self.stream
         ):
             if err:
-                yield self.streaming_response.make_snippet(err)
+                yield err
                 self.state = AgentState.FINISHED
                 return
 
@@ -192,10 +192,11 @@ class AgentStateMachine:
                 # Store tool calls for later processing
                 self.tool_calls.extend(model_response.tool_calls)
                 self.state = AgentState.TOOL_CALLING
-            elif finished or not self.stream:
+            elif finished:
                 # either we are streaming and we finished, or we are expecting a single response
                 if self.stream:
-                    yield self.streaming_response.make_snippet(model_response)
+                    if model_response.content or model_response.tool_calls:
+                        yield self.streaming_response.make_snippet(model_response)
                 else:
                     self.whole_response.messages.append(model_response)
 
@@ -208,8 +209,11 @@ class AgentStateMachine:
                         self.state = AgentState.PLANNING
                     return
             else:
-                # Handle streamed response chunk
-                yield self.streaming_response.make_snippet(model_response)
+                if self.stream:
+                    if model_response.content or model_response.tool_calls:
+                        yield self.streaming_response.make_snippet(model_response)
+                else:
+                    self.whole_response.messages.append(model_response)
 
     async def _handle_tool_calling_state(self):
         """Handle the TOOL_CALLING state: Process tool calls from the model response."""
@@ -531,12 +535,13 @@ class Agent(InfoContext, DebugContext):
                         response.tool_calls = list(tool_calls.values())
                         yield None, False, response
 
-                if finished or (delta.content is not None and len(delta.content) > 0):
-                    yield await self.send_response(chunk)
+                async for err, finished, model_response in self.send_response(chunk):
+                    yield err, finished, model_response
         else:
-            yield await self.send_response(response)
+            async for err, finished, model_response in self.send_response(response):
+                yield err, finished, model_response
 
-    async def send_response(self, response) -> (Error | None, int, bool, AssistantMessage):
+    async def send_response(self, response) -> (Optional[Error], int, bool, AssistantMessage):
         """
         This function converts the model response into an AssistantMessage.
         When streaming is used the function also returns a boolean indicating if this is the last part of the response
@@ -544,11 +549,11 @@ class Agent(InfoContext, DebugContext):
         if response is None or not hasattr(response, "choices") or not response.choices:
             e = ValueError(f"The model returned a response with an unexpected structure - {response}")
             error = Error(str(e))
-            return error, None
+            yield error, True, None
 
         choice = response.choices[0]
-        finished = False
         if hasattr(choice, "delta"):
+            finished = False
             delta = choice.delta
             # sometimes the role is not set
             if delta.role is None:
@@ -557,14 +562,28 @@ class Agent(InfoContext, DebugContext):
                 role = delta.role
 
             if choice.finish_reason is not None:
-                self.logger.debug(f"Finished streaming reply with reason {choice.get('finish_reason', 'unknown')}")
+                self.logger.debug(f"Finished streaming reply with reason {choice.finish_reason or 'unknown'}")
                 finished = True
                 response = {"role": role}
             else:
+                if hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                    response = {"role": role, "content": delta.reasoning_content, "thinking": True}
+                    yield None, False, self.converter.conversation_message_from_dict(response)
                 response = {"role": role, "content": delta.content}
             message = delta
         else:
+            finished = True
             message = choice.message
+            if hasattr(message, "reasoning_content") and message.reasoning_content:
+                yield (
+                    None,
+                    False,
+                    self.converter.conversation_message_from_dict(
+                        {"role": message.role, "content": message.reasoning_content, "thinking": True}
+                    ),
+                )
+                message.reasoning_content = ""
+
             response = {"role": message.role, "content": message.content}
 
         if message.tool_calls:
@@ -575,7 +594,8 @@ class Agent(InfoContext, DebugContext):
                 args = tool_call.function.arguments
                 response["tool_calls"].append({"id": id, "function": {"name": name, "arguments": args}})
 
-        return None, finished, self.converter.conversation_message_from_dict(response)
+        if response.get("content") or response.get("tool_calls") or finished:
+            yield None, finished, self.converter.conversation_message_from_dict(response)
 
     async def call_tool(self, tool_call: ToolCall) -> Tuple[Optional[Error], ToolCallResponseMessage]:
         id = tool_call.id

@@ -1,7 +1,7 @@
 from typing import Optional, AsyncGenerator
 from .protocol import Planner, Plan
 from .utils import complete_think_chat
-from ..nodes.message import ConversationMessage, SystemMessage, UserMessage, AssistantMessage, ConversationRole, Phase
+from ..nodes.message import ConversationMessage, SystemMessage, UserMessage, AssistantMessage, ConversationRole
 from ..models import Model
 
 
@@ -177,7 +177,6 @@ The key features include a homepage, blog section, about page, and contact form.
             self.model,
             step_messages,
             self.stream,
-            Phase.THINKING,
         ):
             yield chunk
 
