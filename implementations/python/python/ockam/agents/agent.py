@@ -503,11 +503,13 @@ class Agent(InfoContext, DebugContext):
             f"Sending {len(input_context)} messages from agent '{self.name}' to model '{self.model.original_name}'"
         )
         response = await self.model.complete_chat(tools=self.tool_specs, messages=input_context, stream=stream)
-        messages = [choice.message for choice in response.choices]
-        plural = "s" if len(messages) > 1 else ""
-        self.logger.info(
-            f"Received {len(messages)} message{plural} from model '{self.model.original_name}' for agent '{self.name}'"
-        )
+
+        if not stream:
+            messages = [choice.message for choice in response.choices]
+            plural = "s" if len(messages) > 1 else ""
+            self.logger.info(
+                f"Received {len(messages)} message{plural} from model '{self.model.original_name}' for agent '{self.name}'"
+            )
 
         if stream:
             tool_calls: Dict[int, ToolCall] = {}
