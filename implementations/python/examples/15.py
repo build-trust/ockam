@@ -1,5 +1,5 @@
 from ockam import Agent, Node, HttpServer, Repl, Model
-from app_15 import app
+from api_15 import Api
 
 """
     This example shows how a HTTP server can be started to interact with some agents deployed on a node.
@@ -51,4 +51,4 @@ async def main(node):
     await Repl.start(agent)
 
 
-Node.start(main, http_server=HttpServer(app=app))
+Node.start(main, http_server=HttpServer(api=Api()))

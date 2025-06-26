@@ -4,8 +4,10 @@ import os
 import uvicorn
 from dataclasses import asdict, is_dataclass
 from enum import Enum
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.security.api_key import APIKeyQuery
+from fastapi import Security
 from typing import Annotated
 
 from .socket_address import parse_host_and_port
@@ -23,7 +25,7 @@ DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT_HTTP", "8000"))
 
 
 class HttpServer(InfoContext):
-    def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", app: FastAPI = None):
+    def __init__(self, listen_address=f"{DEFAULT_HOST}:{DEFAULT_PORT}", app: FastAPI = None, api=None):
         from ..logging.logging import get_logger
 
         self.logger = get_logger("http")
@@ -31,12 +33,12 @@ class HttpServer(InfoContext):
         self.host = DEFAULT_HOST
         self.port = DEFAULT_PORT
         self.set_host_and_port(listen_address)
+        self.api = api
 
         if not app:
-            self.app = FastAPI()
+            self.app = FastAPI(dependencies=[Depends(validate_api_key)])
         else:
             self.app = app
-
         self.app.middleware("http")(self.inject_node)
         self._setup_routes()
 
@@ -232,6 +234,11 @@ class HttpServer(InfoContext):
 
     async def start(self, node):
         self.node = node
+        # mount some additional if provided custom routes
+        if self.api:
+            self.api.routes(self.node)
+            self.app.mount("/", self.api.api)
+
         asyncio.create_task(self.serve())
 
 
@@ -250,3 +257,10 @@ def default(obj):
     if isinstance(obj, Enum):
         return obj.value
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+
+
+def validate_api_key(api_key: str = Security(APIKeyQuery(name="api_key", auto_error=False))) -> str:
+    expected = os.environ.get("API_KEY")
+    if api_key != expected:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing API key header")
+    return expected
