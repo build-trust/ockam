@@ -8,6 +8,7 @@ import psycopg
 from .search import TextPiece, SearchHit
 from .protocol import Storage
 
+
 # Relevant database schema:
 # CREATE EXTENSION IF NOT EXISTS vector;
 # CREATE TABLE IF NOT EXISTS pieces (

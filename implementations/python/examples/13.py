@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, SearchableKnowledge
+from ockam import Agent, Model, Node, SearchableKnowledge, HttpServer
 
 """
     This example shows how a model can be enriched with knowledge coming from inlined documents.
@@ -48,6 +48,6 @@ async def main(node):
     print(reply)
 
 
-Node.start(main, wait_until_interrupted=False)
+Node.start(main, wait_until_interrupted=False, http_server=HttpServer())
 
 # OCKAM_SQLITE_IN_MEMORY=1 uv run examples/13.py
