@@ -1,23 +1,61 @@
 import pytest
+import os
+import psycopg
+from psycopg.rows import dict_row
 
 from ockam.knowledge.search import TextPiece
 from .protocol import Storage
 from .in_memory import InMemory
-from .. import Database
+from .. import Database, create_storage
+
+
+@pytest.fixture
+def setup_env(monkeypatch):
+    monkeypatch.setenv(
+        "OCKAM_DATABASE_INSTANCE", os.environ.get("OCKAM_DATABASE_INSTANCE", "localhost:5432/postgres")
+    )
+    monkeypatch.setenv("OCKAM_DATABASE_USER", "postgres")
+    monkeypatch.setenv("OCKAM_DATABASE_PASSWORD", "")
+
+    connection = psycopg.connect("postgresql://postgres@localhost:5432/postgres", row_factory=dict_row)
+
+    with connection.cursor() as cur:
+        cur.execute("""
+                    CREATE EXTENSION IF NOT EXISTS vector;
+                    CREATE TABLE IF NOT EXISTS document_piece
+                    (
+                        id        TEXT PRIMARY KEY,
+                        tenant_id TEXT   NOT NULL,
+                        scope     TEXT,
+                        name      TEXT,
+                        text      TEXT,
+                        embedding vector NOT NULL
+                    );
+
+                    DELETE
+                    FROM document_piece;
+
+                    CREATE TABLE IF NOT EXISTS document
+                    (
+                        id        TEXT PRIMARY KEY,
+                        tenant_id TEXT NOT NULL,
+                        scope     TEXT,
+                        name      TEXT,
+                        text      TEXT
+                    );
+                    DELETE
+                    FROM document;""")
+        connection.commit()
 
 
 async def test_in_memory_searches():
     await _test_searches(InMemory())
 
+
 async def test_database_searches():
-    storage = Database.from_environment(
-        return_none_if_env_missing = True
-    )
-    if storage:
-        await storage.delete_all()
-        await _test_searches(storage)
-    else:
-        pytest.skip("database not configured")
+    storage = create_storage()
+    await _test_searches(storage)
+
 
 async def _test_searches(storage: Storage):
     await storage.store_text_piece("scope1", "doc1", "Document 1", [TextPiece("Hello world", [0.0, 1.0, 0.0])])
@@ -38,15 +76,11 @@ async def _test_searches(storage: Storage):
 async def test_in_memory_store_document():
     await _test_store_document(InMemory())
 
+
 async def test_database_store_document():
-    storage = Database.from_environment(
-        return_none_if_env_missing = True
-    )
-    if storage:
-        await storage.delete_all()
-        await _test_store_document(storage)
-    else:
-        pytest.skip("database not configured")
+    storage = create_storage()
+    await _test_store_document(storage)
+
 
 async def _test_store_document(storage: Storage):
     await storage.store_document("knowledge1", "doc1", "Document 1", "This is a test document.")
