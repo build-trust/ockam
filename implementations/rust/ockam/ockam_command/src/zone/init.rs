@@ -29,7 +29,9 @@ pub struct InitCommand {
     /// The name of the template project to download.
     /// It can be either a GitHub repository like `build-trust/ockam-cluster-template-hello`,
     /// a full URL like `git@github.com:build-trust/ockam-cluster-template-hello`,
-    /// or an Ockam repository name that exists at `build-trust/ockam-cluster-template-<NAME>`
+    /// an Ockam repository name that exists at `build-trust/ockam-cluster-template-<NAME>`,
+    /// an Ockam example like `build-trust/ockam/examples/001`,
+    /// or a URL to a ZIP archive like `"https://github.com/build-trust/ockam-cluster-template-hello/archive/refs/heads/main.zip
     #[arg(default_value = "hello")]
     pub(crate) repository: String,
 
@@ -196,14 +198,29 @@ fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
 struct RepositoryDownloader {
     repository_url: String,
     repository_type: RepositoryType,
+    repository_subdir: Option<PathBuf>,
     temp_dir: TempDir,
     target_path: PathBuf,
 }
 
 impl RepositoryDownloader {
     fn new(repository_hint: &str, target_path: PathBuf) -> Result<Self> {
+        let mut repository_subdir = None;
+        let mut repository_hint = repository_hint.trim();
         let repository_type = if repository_hint.ends_with(".git") {
             RepositoryType::Git
+        } else if repository_hint.contains("build-trust/ockam/examples") {
+            // If repository_hint == "build-trust/ockam/examples/001", then
+            //  repository_subdir = Some(PathBuf::from("examples/001"))
+            //  and repository_hint = "build-trust/ockam"
+            repository_subdir = Some(PathBuf::from(
+                repository_hint
+                    .split("build-trust/ockam/")
+                    .nth(1)
+                    .ok_or(miette!("Failed to parse repository subdir"))?,
+            ));
+            repository_hint = "build-trust/ockam";
+            RepositoryType::Zip
         } else {
             // Defaults to ZIP when a repository name or a template name is passed
             RepositoryType::Zip
@@ -217,6 +234,7 @@ impl RepositoryDownloader {
                 &repository_type,
             ),
             repository_type,
+            repository_subdir,
             temp_dir,
             target_path,
         })
@@ -249,7 +267,15 @@ impl RepositoryDownloader {
                     hint.to_string()
                 } else if hint.contains('/') {
                     // A "<user>/<repo>" string
-                    format!("https://github.com/{}/archive/refs/heads/main.zip", hint)
+                    let branch = if hint.contains("build-trust/ockam") {
+                        "develop"
+                    } else {
+                        "main"
+                    };
+                    format!(
+                        "https://github.com/{}/archive/refs/heads/{}.zip",
+                        hint, branch
+                    )
                 } else {
                     // An Ockam template name
                     format!(
@@ -353,7 +379,7 @@ impl RepositoryDownloader {
     }
 
     async fn copy_repository_files_to_target_path(&self) -> Result<()> {
-        let source_dir = match self.repository_type {
+        let mut source_dir = match self.repository_type {
             RepositoryType::Git => {
                 let repo_name = self
                     .repository_url
@@ -364,6 +390,12 @@ impl RepositoryDownloader {
                 self.temp_dir.path().join(repo_name)
             }
             RepositoryType::Zip => self.temp_dir.path().to_path_buf(),
+        };
+        // If a subdirectory is specified, use it as the source directory
+        source_dir = if let Some(subdir) = &self.repository_subdir {
+            source_dir.join(subdir)
+        } else {
+            source_dir
         };
         debug!(
             "Copying repository files to target path {:?} from {:?}",

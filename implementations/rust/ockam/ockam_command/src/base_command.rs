@@ -29,7 +29,12 @@ pub struct BaseCommand {
     /// It can be either a GitHub repository like `build-trust/ockam-cluster-template-hello`,
     /// a full URL like `git@github.com:build-trust/ockam-cluster-template-hello`,
     /// or an Ockam repository name that exists at `build-trust/ockam-cluster-template-<NAME>`
-    #[arg(long, default_value = "hello", env = "INIT_REPOSITORY")]
+    #[arg(
+        long = "init",
+        visible_alias = "init-repository",
+        default_value = "hello",
+        env = "INIT_REPOSITORY"
+    )]
     init_repository: String,
 
     /// Watch the current directory for changes and redeploy the zone when changes are detected.
