@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-22.04
     services:
       postgres:
-        image: postgres:latest
+        image: ankane/pgvector:latest # this adds the pgvector extension to the postgres image
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password

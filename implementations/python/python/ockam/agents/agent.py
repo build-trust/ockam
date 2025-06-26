@@ -412,7 +412,6 @@ class Agent(InfoContext, DebugContext):
 
     async def determine_input_context(self, scope, conversation, contextual_knowledge):
         # Try to use full history and reduce it until it fits into the context window
-
         prompt_size = 1
         if contextual_knowledge:
             prompt_size += 1

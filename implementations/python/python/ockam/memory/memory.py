@@ -5,6 +5,7 @@ import threading
 from os import environ
 from psycopg.rows import dict_row
 from collections import defaultdict
+
 from urllib.parse import quote
 
 
@@ -17,6 +18,7 @@ class Memory:
             return cls._logger
         else:
             from ockam import get_logger
+
             cls._logger = get_logger("memory")
             return cls._logger
 
@@ -40,15 +42,13 @@ class Memory:
 
         self.db_url = f"postgresql://{self.tenant_id}:{quote(password)}@{db_instance}"
         db_url_anonymized = f"postgresql://*****:*****@{db_instance}"
-        self.logger.info(f"Connecting to database at %s", db_url_anonymized)
+        self.logger.info("Connecting to database at %s", db_url_anonymized)
 
-        self.connection = psycopg.connect(self.db_url, row_factory=dict_row)
+        self.connection: psycopg.Connection[dict] = psycopg.connect(self.db_url, row_factory=dict_row)
 
     def load_conversations(self):
-        with self.connection.cursor() as cur:
-            cur.execute(
-                "SELECT scope, conversation, message FROM conversation"
-            )
+        with self.connection.cursor() as cur:  # pylint: disable=E1101
+            cur.execute("SELECT scope, conversation, message FROM conversation")
             rows = cur.fetchall()
             for row in rows:
                 message = json.loads(row["message"])
@@ -61,12 +61,12 @@ class Memory:
     def add_message(self, scope: str, conversation: str, message: dict):
         with self.lock:
             self.conversations[scope][conversation].append(message)
-            with self.connection.cursor() as cur:
+            with self.connection.cursor() as cur:  # pylint: disable=E1101
                 cur.execute(
                     "INSERT INTO conversation (tenant_id, scope, conversation, message) VALUES (%s, %s, %s, %s)",
                     (self.tenant_id, scope, conversation, json.dumps(message)),
                 )
-                self.connection.commit()
+                self.connection.commit()  # pylint: disable=E1101
 
     def get_messages(self, scope: str, conversation: str) -> list[dict]:
         with self.lock:
