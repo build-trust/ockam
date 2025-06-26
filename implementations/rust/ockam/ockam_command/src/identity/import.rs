@@ -4,7 +4,6 @@ use colorful::Colorful;
 use ockam_api::cli_state::random_name;
 use ockam_api::colors::color_primary;
 use ockam_api::fmt_ok;
-use ockam_api::orchestrator::email_address::EmailAddress;
 use ockam_node::Context;
 
 use crate::identity::export::ExportedIdentity;
@@ -31,7 +30,8 @@ impl Command for ImportCommand {
         let exported_identity = ExportedIdentity::from_hex(&self.exported)?;
         let signing_secret = exported_identity.signing_secret()?;
         let change_history = exported_identity.hex_decoded_change_history()?;
-        let enrolled_email = exported_identity.enrolled_email;
+        let user_email = exported_identity.user_email()?;
+        let user = exported_identity.user()?;
         let identity_name = if opts
             .state
             .get_named_identity(&exported_identity.name)
@@ -60,10 +60,16 @@ impl Command for ImportCommand {
             .store_named_identity(&identifier, &identity_name, &vault_name)
             .await?;
 
-        if let Some(email) = enrolled_email {
+        if let Some(user_email) = user_email.as_ref() {
             opts.state
-                .set_identifier_as_enrolled(&identifier, &EmailAddress::parse(&email)?)
+                .set_identifier_as_enrolled(&identifier, user_email)
                 .await?;
+        }
+        if let Some(user) = user {
+            opts.state
+                .set_identifier_as_enrolled(&identifier, &user.email)
+                .await?;
+            opts.state.store_user(&user).await?;
         }
 
         opts.terminal

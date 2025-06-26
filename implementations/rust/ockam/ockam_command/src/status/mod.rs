@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use clap::Args;
 use colorful::Colorful;
 use miette::IntoDiagnostic;
+use ockam_api::orchestrator::project::ProjectsOrchestratorApi;
 use serde::Serialize;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -23,7 +24,7 @@ use ockam_api::nodes::models::node::NodeResources;
 use ockam_api::nodes::{BackgroundNodeClient, InMemoryNode};
 use ockam_api::orchestrator::project::models::OrchestratorVersionInfo;
 use ockam_api::orchestrator::project::Project;
-use ockam_api::orchestrator::space::Space;
+use ockam_api::orchestrator::space::{Space, Spaces};
 use ockam_api::output::Output;
 use ockam_api::{fmt_heading, fmt_log, fmt_separator, fmt_warn};
 
@@ -64,15 +65,26 @@ impl InMemoryNodeCommand for StatusNodeCommand {
         let nodes = self
             .command
             .get_nodes_resources(node.ctx(), &self.opts)
-            .await?;
+            .await?
+            .into_iter()
+            .filter(|n| n.name != node.name())
+            .collect::<Vec<_>>();
         let controller = node.create_controller().await?;
         let orchestrator_version = controller
             .get_orchestrator_version_info(node.ctx())
             .await
             .map_err(|e| warn!(%e, "Failed to retrieve orchestrator version"))
             .unwrap_or_default();
-        let spaces = self.opts.state.get_spaces().await?;
-        let projects = self.opts.state.projects().get_projects().await?;
+        let spaces = if let Ok(spaces) = node.get_spaces().await {
+            spaces
+        } else {
+            self.opts.state.get_spaces().await?
+        };
+        let projects = if let Ok(projects) = node.get_admin_projects().await {
+            projects
+        } else {
+            self.opts.state.projects().get_projects().await?
+        };
         let status = StatusData::from_parts(
             orchestrator_version,
             spaces,
