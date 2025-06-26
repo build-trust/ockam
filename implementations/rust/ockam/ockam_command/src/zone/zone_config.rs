@@ -221,7 +221,7 @@ impl ZoneConfig {
                 .for_each(|pod| {
                     pod.portals.outlets.push(Outlet {
                         name: Some("logs".to_string()),
-                        to: "localhost:3000".to_string(),
+                        to: "localhost:32101".to_string(),
                         pod_name: Some("logs-pod".to_string()),
                         ..Default::default()
                     })
@@ -642,7 +642,7 @@ pods:
             .iter()
             .find(|o| o.name.as_deref() == Some("logs"))
             .expect("Default logs outlet not found");
-        assert_eq!(logs_outlet.to, "localhost:3000");
+        assert_eq!(logs_outlet.to, "localhost:32101");
         assert_eq!(logs_outlet.pod_name, Some("logs-pod".to_string()));
     }
 
