@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.156.0 - 2025-06-26
+
+### Added
+
+- Change default ports for http/logs inlets
+- In `zone inlet`, try to get `from` and `pod` args from config if not passed
+- Updated dependencies
+
+### Changed
+
+- Move `cluster ticket` to `zone ticket`
+
+### Fixed
+
+- Store user when importing an identity
+- Default logs outlet port
+
 ## 0.155.0 - 2025-06-20
 
 ### Added
