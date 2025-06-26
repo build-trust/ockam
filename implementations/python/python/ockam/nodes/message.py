@@ -5,7 +5,7 @@ import secrets
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Union, Any, Optional
+from typing import Union, Any, Optional, List, AsyncGenerator
 
 from .local import LocalNodeProtocol
 from .remote import RemoteNode
@@ -35,7 +35,6 @@ class ToolCall:
 
 
 class Phase(Enum):
-    THINKING = "thinking"
     PLANNING = "planning"
     EXECUTING = "executing"
 
@@ -44,6 +43,7 @@ class Phase(Enum):
 class UserMessage:
     content: str = ""
     phase: Phase = Phase.EXECUTING
+    thinking: bool = False
     role: ConversationRole = ConversationRole.USER
 
 
@@ -57,6 +57,7 @@ class SystemMessage:
 class AssistantMessage:
     content: str = ""
     phase: Phase = Phase.EXECUTING
+    thinking: bool = False
     role: ConversationRole = ConversationRole.ASSISTANT
     tool_calls: list[ToolCall] = field(default_factory=list)
 
@@ -94,6 +95,99 @@ class ReceiveReference:
         return response.messages
 
 
+class MessageType(Enum):
+    CONVERSATION_SNIPPET = "conversation_snippet"
+    STREAMED_CONVERSATION_SNIPPET = "streamed_conversation_snippet"
+    GET_IDENTIFIER_REQUEST = "get_identifier_request"
+    GET_IDENTIFIER_RESPONSE = "get_identifier_response"
+    GET_CONVERSATIONS_REQUEST = "get_conversations_request"
+    GET_CONVERSATIONS_RESPONSE = "get_conversations_response"
+    ERROR = "error"
+
+
+@dataclass
+class GetIdentifierRequest:
+    scope: str
+    conversation: str
+    type: MessageType = MessageType.GET_IDENTIFIER_REQUEST
+
+
+@dataclass
+class GetIdentifierResponse:
+    scope: str
+    conversation: str
+    identifier: str
+    type: MessageType = MessageType.GET_IDENTIFIER_RESPONSE
+
+
+@dataclass
+class GetConversationsRequest:
+    scope: None | str
+    conversation: None | str
+    type: MessageType = MessageType.GET_CONVERSATIONS_REQUEST
+
+
+@dataclass
+class GetConversationsResponse:
+    conversations: list[dict]
+    type: MessageType = MessageType.GET_CONVERSATIONS_RESPONSE
+
+
+@dataclass
+class Error:
+    message: str
+    type: MessageType = MessageType.ERROR
+
+
+@dataclass
+class ConversationSnippet:
+    scope: str = ""
+    conversation: str = ""
+    messages: List[ConversationMessage] = field(default_factory=list)
+    type: MessageType = MessageType.CONVERSATION_SNIPPET
+
+    def compact_assistant_messages(self):
+        messages = self.messages
+        all_messages = []
+        assistant_message = None
+        for m in messages:
+            if isinstance(m, AssistantMessage):
+                if assistant_message is None:
+                    assistant_message = m
+                else:
+                    assistant_message.content += m.content
+            else:
+                all_messages.append(m)
+
+        if assistant_message is not None:
+            all_messages.append(assistant_message)
+        self.messages = all_messages
+        return self
+
+
+@dataclass
+class StreamedConversationSnippet:
+    snippet: ConversationSnippet
+    part_nb: int = 0
+    finished: bool = False
+    type: MessageType = MessageType.STREAMED_CONVERSATION_SNIPPET
+
+    # This is required to sort the received snippets when they are received out of order.
+    def __lt__(self, other):
+        return self.part_nb < other.part_nb
+
+
+Message = Union[
+    ConversationSnippet,
+    StreamedConversationSnippet,
+    GetIdentifierRequest,
+    GetIdentifierResponse,
+    GetConversationsRequest,
+    GetConversationsResponse,
+    Error,
+]
+
+
 # TODO: There is some overlap in functionality between Reference class and Local/Remote node classes
 class Reference:
     # TODO: Policies
@@ -116,12 +210,14 @@ class Reference:
         response = await self.send_and_receive_request(GetIdentifierRequest(scope, conversation))
         return response.identifier
 
-    async def send(self, message, scope="", conversation="", timeout=None):
+    async def send(self, message, scope="", conversation="", timeout=None) -> List[ConversationMessage]:
         request = ConversationSnippet(scope, conversation, [UserMessage(message)])
         response = await self.send_and_receive_request(request, timeout=timeout)
         return response.messages
 
-    async def send_stream(self, message, scope="", conversation="", timeout=None):
+    async def send_stream(
+        self, message, scope="", conversation="", timeout=None
+    ) -> AsyncGenerator[StreamedConversationSnippet, None]:
         request = StreamedConversationSnippet(ConversationSnippet(scope, conversation, [UserMessage(message)]))
         async for response in self.send_request_stream(request, timeout=timeout):
             yield response
@@ -290,98 +386,6 @@ class SquadReference(Reference):
     ):
         super().__init__(name, node, ReferenceType.SQUAD)
 
-
-class MessageType(Enum):
-    CONVERSATION_SNIPPET = "conversation_snippet"
-    STREAMED_CONVERSATION_SNIPPET = "streamed_conversation_snippet"
-    GET_IDENTIFIER_REQUEST = "get_identifier_request"
-    GET_IDENTIFIER_RESPONSE = "get_identifier_response"
-    GET_CONVERSATIONS_REQUEST = "get_conversations_request"
-    GET_CONVERSATIONS_RESPONSE = "get_conversations_response"
-    ERROR = "error"
-
-
-@dataclass
-class GetIdentifierRequest:
-    scope: str
-    conversation: str
-    type: MessageType = MessageType.GET_IDENTIFIER_REQUEST
-
-
-@dataclass
-class GetIdentifierResponse:
-    scope: str
-    conversation: str
-    identifier: str
-    type: MessageType = MessageType.GET_IDENTIFIER_RESPONSE
-
-
-@dataclass
-class GetConversationsRequest:
-    scope: None | str
-    conversation: None | str
-    type: MessageType = MessageType.GET_CONVERSATIONS_REQUEST
-
-
-@dataclass
-class GetConversationsResponse:
-    conversations: list[dict]
-    type: MessageType = MessageType.GET_CONVERSATIONS_RESPONSE
-
-
-@dataclass
-class Error:
-    message: str
-    type: MessageType = MessageType.ERROR
-
-
-@dataclass
-class ConversationSnippet:
-    scope: str = ""
-    conversation: str = ""
-    messages: list[ConversationMessage] = field(default_factory=list)
-    type: MessageType = MessageType.CONVERSATION_SNIPPET
-
-    def compact_assistant_messages(self):
-        messages = self.messages
-        all_messages = []
-        assistant_message = None
-        for m in messages:
-            if isinstance(m, AssistantMessage):
-                if assistant_message is None:
-                    assistant_message = m
-                else:
-                    assistant_message.content += m.content
-            else:
-                all_messages.append(m)
-
-        if assistant_message is not None:
-            all_messages.append(assistant_message)
-        self.messages = all_messages
-        return self
-
-
-@dataclass
-class StreamedConversationSnippet:
-    snippet: ConversationSnippet
-    part_nb: int = 0
-    finished: bool = False
-    type: MessageType = MessageType.STREAMED_CONVERSATION_SNIPPET
-
-    # This is required to sort the received snippets when they are received out of order.
-    def __lt__(self, other):
-        return self.part_nb < other.part_nb
-
-
-Message = Union[
-    ConversationSnippet,
-    StreamedConversationSnippet,
-    GetIdentifierRequest,
-    GetIdentifierResponse,
-    GetConversationsRequest,
-    GetConversationsResponse,
-    Error,
-]
 
 CACHE = None
 

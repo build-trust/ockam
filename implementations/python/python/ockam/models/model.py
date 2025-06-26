@@ -272,14 +272,18 @@ class Model(InfoContext, DebugContext):
                             f"Failed to obtain/create inference profile ARN for model_identifier: {model_identifier}. Model will be called directly."
                         )
 
-    def count_tokens(self, messages: List[dict] | List[ConversationMessage], tools) -> int:
-        messages, kwargs = self.prepare_llm_call(messages)
+    def count_tokens(
+        self, messages: List[dict] | List[ConversationMessage], is_thinking: bool = False, tools=None
+    ) -> int:
+        messages, kwargs = self.prepare_llm_call(messages, is_thinking)
 
         # FIXME: Do kwargs we provide to acompletion could potentially affect this calculation?
         return litellm.token_counter(self.name, messages=messages, tools=tools)
 
-    def prepare_llm_call(self, messages: List[dict] | List[ConversationMessage], **kwargs):
-        messages = normalize_messages(messages, self.support_tools(), self.support_forced_assistant_answer())
+    def prepare_llm_call(self, messages: List[dict] | List[ConversationMessage], is_thinking: bool, **kwargs):
+        messages = normalize_messages(
+            messages, is_thinking, self.support_tools(), self.support_forced_assistant_answer()
+        )
 
         # parameters provided in kwargs will override the default parameters
         kwargs = {**self.kwargs, **kwargs}
@@ -298,59 +302,104 @@ class Model(InfoContext, DebugContext):
     def support_forced_assistant_answer(self):
         return "bedrock" not in self.name and "litellm_proxy" not in self.name
 
-    async def complete_chat(self, messages: List[dict] | List[ConversationMessage], stream: bool = False, **kwargs):
+    async def complete_chat(
+        self,
+        messages: List[dict] | List[ConversationMessage],
+        stream: bool = False,
+        is_thinking: bool = False,
+        **kwargs,
+    ):
+        """
+        Send a chat completion request to the model.
+
+        :param messages: List of messages to send to the model. Each message should be a dictionary with 'role' and 'content' keys.
+        :param stream: When True, the response will be streamed back as it is generated. If False, the full response will be returned at once.
+        :param is_thinking: Must be true when the thinking has already started but not completed yet.
+        :param kwargs: Additional parameters to pass to the model, such as temperature, max_tokens, etc.
+        :rtype The response from the model, either as a full response or a stream of responses.
+        """
         self.logger.info(f"Processing {len(messages)} messages with model '{self.original_name}'")
         self.logger.debug(f"Sending the following messages to the model: {messages} (stream={stream})")
 
-        messages, kwargs = self.prepare_llm_call(messages, **kwargs)
+        messages, kwargs = self.prepare_llm_call(messages, is_thinking, **kwargs)
 
         if stream:
-            return self._complete_chat_stream(messages, **kwargs)
+            return self._complete_chat_stream(messages, is_thinking, **kwargs)
         else:
             return await self._complete_chat(messages, **kwargs)
 
-    async def _complete_chat_stream(self, messages: List[dict], **kwargs):
+    async def _complete_chat_stream(self, messages: List[dict], is_thinking: bool, **kwargs):
+        chunks = None
+
         if _cache_inference:
             request_hash = self._hash_completion_request(self.name, messages, stream=True, kwargs=kwargs)
             file = f".recorded_inference/{request_hash}.dill"
             if os.path.exists(file):
                 chunks = dill.load(open(file, "rb"))
-                for chunk in chunks:
+
+        if chunks is None:
+            if _cache_inference:
+                chunks = []
+                async for chunk in await self.router().acompletion(self.name, messages=messages, stream=True, **kwargs):
+                    chunks.append(chunk)
+                    if chunk.choices[0].finish_reason:
+                        break
+
+                os.makedirs(".recorded_inference", exist_ok=True)
+                with open(file, "wb") as f:
+                    f.write(dill.dumps(chunks))
+            else:
+                chunks = await self.router().acompletion(self.name, messages=messages, stream=True, **kwargs)
+
+        # convert chunks to an async generator if they are a list
+        if type(chunks) is list:
+            chunk_list = chunks
+
+            async def chunk_generator():
+                for chunk in chunk_list:
                     yield chunk
-                return
 
-        if _cache_inference:
-            chunks = []
-            async for chunk in await self.router().acompletion(self.name, messages=messages, stream=True, **kwargs):
-                chunks.append(chunk)
-                if chunk.choices[0].finish_reason:
-                    break
+            chunks = chunk_generator()
 
-            os.makedirs(".recorded_inference", exist_ok=True)
-            with open(file, "wb") as f:
-                f.write(dill.dumps(chunks))
+        async for chunk in chunks:
+            if chunk.choices[0].delta.content and "<think>" in chunk.choices[0].delta.content:
+                is_thinking = True
+                chunk.choices[0].delta.content = chunk.choices[0].delta.content.replace("<think>", "")
 
-            for chunk in chunks:
-                yield chunk
-        else:
-            await self.router().acompletion(self.name, messages=messages, stream=True, **kwargs)
+            if chunk.choices[0].delta.content and "</think>" in chunk.choices[0].delta.content:
+                is_thinking = False
+                chunk.choices[0].delta.content = chunk.choices[0].delta.content.replace("</think>", "")
+
+            if is_thinking:
+                chunk.choices[0].delta.reasoning_content = chunk.choices[0].delta.content
+                chunk.choices[0].delta.content = None
+            yield chunk
 
     async def _complete_chat(self, messages: List[dict], **kwargs):
+        response = None
         if _cache_inference:
             request_hash = self._hash_completion_request(self.name, messages, False, kwargs)
             file = f".recorded_inference/{request_hash}.dill"
             if os.path.exists(file):
                 response = dill.load(open(file, "rb"))
-                return response
 
-        response = await self.router().acompletion(self.name, messages=messages, stream=False, **kwargs)
-        self.logger.debug(f"Got a response from model '{self.original_name}': {response}")
+        if response is None:
+            response = await self.router().acompletion(self.name, messages=messages, stream=False, **kwargs)
+            self.logger.debug(f"Got a response from model '{self.original_name}': {response}")
         self.logger.info(f"Finished processing messages with model '{self.original_name}'")
 
         if _cache_inference:
             os.makedirs(".recorded_inference", exist_ok=True)
             with open(file, "wb") as f:
                 f.write(dill.dumps(response))
+
+        end_think_tag = response.choices[0].message.content.find("</think>")
+        if end_think_tag != -1:
+            thinking_content = response.choices[0].message.content[:end_think_tag].replace("<think>", "")
+            non_thinking_content = response.choices[0].message.content[end_think_tag + len("</think>") :]
+
+            response.choices[0].message.reasoning_content = thinking_content
+            response.choices[0].message.content = non_thinking_content
 
         return response
 
@@ -390,7 +439,10 @@ class Model(InfoContext, DebugContext):
 
 
 def normalize_messages(
-    messages: List[dict] | List[ConversationMessage], tools_supported: bool, forced_assistant_answer_supported: bool
+    messages: List[dict] | List[ConversationMessage],
+    is_thinking: bool,
+    tools_supported: bool,
+    forced_assistant_answer_supported: bool,
 ) -> List[dict]:
     messages = deepcopy(messages)
 
@@ -412,6 +464,13 @@ def normalize_messages(
     for message in messages:
         if "content" in message and len(message["content"]) == 0:
             del message["content"]
+
+    # remove extra fields: phase and thinking
+    for message in messages:
+        if "phase" in message:
+            del message["phase"]
+        if "thinking" in message:
+            del message["thinking"]
 
     if tools_supported:
         for message in messages:
@@ -475,5 +534,12 @@ def normalize_messages(
     # force_assistant_answer is not supported
     if not forced_assistant_answer_supported and len(messages) > 0 and messages[-1]["role"] == "assistant":
         messages[-1]["role"] = "user"
+
+    # if thinking, we need to add <think> tag at the beginning of the last message
+    if is_thinking and len(messages) > 0:
+        if "content" in messages[-1]:
+            messages[-1]["content"] = "<think>" + messages[-1]["content"]
+        else:
+            messages[-1]["content"] = "<think>"
 
     return messages

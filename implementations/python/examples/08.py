@@ -12,8 +12,8 @@ async def main(node):
         node=node,
         name="Assistant",
         instructions="Assistant to solve some complex task ...",
-        model=Model(name="ollama_chat/llama3.2"),
-        planner=CoTPlanner(),
+        model=Model(name="deepseek-r1"),
+        planner=CoTPlanner(model=Model(name="deepseek-r1")),
     )
 
     async for chunk in agent.send_stream("Estimate how many violins are in the world", timeout=60 * 20):
@@ -21,14 +21,20 @@ async def main(node):
             continue
 
         phase = chunk.snippet.messages[-1].phase
+        thinking = chunk.snippet.messages[-1].thinking
         text = chunk.snippet.messages[-1].content
 
-        if phase == Phase.THINKING:
-            print(f"\033[94m{text}\033[0m", end="")  # thinking: blue
-        elif phase == Phase.PLANNING:
-            print(f"\033[92m{text}\033[0m", end="")  # planning: green
-        elif phase == Phase.EXECUTING:
-            print(f"\033[90m{text}\033[0m", end="")  # executing: grey
+        # reasoning is always in italic
+        if phase == Phase.PLANNING:  # planning: green
+            if thinking:
+                print(f"\033[3;92m{text}\033[0m", end="")
+            else:
+                print(f"\033[92m{text}\033[0m", end="")
+        elif phase == Phase.EXECUTING:  # executing: grey
+            if thinking:
+                print(f"\033[3;90m{text}\033[0m", end="")
+            else:
+                print(f"\033[90m{text}\033[0m", end="")
         else:
             raise RuntimeError(f"unknown phase {phase}")
 
