@@ -9,6 +9,7 @@ from .in_memory import InMemory
 from .database import Database
 from .extractors import TextExtractor
 from .chunkers import Chunker, NaiveChunker
+from .knowledge import Knowledge
 
 __all__ = [
     "Database",
@@ -19,6 +20,7 @@ __all__ = [
     "NoopKnowledge",
     "Mem0Knowledge",
     "SearchableKnowledge",
+    "Knowledge",
     "SearchHit",
     "SearchResults",
     "SearchableKnowledge",
