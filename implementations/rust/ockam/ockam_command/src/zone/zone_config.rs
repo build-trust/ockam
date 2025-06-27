@@ -238,8 +238,8 @@ impl ZoneConfig {
                         Env::ListOfMaps(list) => {
                             let mut maps = vec![];
                             for map in list.drain(..) {
-                                // If the hashmap has a single item and value is a string,
-                                // process it as a key-value env var
+                                // If the hashmap has a single item and value can be
+                                // parsed as a string, process it as a key-value env var
                                 if map.len() == 1 {
                                     if let Some((key, Value::String(value_str))) = map.iter().next()
                                     {
@@ -283,7 +283,9 @@ impl ZoneConfig {
                 }),
             );
         } else {
-            env_item.insert(key.to_string(), Value::String(value.to_string()));
+            // Regular environment variable
+            env_item.insert("name".to_string(), Value::String(key.to_string()));
+            env_item.insert("value".to_string(), Value::String(value.to_string()));
         }
         env_item
     }
@@ -1560,14 +1562,13 @@ pods:
                     "MY_API_KEY"
                 );
 
-                // Check REGULAR_VAR is unchanged
+                // Check REGULAR_VAR is transformed to a plain key-value variable
                 let regular_var = raw_env
                     .iter()
-                    .find(|v| v.get("REGULAR_VAR").is_some())
-                    .expect("REGULAR_VAR not found");
-
+                    .find(|v| v.get("name").and_then(|n| n.as_str()) == Some("REGULAR_VAR"))
+                    .unwrap();
                 assert_eq!(
-                    regular_var.get("REGULAR_VAR").unwrap().as_str().unwrap(),
+                    regular_var.get("value").unwrap().as_str().unwrap(),
                     "regular-value"
                 );
             } else {
@@ -1622,14 +1623,13 @@ pods:
                     "MY_API_KEY"
                 );
 
-                // Check REGULAR_VAR is unchanged
+                // Check REGULAR_VAR is transformed to a plain key-value variable
                 let regular_var = raw_env
                     .iter()
-                    .find(|v| v.get("REGULAR_VAR").is_some())
-                    .expect("REGULAR_VAR not found");
-
+                    .find(|v| v.get("name").and_then(|n| n.as_str()) == Some("REGULAR_VAR"))
+                    .unwrap();
                 assert_eq!(
-                    regular_var.get("REGULAR_VAR").unwrap().as_str().unwrap(),
+                    regular_var.get("value").unwrap().as_str().unwrap(),
                     "regular-value"
                 );
             } else {
