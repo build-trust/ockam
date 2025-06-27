@@ -73,20 +73,21 @@ impl InMemoryNodeCommand<ZoneConfig> for DeployNodeCommand {
             color_primary(&cluster),
         ))?;
 
-        // Delete the zone is a relatively slow operation, so we do it in parallel with the image processing
-        let zone_config_future = self.command.process_images(
-            ctx,
-            parsed_zone_config.clone(),
-            &self.opts,
-            &*api_client,
-            &cluster,
-        );
-        let delete_zone_future =
-            api_client.delete_zone(ctx, Some(&cluster), &parsed_zone_config.name);
+        let zone_config = self
+            .command
+            .process_images(
+                ctx,
+                parsed_zone_config.clone(),
+                &self.opts,
+                &*api_client,
+                &cluster,
+            )
+            .await?;
 
-        let (zone_config, _) = tokio::join!(zone_config_future, delete_zone_future);
         // We don't check the result of the delete zone operation, it can fail if the zone doesn't exist
-        let zone_config = zone_config?;
+        let _delete_zone = api_client
+            .delete_zone(ctx, Some(&cluster), &parsed_zone_config.name)
+            .await;
 
         self.command
             .deploy_zone(ctx, &self.opts, &*api_client, &cluster, &zone_config)
