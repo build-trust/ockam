@@ -16,7 +16,7 @@ async def main(node):
     )
 
 
-set_log_level("mem0.memory.main", "INFO")
+set_log_level("mem0", "DEBUG")
 set_log_level("agent", "INFO")
 
 Node.start(main)

@@ -16,7 +16,7 @@ dependencies = [
   "docstring-parser>=0.16",
   "fastapi>=0.103.1",
   "litellm @ git+https://github.com/build-trust/litellm.git@ba33a4d4b165c276f7eb6a681fbe1ba23466be2f",
-  "mem0ai @ git+https://github.com/build-trust/mem0.git@8b21e17263645c409ed135b8b76b08fe51e88663",
+  "mem0ai @ git+https://github.com/build-trust/mem0.git@a59d294ee812658f9613fc5f55df8d496627b4a6",
   "starlette>=0.27.0",
   "scipy>=1.15.2",
   "psycopg[binary]>=3.2.6",
