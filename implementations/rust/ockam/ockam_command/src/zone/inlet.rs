@@ -20,6 +20,7 @@ use ockam_api::CliState;
 use ockam_node::Context;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 
 const LONG_ABOUT: &str = include_str!("./static/inlet/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -102,9 +103,10 @@ impl InMemoryNodeCommand for InletNodeCommand {
             .await?;
         let relay_name = format!("{}-{}-{}", cluster, zone_name, self.command.pod());
         let outlet_name = self.command.to.as_deref().unwrap_or(self.command.pod());
+        let inlet_from = self.command.from();
         let mut node_config = serde_json::json!({
             "tcp-inlet": {
-                "from": self.command.from().to_string(),
+                "from": inlet_from.to_string(),
                 "to": outlet_name,
                 "via": relay_name
             }
@@ -143,7 +145,20 @@ impl InMemoryNodeCommand for InletNodeCommand {
             res
         });
         if let Some(node_callback) = node_callback {
-            wait_for_node_callback_future(handle, node_callback).await?;
+            tokio::select! {
+                res = wait_for_node_callback_future(handle, node_callback) => {
+                    res
+                },
+                _ = tokio::time::sleep(Duration::from_secs(60)) => {
+                    // Check if the outlet address is reachable or return an error
+                    let addr = inlet_from.hostname_port().to_string();
+                    if let Err(e) = tokio::net::TcpStream::connect(&addr).await {
+                        Err(miette::miette!(e).wrap_err(miette::miette!("Inlet failed to start at {}", addr)))
+                    } else {
+                        Ok(())
+                    }
+                }
+            }?
         } else {
             handle.await.into_diagnostic()??;
         }

@@ -2,9 +2,7 @@ use crate::cluster::common_args::HttpApiArgs;
 use crate::entry_point::RUNTIME;
 use crate::node_command::InMemoryNodeCommand;
 use crate::util::port_is_free_guard;
-use crate::zone::common_args::{
-    EnrollmentTicketConfigArg, ZoneConfigArg, ZoneInletsArgs, ZoneNameOrConfigArg,
-};
+use crate::zone::common_args::{ZoneConfigArg, ZoneInletsArgs, ZoneNameOrConfigArg};
 use crate::zone::ctrlc::ZoneCtrlcHandler;
 use crate::zone::get_cluster_name::GetClusterName;
 use crate::zone::repl::ReplCommand;
@@ -200,9 +198,6 @@ impl AttachCommand {
             zone: ZoneNameOrConfigArg::from_zone_name(zone_name.to_string()),
             http_api: self.http_api.clone(),
             pod: Some(pod_name.to_string()),
-            enrollment_ticket: EnrollmentTicketConfigArg {
-                enrollment_ticket: None,
-            },
             from: Some(from.clone()),
             to: Some(to.to_string()),
             background: true,
