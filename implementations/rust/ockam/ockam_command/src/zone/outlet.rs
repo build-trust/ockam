@@ -19,6 +19,7 @@ use ockam_api::nodes::InMemoryNode;
 use ockam_api::CliState;
 use ockam_node::Context;
 use std::sync::Arc;
+use std::time::Duration;
 
 const LONG_ABOUT: &str = include_str!("./static/outlet/long_about.txt");
 const PREVIEW_TAG: &str = include_str!("../static/preview_tag.txt");
@@ -111,8 +112,8 @@ impl InMemoryNodeCommand for OutletNodeCommand {
         let mut node_config = serde_json::json!({
             "relay": relay_name,
             "tcp-outlet": {
-                "to": self.command.to.to_string(),
-                }
+              "to": self.command.to.to_string(),
+            }
         });
         let from = &self.command.from.as_ref().unwrap_or(&self.command.relay);
         node_config["tcp-outlet"]["from"] = from.to_string().into();
@@ -150,7 +151,20 @@ impl InMemoryNodeCommand for OutletNodeCommand {
             res
         });
         if let Some(node_callback) = node_callback {
-            wait_for_node_callback_future(handle, node_callback).await?;
+            tokio::select! {
+                res = wait_for_node_callback_future(handle, node_callback) => {
+                    res
+                },
+                _ = tokio::time::sleep(Duration::from_secs(60)) => {
+                    // Check if the outlet address is reachable or return an error
+                    let addr = self.command.to.to_string();
+                    if let Err(e) = tokio::net::TcpStream::connect(&addr).await {
+                        Err(miette::miette!(e).wrap_err(miette::miette!("Outlet failed to start at {}", addr)))
+                    } else {
+                        Ok(())
+                    }
+                }
+            }?
         } else {
             handle.await.into_diagnostic()??;
         }

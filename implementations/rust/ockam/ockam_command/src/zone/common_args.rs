@@ -155,7 +155,7 @@ pub struct EnrollmentTicketConfigArg {
     #[arg(long, env = "ENROLLMENT_TICKET", value_name = "ENROLLMENT TICKET")]
     #[arg(help = docs::about("\
     A path, URL or inlined hex-encoded enrollment ticket to use for the Ockam Identity associated to this node. \
-    If ommited one will be created automatically with default attributes
+    If omitted, one will be created automatically with default attributes
     "))]
     pub enrollment_ticket: Option<String>,
 }

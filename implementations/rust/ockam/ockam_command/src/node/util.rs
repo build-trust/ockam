@@ -259,7 +259,7 @@ pub async fn wait_for_node_callback_process(
     );
     tokio::select! {
         res = handle.wait() => {
-            trace!(?res, "node output drained");
+            trace!(?res, "node process exited");
             let status = res.into_diagnostic()?;
             if !status.success() {
                 std::process::exit(status.code().unwrap_or(1));
@@ -282,7 +282,7 @@ pub async fn wait_for_node_callback_future(
     );
     tokio::select! {
         res = handle => {
-            trace!(?res, "node output drained");
+            trace!(?res, "node process exited");
             res.into_diagnostic()?
         }
         res = node_callback.wait_for_signal() => {
