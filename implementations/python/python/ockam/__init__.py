@@ -15,6 +15,7 @@ from .knowledge import (
     TextPiece,
     SearchHit,
     SearchResults,
+    Knowledge,
     UnsearchableKnowledge,
     SearchableKnowledge,
     InMemory,
@@ -85,6 +86,7 @@ __all__ = [
     # from .squads
     "Squad",
     # from .knowledge
+    "Knowledge",
     "RemoteManager",
     "Node",
     "Tool",
