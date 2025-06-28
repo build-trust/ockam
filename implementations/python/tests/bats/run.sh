@@ -7,6 +7,7 @@ mkdir -p "$HOME/.bats-tests"
 export BATS_TEST_TIMEOUT=300
 export BATS_TEST_RETRIES=4
 export LOCAL_EXAMPLES_DIR="../../examples"
+export MAIN_EXAMPLES_DIR="../../../../examples"
 
 current_directory=$(dirname "$0")
 
