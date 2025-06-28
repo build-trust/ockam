@@ -58,7 +58,7 @@ class UnsearchableKnowledge(KnowledgeProvider):
             whole_document,
         )
 
-    async def add_text(self, document_name: str, text: str):
+    async def add_text(self, document_name: str, text: str, content_type: Optional[str] = None):
         await self.storage.store_document(
             self.name,
             document_name,
