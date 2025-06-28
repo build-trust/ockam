@@ -3,6 +3,9 @@
 if [[ -z $CLUSTER_ID ]]; then
   export CLUSTER_ID=$($OCKAM cluster show)
 fi
+if [[ -z $DEFAULT_HTTP_PORT ]]; then
+  export DEFAULT_HTTP_PORT=32100
+fi
 
 function orchestrator_python_setup_suite() {
   export CLUSTER=$($OCKAM cluster show --jq '.cluster')

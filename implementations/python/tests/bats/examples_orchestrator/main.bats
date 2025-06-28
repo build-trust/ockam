@@ -21,7 +21,7 @@ teardown() {
 # ===== TESTS
 
 # For most of the examples, we run `$OCKAM --rm` in a subshell, store its PID, and keep trying
-# for 5 minutes a `curl http://localhost:8000/agents` until it returns a response that
+# for 5 minutes a `curl http://localhost:$DEFAULT_HTTP_PORT/agents` until it returns a response that
 # contains `.agents[0].name == "henry"`. In others, we wait until the public endpoint is reachable.
 
 @test "example 001" {
@@ -32,7 +32,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -45,7 +45,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -58,7 +58,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -106,7 +106,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -119,7 +119,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -132,7 +132,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -145,7 +145,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:8000/agents"
+  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
   res="$(echo $output | jq -r '.agents | length')"
   assert_equal "$res" "5"
 }
