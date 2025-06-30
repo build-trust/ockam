@@ -29,7 +29,7 @@ class OckamColoredFormatter(colorlog.ColoredFormatter):
 
     def formatMessage(self, record) -> str:
         try:
-            record.name = f"{self.GREY}{record.name}{self.RESET}"
+            record.name = f"{self.GREY}{record.name.replace(".", "::")}{self.RESET}"
             original_asctime = self.formatTime(record, self.datefmt)
             record.asctime = f"{self.GREY}{original_asctime}{self.RESET}"
             return super().formatMessage(record)

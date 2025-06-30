@@ -25,16 +25,16 @@ class Node:
 
     @staticmethod
     def start(
-        main: Optional[Callable[[LocalNode], Awaitable[None]]] = None,
-        name: Optional[str] = None,
-        ticket: Optional[str] = None,
-        allow: Optional[str] = None,
-        http_server=None,
-        wait_until_interrupted: bool = True,
-        cache_secure_channels: bool = False,
-        use_local_db: bool = False,
-        llm_debug: bool = False,
-        **kwargs,
+            main: Optional[Callable[[LocalNode], Awaitable[None]]] = None,
+            name: Optional[str] = None,
+            ticket: Optional[str] = None,
+            allow: Optional[str] = None,
+            http_server=None,
+            wait_until_interrupted: bool = True,
+            cache_secure_channels: bool = False,
+            use_local_db: bool = False,
+            llm_debug: bool = False,
+            **kwargs,
     ):
         # This will make the node use a local SQLite database instead of the Postgres database
         if use_local_db:
