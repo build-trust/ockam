@@ -198,12 +198,15 @@ download() {
 
   _url="$_download_base_url/$_version/$_binary_file_name"
 
+  # Download to a temporary file first
   info "Downloading $_url"
-  curl --proto '=https' --tlsv1.2 --location --silent --fail --show-error --output "$install_path/bin/ockam" "$_url"
-  info "Downloaded ockam binary at the specified directory: $install_path/bin/ockam"
+  curl --proto '=https' --tlsv1.2 --location --silent --fail --show-error --output "$install_path/bin/ockam.new" "$_url"
 
-  info "Granting permission to execute: chmod u+x $install_path/bin/ockam"
-  chmod u+x "$install_path/bin/ockam"
+  info "Granting permission to execute"
+  chmod u+x "$install_path/bin/ockam.new"
+
+  # Replace the old binary
+  mv -f "$install_path/bin/ockam.new" "$install_path/bin/ockam"
 }
 
 create_bin() {
