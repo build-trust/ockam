@@ -32,7 +32,9 @@ class Memory:
         self.instructions = []
         self.conversations = defaultdict(lambda: defaultdict(list[dict]))
 
-        self.initialize_database()
+        if "OCKAM_DATABASE_INSTANCE" in environ:
+            self.initialize_database()
+
         self.load_conversations()
 
     def initialize_database(self):
@@ -47,12 +49,13 @@ class Memory:
         self.connection: psycopg.Connection[dict] = psycopg.connect(self.db_url, row_factory=dict_row)
 
     def load_conversations(self):
-        with self.connection.cursor() as cur:  # pylint: disable=E1101
-            cur.execute("SELECT scope, conversation, message FROM conversation")
-            rows = cur.fetchall()
-            for row in rows:
-                message = json.loads(row["message"])
-                self.conversations[row["scope"]][row["conversation"]].append(message)
+        if self.connection:
+            with self.connection.cursor() as cur:  # pylint: disable=E1101
+                cur.execute("SELECT scope, conversation, message FROM conversation")
+                rows = cur.fetchall()
+                for row in rows:
+                    message = json.loads(row["message"])
+                    self.conversations[row["scope"]][row["conversation"]].append(message)
 
     def set_instructions(self, instructions: dict):
         with self.lock:
@@ -61,12 +64,13 @@ class Memory:
     def add_message(self, scope: str, conversation: str, message: dict):
         with self.lock:
             self.conversations[scope][conversation].append(message)
-            with self.connection.cursor() as cur:  # pylint: disable=E1101
-                cur.execute(
-                    "INSERT INTO conversation (tenant_id, scope, conversation, message) VALUES (%s, %s, %s, %s)",
-                    (self.tenant_id, scope, conversation, json.dumps(message)),
-                )
-                self.connection.commit()  # pylint: disable=E1101
+            if self.connection:
+                with self.connection.cursor() as cur:  # pylint: disable=E1101
+                    cur.execute(
+                        "INSERT INTO conversation (tenant_id, scope, conversation, message) VALUES (%s, %s, %s, %s)",
+                        (self.tenant_id, scope, conversation, json.dumps(message)),
+                    )
+                    self.connection.commit()  # pylint: disable=E1101
 
     def get_messages(self, scope: str, conversation: str) -> list[dict]:
         with self.lock:
