@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node
+from ockam import Agent, Model, Node, set_log_level
 
 
 async def main(node):
@@ -16,4 +16,7 @@ async def main(node):
     )
 
 
-Node.start(main, llm_debug=True)
+set_log_level("mem0.memory.main", "INFO")
+set_log_level("agent", "INFO")
+
+Node.start(main)

@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, SearchableKnowledge
+from ockam import Agent, Model, Node, Knowledge
 
 """
     This example shows how a model can be enriched with knowledge coming from inlined documents.
@@ -6,8 +6,9 @@ from ockam import Agent, Model, Node, SearchableKnowledge
 
 
 async def main(node):
-    restaurants = SearchableKnowledge(
+    restaurants = Knowledge(
         "restaurants",
+        searchable=True,
         model=Model("ollama/nomic-embed-text"),
         max_knowledge_size=4096,
     )
