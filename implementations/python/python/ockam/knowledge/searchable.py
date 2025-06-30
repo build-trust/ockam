@@ -7,20 +7,31 @@ from .in_memory import InMemory
 from .search import TextPiece, SearchHit, SearchResults
 from .util import download_url
 from ..models import Model
-from ..ockam_in_rust_for_python import debug
 
 
 class SearchableKnowledge(KnowledgeProvider):
+    _logger = None
+
+    @classmethod
+    def class_logger(cls):
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
+
+            cls._logger = get_logger("searchable_knowledge")
+            return cls._logger
+
     def __init__(
-        self,
-        name: str,
-        model: Model = None,
-        storage: Storage = InMemory(),
-        text_extractor: TextExtractor = None,
-        chunker: Chunker = NaiveChunker(),
-        max_results: int = 10,
-        max_distance: float = 0.2,
-        max_knowledge_size: int = 4096,
+            self,
+            name: str,
+            model: Model = None,
+            storage: Storage = InMemory(),
+            text_extractor: TextExtractor = None,
+            chunker: Chunker = NaiveChunker(),
+            max_results: int = 10,
+            max_distance: float = 0.2,
+            max_knowledge_size: int = 4096,
     ):
         """
         This class allows to store and search for text documents using vector search.
@@ -40,6 +51,11 @@ class SearchableKnowledge(KnowledgeProvider):
         :param max_distance: Maximum allowable distance for operations. Defaults to 0.2.
         :type max_distance: float
         """
+        self.logger = SearchableKnowledge.class_logger()
+        # the InfoContext.info method is added at runtime to the instance because it cannot be added to the class
+        # due to a cyclic import issue.
+        from ..logging.logging import InfoContext
+        self.info = InfoContext.info.__get__(self)
         if model is None:
             model = Model("ollama/nomic-embed-text")
 
@@ -57,18 +73,21 @@ class SearchableKnowledge(KnowledgeProvider):
         self.max_knowledge_size = max_knowledge_size
 
     async def add_text(self, document_name: str, text: str, content_type: Optional[str] = None):
-        whole_document = await self.text_extractor.extract_text(text, content_type)
-        text_pieces = self.chunker.chunk(whole_document)
+        text_type = f"({content_type})" if content_type else ""
+        with self.info(f"Adding document text: '{document_name}' {text_type}",
+                f"Added document text: '{document_name}' {text_type}"):
+            whole_document = await self.text_extractor.extract_text(text, content_type)
+            text_pieces = self.chunker.chunk(whole_document)
 
-        # A single call is much faster than calling the model for each text piece
-        embeddings = await self.model.embeddings(text_pieces)
+            # A single call is much faster than calling the model for each text piece
+            embeddings = await self.model.embeddings(text_pieces)
 
-        text_pieces = [TextPiece(text, embedding) for text, embedding in zip(text_pieces, embeddings)]
-        await self.storage.store_text_piece(
-            self.name,
-            document_name,
-            text_pieces,
-        )
+            text_pieces = [TextPiece(text, embedding) for text, embedding in zip(text_pieces, embeddings)]
+            await self.storage.store_text_piece(
+                self.name,
+                document_name,
+                text_pieces,
+            )
 
     async def add_document(self, document_name: str, document_url: str, content_type: Optional[str] = None):
         """
@@ -81,19 +100,21 @@ class SearchableKnowledge(KnowledgeProvider):
         :param document_url: Url to the document to be processed
         :type document_url: str
         """
-        content = await download_url(document_url)
-        whole_document = await self.text_extractor.extract_text(content, content_type)
-        text_pieces = self.chunker.chunk(whole_document)
+        with self.info(f"Adding document: '{document_name}' at: '{document_url}'",
+                f"Added document: '{document_name}' at: '{document_url}'"):
+            content = await download_url(document_url)
+            whole_document = await self.text_extractor.extract_text(content, content_type)
+            text_pieces = self.chunker.chunk(whole_document)
 
-        # A single call is much faster than calling the model for each text piece
-        embeddings = await self.model.embeddings(text_pieces)
+            # A single call is much faster than calling the model for each text piece
+            embeddings = await self.model.embeddings(text_pieces)
 
-        text_pieces = [TextPiece(text, embedding) for text, embedding in zip(text_pieces, embeddings)]
-        await self.storage.store_text_piece(
-            self.name,
-            document_name,
-            text_pieces,
-        )
+            text_pieces = [TextPiece(text, embedding) for text, embedding in zip(text_pieces, embeddings)]
+            await self.storage.store_text_piece(
+                self.name,
+                document_name,
+                text_pieces,
+            )
 
     async def search(self, query: str) -> List[SearchHit]:
         """
@@ -107,15 +128,18 @@ class SearchableKnowledge(KnowledgeProvider):
         :return: A list of search results that match the criteria.
         :rtype: list
         """
-
-        embeddings = await self.model.embeddings([query])
-        hits = await self.storage.search_text(self.name, embeddings[0], self.max_results, self.max_distance)
-        debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.name}'")
-        return hits
+        with self.info(f"Searching knowledge with query: '{query}'",
+                f"Retrieved knowledge with query: '{query}'"):
+            embeddings = await self.model.embeddings([query])
+            hits = await self.storage.search_text(self.name, embeddings[0], self.max_results, self.max_distance)
+            self.logger.debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.name}'")
+            return hits
 
     async def search_knowledge(self, _scope: Optional[str], conversation: Optional[str], query: str) -> Optional[str]:
         if not query or len(query) == 0:
             return None
+
+        self.logger.info(f"Searching knowledge with query: '{query}'")
 
         hits = await self.search(query)
         # TODO: Should it be cleared here at some point?
@@ -135,4 +159,7 @@ class SearchableKnowledge(KnowledgeProvider):
                 contextual_knowledge = None
                 break
             self.search_results.reduce_size()
+
+        self.logger.debug(f"Found knowledge with query: '{query}'. The result is: {contextual_knowledge}")
+        self.logger.info(f"Found knowledge with query: '{query}'")
         return contextual_knowledge
