@@ -15,7 +15,7 @@ setup() {
 
 teardown() {
   teardown_home_dir
-  kill_background_pids
+  teardown_zone_test
 }
 
 # ===== TESTS
@@ -24,7 +24,17 @@ teardown() {
 # for 5 minutes a `curl http://localhost:$DEFAULT_HTTP_PORT/agents` until it returns a response that
 # contains `.agents[0].name == "henry"`. In others, we wait until the public endpoint is reachable.
 
+get_agents_response() {
+  # Wait for the Ockam Orchestrator to start and return the agents
+  curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+  # Sometimes it takes a bit to return the populated json after the endpoint is reachable.
+  # To prevent flakyness, we wait a couple of seconds and run a curl without retrying to get the final response.
+  sleep 2
+  run_success curl -sf -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+}
+
 @test "example 001" {
+  wait_for_closed_port "$DEFAULT_HTTP_PORT" 30
   example_dir="$MAIN_EXAMPLES_DIR"/001
   check_dir_exists "$example_dir"
   pushd "$example_dir" >/dev/null || return 1
@@ -32,12 +42,13 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+  get_agents_response
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
 
 @test "example 002" {
+  wait_for_closed_port "$DEFAULT_HTTP_PORT" 30
   example_dir="$MAIN_EXAMPLES_DIR"/002
   check_dir_exists "$example_dir"
   pushd "$example_dir" >/dev/null || return 1
@@ -45,12 +56,13 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+  get_agents_response
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
 
 @test "example 003" {
+  wait_for_closed_port "$DEFAULT_HTTP_PORT" 30
   example_dir="$MAIN_EXAMPLES_DIR"/003
   check_dir_exists "$example_dir"
   pushd "$example_dir" >/dev/null || return 1
@@ -58,7 +70,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+  get_agents_response
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -99,6 +111,7 @@ teardown() {
 }
 
 @test "example 006" {
+  wait_for_closed_port "$DEFAULT_HTTP_PORT" 30
   example_dir="$MAIN_EXAMPLES_DIR"/006
   check_dir_exists "$example_dir"
   pushd "$example_dir" >/dev/null || return 1
@@ -106,12 +119,13 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+  get_agents_response
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
 
 @test "example 007" {
+  wait_for_closed_port "$DEFAULT_HTTP_PORT" 30
   example_dir="$MAIN_EXAMPLES_DIR"/007
   check_dir_exists "$example_dir"
   pushd "$example_dir" >/dev/null || return 1
@@ -119,12 +133,13 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+  get_agents_response
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
 
 @test "example 008" {
+  wait_for_closed_port "$DEFAULT_HTTP_PORT" 30
   example_dir="$MAIN_EXAMPLES_DIR"/008
   check_dir_exists "$example_dir"
   pushd "$example_dir" >/dev/null || return 1
@@ -132,7 +147,7 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
+  get_agents_response
   res="$(echo $output | jq -r '.agents[0].name')"
   assert_equal "$res" "henry"
 }
@@ -145,9 +160,9 @@ teardown() {
   $OCKAM --rm --no-logs &
   add_background_pid $!
 
-  run_success curl -sf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "localhost:$DEFAULT_HTTP_PORT/agents"
-  res="$(echo $output | jq -r '.agents | length')"
-  assert_equal "$res" "5"
+  # validate the public endpoint is reachable and returns an ok response
+  endpoint="$(public_endpoint 'example009')"
+  run_success curl -sSf --retry-all-errors --retry-delay 5 --retry 60 -m 5 "$endpoint"
 }
 
 @test "example 010" {
