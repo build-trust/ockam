@@ -56,17 +56,19 @@ impl InMemoryNodeCommand for ListNodeCommand {
             cluster: cluster.clone(),
             zones: zones.clone(),
         };
-        let mut plain = fmt_ok!("Your cluster {}\n", color_primary(&cluster));
-        if !zones.is_empty() {
-            plain += &fmt_log!(
-                "has the zones: {}",
-                zones
-                    .iter()
-                    .map(|z| color_primary(z).to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-        }
+        let plain = if !zones.is_empty() {
+            fmt_ok!("Your cluster {}\n", color_primary(&cluster))
+                + &fmt_log!(
+                    "has the zones: {}",
+                    zones
+                        .iter()
+                        .map(|z| color_primary(z).to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+        } else {
+            fmt_log!("Your cluster {} has no zones", color_primary(&cluster))
+        };
         self.opts
             .terminal
             .clone()
