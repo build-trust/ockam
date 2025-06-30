@@ -4,7 +4,6 @@ import os
 import logging.config
 from typing import Protocol
 
-import datetime
 
 DEFAULT_LOG_FORMAT = os.getenv(
     "DEFAULT_LOG_FORMAT", "%(asctime)s %(log_color)s%(levelname)5s%(reset)s %(name)-14s %(message)s"
@@ -102,6 +101,16 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
             "httpcore": {"handlers": ["default"], "level": levels.get("httpcore", "WARNING"), "propagate": False},
             "httpx": {"handlers": ["default"], "level": levels.get("httpx", "WARNING"), "propagate": False},
             "LiteLLM": {"handlers": ["default"], "level": levels.get("LiteLLM", "WARNING"), "propagate": False},
+            "LiteLLM Router": {
+                "handlers": ["default"],
+                "level": levels.get("LiteLLM Router", "WARNING"),
+                "propagate": False,
+            },
+            "LiteLLM Proxy": {
+                "handlers": ["default"],
+                "level": levels.get("LiteLLM Proxy", "WARNING"),
+                "propagate": False,
+            },
             "agent": {
                 "handlers": ["ockam"],
                 "level": levels.get("agent") or levels.get("default"),
