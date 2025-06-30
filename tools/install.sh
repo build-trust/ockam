@@ -222,6 +222,34 @@ create_bin() {
   info "Binary directory successfully created"
 }
 
+check_for_running_ockam_process() {
+  info "Checking for running Ockam processes..."
+  local _ockam_pids
+  _ockam_pids=$(pgrep ockam 2>/dev/null || true)
+
+  if [ -n "$_ockam_pids" ]; then
+    info "Detected running Ockam processes with PIDs: $_ockam_pids"
+    echo
+    echo "   Do you want to kill the running Ockam processes and continue the installation? [y/N]"
+    read -r choice
+
+    if [ "${choice,,}" = "y" ]; then
+      info "Killing the Ockam processes..."
+      pkill ockam
+      while true; do
+        _ockam_pids=$(pgrep ockam 2>/dev/null || true)
+        if [ -z "$_ockam_pids" ]; then
+          break
+        fi
+        sleep 1
+      done
+      info "All Ockam processes have been terminated."
+    else
+      error "Installation aborted. Please stop the Ockam processes manually before installing."
+    fi
+  fi
+}
+
 write_env_files() {
   info "Setting up env script"
 
@@ -359,6 +387,7 @@ main() {
   info "Installing Ockam Command ..."
 
   create_bin
+  check_for_running_ockam_process
   download "$_binary_file_name" "$_version"
 
   write_env_files
