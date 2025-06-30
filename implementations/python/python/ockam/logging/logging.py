@@ -4,6 +4,8 @@ import os
 import logging.config
 from typing import Protocol
 
+import datetime
+
 DEFAULT_LOG_FORMAT = os.getenv(
     "DEFAULT_LOG_FORMAT", "%(asctime)s %(log_color)s%(levelname)5s%(reset)s %(name)-14s %(message)s"
 )
