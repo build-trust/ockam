@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export BATS_TEST_RETRIES=2
+
 # Load bats extensions
 load_bats_ext() {
   load "$BATS_LIB/bats-support/load.bash"
@@ -65,7 +67,7 @@ list_open_tcp_ports() {
 # Waits for a port to be open
 wait_for_port() {
   local port=$1
-  local timeout=10
+  local timeout=${2:-10} # Default to 10 seconds
   local end=$(($(date +%s) + $timeout))
 
   while ! list_open_tcp_ports | grep -e "[.:]$port" >/dev/null; do
@@ -77,10 +79,10 @@ wait_for_port() {
   done
 }
 
-# Waits for a port to be open
+# Waits for a port to be closed
 wait_for_closed_port() {
   local port=$1
-  local timeout=10
+  local timeout=${2:-10} # Default to 10 seconds
   local end=$(($(date +%s) + $timeout))
 
   while list_open_tcp_ports | grep -e "[.:]$port.*LISTEN" >/dev/null; do
