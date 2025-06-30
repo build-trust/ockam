@@ -3,7 +3,7 @@ from datetime import datetime, UTC
 
 
 class OckamColoredFormatter(colorlog.ColoredFormatter):
-    GREY = "\033[90m"
+    GREY = "\033[38;5;245m"
     CYAN = "\033[36m"
     YELLOW = "\033[33m"
     RESET = "\033[0m"
