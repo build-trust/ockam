@@ -345,9 +345,7 @@ class Model(InfoContext, DebugContext):
                     if chunk.choices[0].finish_reason:
                         break
 
-                os.makedirs(".recorded_inference", exist_ok=True)
-                with open(file, "wb") as f:
-                    f.write(dill.dumps(chunks))
+                await self._store_cache(file, chunks)
             else:
                 chunks = await self.router().acompletion(self.name, messages=messages, stream=True, **kwargs)
 
@@ -389,9 +387,7 @@ class Model(InfoContext, DebugContext):
         self.logger.info(f"Finished processing messages with model '{self.original_name}'")
 
         if _cache_inference:
-            os.makedirs(".recorded_inference", exist_ok=True)
-            with open(file, "wb") as f:
-                f.write(dill.dumps(response))
+            await self._store_cache(file, response)
 
         end_think_tag = response.choices[0].message.content.find("</think>")
         if end_think_tag != -1:
@@ -423,6 +419,11 @@ class Model(InfoContext, DebugContext):
                 f.write(dill.dumps(embedding))
 
         return [embedding["embedding"] for embedding in embedding.data]
+
+    async def _store_cache(self, file, data):
+        os.makedirs(".recorded_inference", exist_ok=True)
+        with open(file, "wb") as f:
+            f.write(dill.dumps(data))
 
     def _hash_completion_request(self, model_name: str, messages: List[dict], stream: bool, kwargs: dict) -> str:
         request = json.dumps({"model": model_name, "messages": messages, "stream": stream, **kwargs}, sort_keys=True)
