@@ -30,6 +30,13 @@ from .gather import gather
 
 from .ockam_in_rust_for_python import Mailbox, McpClient, McpServer
 
+# intercept deprecation warnings early to avoid cluttering the logs.
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+)
 __doc__ = ""
 __all__ = [
     # from .agents
