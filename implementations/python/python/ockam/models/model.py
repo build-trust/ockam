@@ -260,9 +260,9 @@ class Model(InfoContext, DebugContext):
         # Extract the model identifier for both bedrock and litellm_proxy paths
         model_identifier = None
         if self.name.startswith("bedrock/"):
-            model_identifier = self.name[len("bedrock/"):]
+            model_identifier = self.name[len("bedrock/") :]
         elif self.name.startswith("litellm_proxy/"):
-            model_identifier = self.name[len("litellm_proxy/"):]
+            model_identifier = self.name[len("litellm_proxy/") :]
 
         # Apply inference profile if needed
         if model_identifier and "model_id" not in kwargs:
@@ -283,7 +283,7 @@ class Model(InfoContext, DebugContext):
                         )
 
     def count_tokens(
-            self, messages: List[dict] | List[ConversationMessage], is_thinking: bool = False, tools=None
+        self, messages: List[dict] | List[ConversationMessage], is_thinking: bool = False, tools=None
     ) -> int:
         messages, kwargs = self.prepare_llm_call(messages, is_thinking)
 
@@ -313,11 +313,11 @@ class Model(InfoContext, DebugContext):
         return "bedrock" not in self.name and "litellm_proxy" not in self.name
 
     async def complete_chat(
-            self,
-            messages: List[dict] | List[ConversationMessage],
-            stream: bool = False,
-            is_thinking: bool = False,
-            **kwargs,
+        self,
+        messages: List[dict] | List[ConversationMessage],
+        stream: bool = False,
+        is_thinking: bool = False,
+        **kwargs,
     ):
         """
         Send a chat completion request to the model.
@@ -402,7 +402,7 @@ class Model(InfoContext, DebugContext):
         end_think_tag = response.choices[0].message.content.find("</think>")
         if end_think_tag != -1:
             thinking_content = response.choices[0].message.content[:end_think_tag].replace("<think>", "")
-            non_thinking_content = response.choices[0].message.content[end_think_tag + len("</think>"):]
+            non_thinking_content = response.choices[0].message.content[end_think_tag + len("</think>") :]
 
             response.choices[0].message.reasoning_content = thinking_content
             response.choices[0].message.content = non_thinking_content
@@ -449,10 +449,10 @@ class Model(InfoContext, DebugContext):
 
 
 def normalize_messages(
-        messages: List[dict] | List[ConversationMessage],
-        is_thinking: bool,
-        tools_supported: bool,
-        forced_assistant_answer_supported: bool,
+    messages: List[dict] | List[ConversationMessage],
+    is_thinking: bool,
+    tools_supported: bool,
+    forced_assistant_answer_supported: bool,
 ) -> List[dict]:
     messages = deepcopy(messages)
 

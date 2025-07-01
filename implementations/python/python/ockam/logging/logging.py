@@ -4,7 +4,6 @@ import os
 import logging.config
 from typing import Protocol
 
-
 DEFAULT_LOG_FORMAT = os.getenv(
     "DEFAULT_LOG_FORMAT", "%(asctime)s %(log_color)s%(levelname)5s%(reset)s %(name)-14s %(message)s"
 )
@@ -39,11 +38,15 @@ def set_log_level(module_name: str, level: str):
     Set the log level for a specific module.
     """
     global LOG_LEVELS
+    if not LOG_LEVELS:
+        LOG_LEVELS = create_log_levels(None)
     LOG_LEVELS[module_name] = level.upper()
 
 
 def set_log_levels(log_levels: str):
     global LOG_LEVELS
+    if not LOG_LEVELS:
+        LOG_LEVELS = create_log_levels(None)
     LOG_LEVELS = create_log_levels(log_levels)
 
     # By default, silence the Ockam rust modules
