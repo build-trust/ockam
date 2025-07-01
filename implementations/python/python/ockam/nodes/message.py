@@ -2,6 +2,7 @@ import cattr
 import json
 import bisect
 import secrets
+import base64
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -35,40 +36,123 @@ class ToolCall:
 
 
 class Phase(Enum):
+    SYSTEM = "system"
     PLANNING = "planning"
     EXECUTING = "executing"
 
 
+class MessageContentType(Enum):
+    TEXT = "text"
+    IMAGE = "image"
+
+class ImageQuality(Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    AUTO = "auto"
+
 @dataclass
-class UserMessage:
-    content: str = ""
+class ImageContent:
+    encoded: str
+    quality: ImageQuality = ImageQuality.AUTO
+    type: MessageContentType = MessageContentType.TEXT
+
+    def __init__(self, binary: bytes = None, quality: ImageQuality = ImageQuality.AUTO, encoded: str = None, type: MessageContentType = MessageContentType.IMAGE):
+        if encoded is not None:
+            self.encoded = encoded
+        elif binary is not None:
+            self.encoded = base64.b64encode(binary).decode('utf-8')
+        else:
+            raise ValueError("Either 'binary' or 'encoded' must be provided.")
+        self.quality = quality
+        self.type = type
+
+
+@dataclass
+class TextContent:
+    text: str = ""
+    type: MessageContentType = MessageContentType.TEXT
+
+    def __add__(self, other):
+        if isinstance(other, TextContent):
+            return TextContent(self.text + other.text, self.type)
+        if isinstance(other, str):
+            return TextContent(self.text + other, self.type)
+        raise TypeError("Unsupported type for addition with TextContent: {}".format(type(other)))
+
+
+MessageContent = Union[ImageContent, TextContent]
+
+class BaseMessage:
+    content: MessageContent
+    phase: Phase
+    role: ConversationRole
+
+
+@dataclass
+class UserMessage(BaseMessage):
+    content: MessageContent = field(default_factory=lambda: TextContent(""))
     phase: Phase = Phase.EXECUTING
     thinking: bool = False
     role: ConversationRole = ConversationRole.USER
 
+    def __init__(self, content: str| MessageContent = "", phase: Phase = Phase.EXECUTING, thinking: bool = False, role: ConversationRole = ConversationRole.USER):
+        if isinstance(content, str):
+            content = TextContent(content)
+        self.content = content
+        self.phase = phase
+        self.thinking = thinking
+        self.role = role
+
 
 @dataclass
-class SystemMessage:
-    content: str
+class SystemMessage(BaseMessage):
+    content: TextContent = field(default_factory=lambda: TextContent(""))
+    phase: Phase = Phase.SYSTEM
     role: ConversationRole = ConversationRole.SYSTEM
 
+    def __init__(self, content: str| TextContent = "", phase: Phase = Phase.SYSTEM, role: ConversationRole = ConversationRole.SYSTEM):
+        if isinstance(content, str):
+            content = TextContent(content)
+        self.content = content
+        self.phase = phase
+        self.role = role
+
 
 @dataclass
-class AssistantMessage:
-    content: str = ""
+class AssistantMessage(BaseMessage):
+    content: TextContent = field(default_factory=lambda: TextContent(""))
     phase: Phase = Phase.EXECUTING
     thinking: bool = False
-    role: ConversationRole = ConversationRole.ASSISTANT
     tool_calls: list[ToolCall] = field(default_factory=list)
+    role: ConversationRole = ConversationRole.ASSISTANT
+
+    def __init__(self, content: str| TextContent = "", phase: Phase = Phase.EXECUTING, thinking: bool = False, tool_calls: Optional[list[ToolCall]] = None, role: ConversationRole = ConversationRole.ASSISTANT):
+        if isinstance(content, str):
+            content = TextContent(content)
+        self.content = content
+        self.phase = phase
+        self.thinking = thinking
+        self.role = role
+        self.tool_calls = tool_calls if tool_calls is not None else []
 
 
 @dataclass
-class ToolCallResponseMessage:
+class ToolCallResponseMessage(BaseMessage):
     tool_call_id: str
     name: str
-    content: str
+    content: TextContent = field(default_factory=lambda: TextContent(""))
     phase: Phase = Phase.EXECUTING
     role: ConversationRole = ConversationRole.TOOL
+
+    def __init__(self, tool_call_id: str, name: str, content: str| TextContent = "", phase: Phase = Phase.EXECUTING, role: ConversationRole = ConversationRole.TOOL):
+        if isinstance(content, str):
+            content = TextContent(content)
+        self.tool_call_id = tool_call_id
+        self.name = name
+        self.content = content
+        self.phase = phase
+        self.role = role
 
 
 ConversationMessage = Union[UserMessage, SystemMessage, AssistantMessage, ToolCallResponseMessage]
@@ -210,19 +294,30 @@ class Reference:
         response = await self.send_and_receive_request(GetIdentifierRequest(scope, conversation))
         return response.identifier
 
-    async def send(self, message, scope="", conversation="", timeout=None) -> List[ConversationMessage]:
-        request = ConversationSnippet(scope, conversation, [UserMessage(message)])
+    async def send(self, message: List|MessageContent|str, scope="", conversation="", timeout=None) -> List[ConversationMessage]:
+        if isinstance(message, List):
+            request = ConversationSnippet(scope, conversation, message)
+        else:
+            if isinstance(message, str):
+                message = TextContent(message)
+            request = ConversationSnippet(scope, conversation, [UserMessage(message)])
+
         response = await self.send_and_receive_request(request, timeout=timeout)
         return response.messages
 
     async def send_stream(
-        self, message, scope="", conversation="", timeout=None
+        self, message: MessageContent|str, scope="", conversation="", timeout=None
     ) -> AsyncGenerator[StreamedConversationSnippet, None]:
+        if isinstance(message, str):
+            message = TextContent(message)
         request = StreamedConversationSnippet(ConversationSnippet(scope, conversation, [UserMessage(message)]))
         async for response in self.send_request_stream(request, timeout=timeout):
             yield response
 
-    async def send_message(self, message, scope="", conversation=""):
+    async def send_message(self, message: MessageContent|str, scope="", conversation=""):
+        if isinstance(message, str):
+            message = TextContent(message)
+
         request = ConversationSnippet(scope, conversation, [UserMessage(message)])
         return await self.send_request(request)
 

@@ -1,6 +1,8 @@
+import base64
 from typing import List, Optional
 
 import litellm
+from annotated_types.test_cases import cases
 from litellm import Router
 
 from copy import deepcopy
@@ -12,7 +14,7 @@ import os
 import boto3
 import threading
 
-from ..nodes.message import ConversationMessage
+from ..nodes.message import ConversationMessage, MessageContentType
 from ..logging.logging import InfoContext, DebugContext
 
 PROVIDER_ALIASES = {
@@ -273,14 +275,14 @@ class Model(InfoContext, DebugContext):
                         )
 
     def count_tokens(
-        self, messages: List[dict] | List[ConversationMessage], is_thinking: bool = False, tools=None
+        self, messages: List[ConversationMessage], is_thinking: bool = False, tools=None
     ) -> int:
         messages, kwargs = self.prepare_llm_call(messages, is_thinking)
 
         # FIXME: Do kwargs we provide to acompletion could potentially affect this calculation?
         return litellm.token_counter(self.name, messages=messages, tools=tools)
 
-    def prepare_llm_call(self, messages: List[dict] | List[ConversationMessage], is_thinking: bool, **kwargs):
+    def prepare_llm_call(self, messages: List[ConversationMessage], is_thinking: bool, **kwargs):
         messages = normalize_messages(
             messages, is_thinking, self.support_tools(), self.support_forced_assistant_answer()
         )
@@ -304,7 +306,7 @@ class Model(InfoContext, DebugContext):
 
     async def complete_chat(
         self,
-        messages: List[dict] | List[ConversationMessage],
+        messages: List[ConversationMessage],
         stream: bool = False,
         is_thinking: bool = False,
         **kwargs,
@@ -374,6 +376,8 @@ class Model(InfoContext, DebugContext):
             yield chunk
 
     async def _complete_chat(self, messages: List[dict], **kwargs):
+        print("raw messages:", messages)
+
         response = None
         if _cache_inference:
             request_hash = self._hash_completion_request(self.name, messages, False, kwargs)
@@ -440,23 +444,45 @@ class Model(InfoContext, DebugContext):
 
 
 def normalize_messages(
-    messages: List[dict] | List[ConversationMessage],
+    messages: List[ConversationMessage],
     is_thinking: bool,
     tools_supported: bool,
     forced_assistant_answer_supported: bool,
 ) -> List[dict]:
     messages = deepcopy(messages)
 
-    # convert if the messages are typed as ConversationMessage
-    if len(messages) > 0:
-        if not isinstance(messages[0], dict):
-            messages = [
-                {
-                    "role": message.role.value,
-                    "content": message.content,
-                }
-                for message in messages
-            ]
+    # check that every message is a ConversationMessage
+    for message in messages:
+        if not isinstance(message, ConversationMessage):
+            raise ValueError(f"Expected a ConversationMessage, got {type(message)}: {message}")
+
+    # convert messages into OpenAI/LiteLLM format
+    new_messages = []
+    for message in messages:
+        match message.content.type:
+            case MessageContentType.TEXT:
+                new_messages.append(
+                    {
+                        "role": message.role.value,
+                        "content": message.content.text,
+                    }
+                )
+            case MessageContentType.IMAGE:
+                new_messages.append(
+                    {
+                        "role": message.role.value,
+                        "content": [{
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:base64,{message.content.encoded}",
+                                "detail": message.content.quality.value,
+                            }
+                        }],
+                    }
+                )
+            case _:
+                raise ValueError(f"Unknown message type: {message.content.type}")
+    messages = new_messages
 
     # change type to list[dict]
     messages: List[dict]
@@ -507,9 +533,15 @@ def normalize_messages(
             if all(msg.get(k) == last.get(k) for k in keys_to_compare):
                 # Merge content if both have it
                 if "content" in last and "content" in msg:
-                    last["content"] += msg["content"]
+                    if type(msg["content"]) == str and type(last["content"]) == str:
+                        last["content"] += msg["content"]
+                    else:
+                        compacted.append(msg)
                 elif "content" in msg:
-                    last["content"] = msg["content"]
+                    if type(msg["content"]) == str:
+                        last["content"] = msg["content"]
+                    else:
+                        compacted.append(msg)
                 else:
                     # neither has content
                     pass
@@ -521,7 +553,9 @@ def normalize_messages(
     new_messages = []
     for message in messages:
         match message.get("role"):
-            case "system" | "user" if not message.get("content", None):
+            case "user"  if not message.get("content", None) and not message.get("image_url", None):
+                continue
+            case "system" if not message.get("content", None):
                 continue
             case "assistant" if not message.get("content", None) and not message.get("tool_calls", None):
                 continue

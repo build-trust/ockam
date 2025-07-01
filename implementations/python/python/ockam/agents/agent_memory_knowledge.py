@@ -32,5 +32,7 @@ class AgentMemoryKnowledge:
         for message in new_messages:
             self.added_messages.append({"scope": scope, "conversation": conversation, "message": message})
 
-    async def search(self, scope: Optional[str], conversation: Optional[str], query: str) -> Optional[str]:
+    async def search(self, scope: Optional[str], conversation: Optional[str], query: Optional[str]) -> Optional[str]:
+        if not query:
+            return None
         return await self.mem0_knowledge.search_knowledge(scope=scope, conversation=conversation, query=query)

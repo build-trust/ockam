@@ -1,4 +1,5 @@
 from ockam import Model, Node, info
+from ockam.nodes.message import UserMessage
 
 """
     This example shows that, in addition to starting workers written in Python,
@@ -15,7 +16,7 @@ class Echoer:
 async def main(node):
     model = Model(name="ollama_chat/llama3.2")
     response = await model.complete_chat(
-        [{"content": "respond in 20 words. who are you?", "role": "user"}],
+        [UserMessage("respond in 20 words. who are you?")],
     )
     info(f"the model response is {response}")
 

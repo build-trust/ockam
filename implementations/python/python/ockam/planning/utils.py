@@ -1,8 +1,10 @@
+from typing import List
+
 from ..models import Model
-from ockam.nodes.message import Phase, UserMessage
+from ockam.nodes.message import Phase, UserMessage, ConversationMessage
 
 
-async def complete_think_chat(model: Model, step_messages: list, stream: bool):
+async def complete_think_chat(model: Model, step_messages: List[ConversationMessage], stream: bool):
     thinking = False
     if stream:
         async for chunk in await model.complete_chat(

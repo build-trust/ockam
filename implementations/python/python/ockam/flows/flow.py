@@ -14,7 +14,7 @@ from ..nodes.message import (
     Reference,
     AssistantMessage,
     UserMessage,
-    StreamedConversationSnippet,
+    StreamedConversationSnippet, TextContent,
 )
 
 
@@ -151,7 +151,7 @@ class FlowWorker:
             if edge.operation == FlowOperation.EVALUATE:
                 reply_to_append = ConversationSnippet(reply.scope, reply.conversation, [])
                 for message in reply.messages:
-                    reply_to_append.messages.append(UserMessage(content=message.content))
+                    reply_to_append.messages.append(UserMessage(content=TextContent(message.content)))
 
             snippet.messages.extend(reply_to_append.messages)
             self.logger.debug(f"Iteration: {i} From {next_vertex_id} Received: {reply}\n\n")
