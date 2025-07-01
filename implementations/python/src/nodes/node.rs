@@ -751,7 +751,7 @@ impl PyNode {
         let name = name.to_string();
         py_debug(
             py,
-            format!("The node {} is starting worker '{name}'", self.name),
+            format!("The node '{}' is starting worker '{name}'", self.name),
         )?;
 
         let address: Address = name.clone().into();

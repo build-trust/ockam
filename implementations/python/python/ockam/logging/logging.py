@@ -119,6 +119,7 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
                 "level": levels.get("agent") or levels.get("default"),
                 "propagate": False,
             },
+            "flow": {"handlers": ["ockam"], "level": levels.get("flow") or levels.get("default"), "propagate": False},
             "http": {"handlers": ["ockam"], "level": levels.get("http") or levels.get("default"), "propagate": False},
             "knowledge": {
                 "handlers": ["ockam"],

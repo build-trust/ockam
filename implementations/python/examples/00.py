@@ -1,4 +1,6 @@
-from ockam import Agent, Flow, Node, START, END, FlowOperation, info
+from ockam import Agent, Flow, Node, START, END, FlowOperation, info, set_log_levels
+
+set_log_levels("debug")
 
 
 async def main(node):
@@ -157,7 +159,7 @@ async def main(node):
     info(f"The flow name is: {flow.name}")
 
     identifier = await flow.identifier()
-    info(f"The flow identifier is: {identifier}")
+    info(f"The node identifier is: {identifier}")
 
     reply = await flow.send("where is the empire state building?")
     info(f"The reply is: {reply}")

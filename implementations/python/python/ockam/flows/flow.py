@@ -19,11 +19,17 @@ from ..nodes.message import (
 
 
 class Flow:
+    _logger = None
+
     @classmethod
     def class_logger(cls):
-        from ..logging.logging import get_logger
+        if cls._logger:
+            return cls._logger
+        else:
+            from ..logging.logging import get_logger
 
-        return get_logger("flow")
+            cls._logger = get_logger("flow")
+            return cls._logger
 
     def __init__(self, name=None, iteration_timeout=120, iteration_limit=20):
         if name is None:
@@ -38,12 +44,17 @@ class Flow:
         self.state = FlowState(name)
 
     def add(
-        self,
-        from_: Reference | str,
-        to: Reference | str,
-        condition: str = "",
-        operation: FlowOperation = FlowOperation.ROUTE,
+            self,
+            from_: Reference | str,
+            to: Reference | str,
+            condition: str = "",
+            operation: FlowOperation = FlowOperation.ROUTE,
     ):
+        condition_str = f" with condition '{condition}'" if len(condition) > 0 else ""
+        from_reference = from_.name if isinstance(from_, Reference) else from_
+        to_reference = to.name if isinstance(to, Reference) else to
+        self.logger.info(
+            f"Adding edge from '{from_reference}' to '{to_reference}{condition_str} and operation '{operation}' for flow '{self.name}'")
         vertex = from_
         edge = FlowEdge(to, condition, operation)
         self.state.add(vertex, edge)
@@ -51,16 +62,23 @@ class Flow:
     @staticmethod
     async def start(node: LocalNodeProtocol, flow):
         name = flow.name
+        Flow.class_logger().info(f"Starting flow '{name}'")
         worker = FlowWorker(
             name, node, flow, iteration_limit=flow.iteration_limit, iteration_timeout=flow.iteration_timeout
         )
         await node.start_worker(name, worker)
+        Flow.class_logger().info(f"Flow '{name}' started")
         return FlowReference(name, node)
 
 
 class FlowWorker:
     def __init__(self, name: str, node: LocalNodeProtocol, flow: Flow, iteration_limit: int, iteration_timeout: int):
         self.logger = Flow.class_logger()
+        # the InfoContext.info method is added at runtime to the instance because it cannot be added to the class
+        # due to a cyclic import issue.
+        from ..logging.logging import InfoContext
+        self.info = InfoContext.info.__get__(self)
+
         self.name = name
         self.node = node
         self.flow = flow
@@ -87,15 +105,19 @@ class FlowWorker:
                 context.reply(self.converter.message_to_json(reply))
         except Exception as e:
             error = Error(str(e))
+            self.logger.error(
+                f"The Flow worker {self.name} got an error when handling a message for flow '{self.flow.name}': {e}")
             context.reply(self.converter.message_to_json(error))
 
     async def handle__get_identifier_request(self, message: GetIdentifierRequest) -> GetIdentifierResponse:
+        self.logger.info(f"Retrieving the node identifier")
         name_snake_case = self.name.lower().replace(" ", "_")
         node_identifier = await self.node.identifier()
         agent_identifier = f"{node_identifier}/{name_snake_case}"
         return GetIdentifierResponse(message.scope, message.conversation, agent_identifier)
 
     async def handle__conversation_snippet(self, snippet: ConversationSnippet) -> ConversationSnippet:
+        self.logger.info(f"The flow {self.name} is handling a message")
         stream = type(snippet) is StreamedConversationSnippet
         if stream:
             snippet = snippet.snippet
@@ -106,7 +128,7 @@ class FlowWorker:
         if not snippet.conversation:
             snippet.conversation = secrets.token_hex(16)
 
-        self.logger.debug(f"Init: {snippet}\n\n")
+        self.logger.debug(f"The flow {self.name} initializing with message: {snippet}\n\n")
 
         self.flow.state.reset()
 
@@ -117,6 +139,11 @@ class FlowWorker:
                 raise RuntimeError("Flow can't converge")
 
             next_vertex = edge.destination
+            if edge.operation == FlowOperation.ROUTE:
+                last_message = snippet.messages[-1]
+                if isinstance(last_message, AssistantMessage):
+                    next_vertex = edge.destination[last_message.content]
+
             snippet_to_send = snippet
 
             if edge.operation == FlowOperation.TRY_AGAIN:
@@ -133,7 +160,7 @@ class FlowWorker:
                 snippet_to_send = ConversationSnippet(snippet.scope, conversation, [last_message])
 
             if next_vertex == END:
-                self.logger.info(f"Flow converged in {i} iterations")
+                self.logger.info(f"The flow {self.name} converged in {i} iterations")
                 snippet.messages[:] = snippet.messages[-1:]
                 return snippet
 
@@ -141,7 +168,8 @@ class FlowWorker:
                 raise RuntimeError(f"Unexpected next_vertex: {next_vertex}")
 
             next_vertex_id = vertex_to_id(next_vertex)
-            self.logger.debug(f"Iteration: {i} To: {next_vertex_id} Sending: {snippet_to_send}\n\n")
+            self.logger.debug(
+                f"The flow {self.name} is running iteration: {i} to: {next_vertex_id}. Sending: {snippet_to_send}\n\n")
 
             reply = await next_vertex.send_and_receive_request(
                 snippet_to_send, converter=self.converter, timeout=self.iteration_timeout
@@ -154,6 +182,7 @@ class FlowWorker:
                     reply_to_append.messages.append(UserMessage(content=message.content))
 
             snippet.messages.extend(reply_to_append.messages)
-            self.logger.debug(f"Iteration: {i} From {next_vertex_id} Received: {reply}\n\n")
+            self.logger.debug(
+                f"The flow {self.name} is running iteration: {i} from {next_vertex_id}. Received: {reply}\n\n")
 
         raise RuntimeError(f"Flow did not converge in {self.iteration_limit} iterations")

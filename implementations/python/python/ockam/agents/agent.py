@@ -197,7 +197,7 @@ class AgentStateMachine(InfoContext):
             # Remember the model response
             if not self.stream:
                 self.logger.debug(
-                    f"The agent '{self.agent.name}' is remembering the model response for scope '{self.scope}' and conversation '{self.conversation}'"
+                    f"The agent '{self.agent.name}' is remembering the model response for scope '{self.scope}' and conversation '{self.conversation}': {model_response}"
                 )
             await self.agent.remember(self.scope, self.conversation, model_response)
 
@@ -356,7 +356,7 @@ class Agent(InfoContext, DebugContext):
 
     async def handle_message(self, context, message):
         try:
-            self.logger.debug(f"Agent '{self.name}' received: {message}")
+            self.logger.debug(f"The agent '{self.name}' received: {message}")
 
             message = self.converter.message_from_json(message)
             handlers = {
@@ -704,7 +704,7 @@ class Agent(InfoContext, DebugContext):
                     knowledge,
                     max_iterations,
                 )
-                Agent.class_logger().info(f"Successfully started agent {name} on a remote node")
+                Agent.class_logger().info(f"Successfully started agent '{name}' on a remote node")
             case _:
                 raise ValueError("Node must be either a LocalNodeProtocol or a RemoteNode")
 
@@ -808,7 +808,7 @@ class Agent(InfoContext, DebugContext):
 
         await node.start_spawner(name, agent_creator, key_extractor, None, exposed_as)
 
-        Agent.class_logger().debug(f"Successfully started agent {name}")
+        Agent.class_logger().debug(f"Successfully started agent '{name}'")
 
 
 def key_extractor(message):
