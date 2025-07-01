@@ -49,6 +49,7 @@ impl ZoneConfigArg {
         }
     }
 
+    /// Parse the zone config contents as an inline string or from a file.
     pub fn zone_config(&self) -> crate::Result<ZoneConfig> {
         let contents = match self.zone_config_path() {
             Ok(path) => {
@@ -67,7 +68,7 @@ impl ZoneConfigArg {
             }
         };
         ZoneConfig::from_contents(&contents)
-            .map_err(|e| miette!("Failed to parse zone config file: {}", e))
+            .map_err(|e| miette!("Failed to parse zone config: {}", e))
     }
 
     pub fn zone_name(&self) -> crate::Result<String> {
@@ -200,4 +201,65 @@ pub struct ZoneInletsArgs {
     /// Skip the creation of the inlet to the logs outlet.
     #[arg(long)]
     pub no_logs: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    mod zone_config_arg {
+        use super::*;
+
+        #[test]
+        fn test_zone_config_from_inline_string() {
+            let yaml_content = serde_yaml::to_string(&ZoneConfig::default()).unwrap();
+            let zone_config_arg = ZoneConfigArg::new(Some(yaml_content.to_string()));
+            let result = zone_config_arg.zone_config();
+
+            assert!(result.is_ok());
+            let config = result.unwrap();
+            assert_eq!(config.name, "zone");
+        }
+
+        #[test]
+        fn test_zone_config_from_file_path() {
+            let temp_dir = TempDir::new().unwrap();
+            let config_file_path = temp_dir.path().join("zone_config.yaml");
+
+            let yaml_content = serde_yaml::to_string(&ZoneConfig::default()).unwrap();
+            fs::write(&config_file_path, yaml_content).unwrap();
+
+            let zone_config_arg =
+                ZoneConfigArg::new(Some(config_file_path.to_string_lossy().to_string()));
+            let result = zone_config_arg.zone_config();
+
+            assert!(result.is_ok());
+            let config = result.unwrap();
+            assert_eq!(config.name, "zone");
+        }
+
+        #[test]
+        fn test_zone_config_invalid_yaml() {
+            let invalid_yaml = "invalid: yaml: content: [";
+            let zone_config_arg = ZoneConfigArg::new(Some(invalid_yaml.to_string()));
+            let result = zone_config_arg.zone_config();
+
+            assert!(result.is_err());
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("Failed to parse zone config"));
+        }
+
+        #[test]
+        fn test_zone_config_no_config_provided() {
+            let zone_config_arg = ZoneConfigArg::new(None);
+            let result = zone_config_arg.zone_config();
+
+            // Should fail when no config is provided and no default files exist
+            assert!(result.is_err());
+        }
+    }
 }
