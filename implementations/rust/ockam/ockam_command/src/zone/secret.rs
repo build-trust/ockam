@@ -116,7 +116,7 @@ impl SecretCommand {
         cluster: &str,
         zone_name: &str,
     ) -> Result<()> {
-        let secrets = match self.parse_secrets_file()? {
+        let secrets = match self.parse_secrets_config()? {
             Some(secrets) => secrets,
             None => {
                 return Ok(());
@@ -169,26 +169,11 @@ impl SecretCommand {
         Ok(())
     }
 
-    fn parse_secrets_file(&self) -> Result<Option<Secrets>> {
-        let path = match &self.secrets_config.secrets_config {
-            Some(path) => path,
-            None => {
-                if std::path::Path::new("./secrets.yaml")
-                    .try_exists()
-                    .into_diagnostic()?
-                {
-                    "./secrets.yaml"
-                } else if std::path::Path::new("./secrets.yml")
-                    .try_exists()
-                    .into_diagnostic()?
-                {
-                    "./secrets.yml"
-                } else {
-                    return Ok(None);
-                }
-            }
-        };
-        Ok(Some(Secrets::from_file(path)?))
+    fn parse_secrets_config(&self) -> Result<Option<Secrets>> {
+        match self.secrets_config.contents()? {
+            Some(contents) => Ok(Some(Secrets::from_contents(&contents)?)),
+            None => Ok(None),
+        }
     }
 }
 
@@ -396,5 +381,106 @@ mod tests {
         let result = Secrets::from_file(file.path());
         assert!(result.is_err());
         Ok(())
+    }
+
+    mod parsing_from_arg {
+        use super::*;
+        use crate::zone::common_args::SecretsConfigArg;
+
+        #[test]
+        fn test_parse_secrets_from_inline_yaml() -> Result<()> {
+            let yaml_content = r#"
+            pg_username: testuser
+            pg_password: testpass
+            "#;
+            let secrets_config = SecretsConfigArg {
+                secrets_config: Some(yaml_content.to_string()),
+            };
+            let command = SecretCommand {
+                secrets_config,
+                ..Default::default()
+            };
+
+            let result = command.parse_secrets_config()?;
+            assert!(result.is_some());
+
+            let secrets = result.unwrap();
+            assert_eq!(secrets.0.len(), 1);
+            let secret = &secrets.0[0];
+            assert_eq!(secret.name, Secrets::SECRET_NAME);
+            assert!(secret.fields.contains_key("pg_username"));
+            assert!(secret.fields.contains_key("pg_password"));
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_parse_secrets_from_inline_json() -> Result<()> {
+            let json_content = r#"[
+              {
+                "name": "test-secret",
+                "fields": {
+                  "username": "testuser",
+                  "password": "testpass"
+                }
+              }
+            ]"#;
+            let secrets_config = SecretsConfigArg {
+                secrets_config: Some(json_content.to_string()),
+            };
+            let command = SecretCommand {
+                secrets_config,
+                ..Default::default()
+            };
+
+            let result = command.parse_secrets_config()?;
+            assert!(result.is_some());
+
+            let secrets = result.unwrap();
+            assert_eq!(secrets.0.len(), 1);
+            assert_eq!(secrets.0[0].name, "test-secret");
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_parse_secrets_file_path_takes_precedence() -> Result<()> {
+            let yaml_content = r#"
+            file_username: fileuser
+            file_password: filepass
+            "#;
+            let file = create_temp_file_with_content(yaml_content)?;
+            let secrets_config = SecretsConfigArg {
+                secrets_config: Some(file.path().to_string_lossy().to_string()),
+            };
+            let command = SecretCommand {
+                secrets_config,
+                ..Default::default()
+            };
+
+            let result = command.parse_secrets_config()?;
+            assert!(result.is_some());
+
+            let secrets = result.unwrap();
+            let secret = &secrets.0[0];
+            assert!(secret.fields.contains_key("file_username"));
+
+            Ok(())
+        }
+
+        #[test]
+        fn test_parse_secrets_invalid_inline_content() {
+            let invalid_content = "invalid: yaml: content: [";
+            let secrets_config = SecretsConfigArg {
+                secrets_config: Some(invalid_content.to_string()),
+            };
+            let command = SecretCommand {
+                secrets_config,
+                ..Default::default()
+            };
+
+            let result = command.parse_secrets_config();
+            assert!(result.is_err());
+        }
     }
 }

@@ -144,11 +144,55 @@ impl ZoneNameLongOrConfigArg {
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct SecretsConfigArg {
-    /// The path to the secrets file, in yaml or json format.
+    /// The path to the secrets file, in yaml or json format, or the inline content of the secrets.
     /// If not set, the `./secrets.yaml` file from the current directory will be used.
-    /// If no file is found, the command will just list the existing secrets.
     #[arg(long, visible_alias = "secrets")]
     pub secrets_config: Option<String>,
+}
+
+impl SecretsConfigArg {
+    /// Get the contents of the secrets config as a string.
+    /// If the input is a file path that exists, read from the file.
+    /// Otherwise, treat the input as inline content.
+    pub fn contents(&self) -> crate::Result<Option<String>> {
+        let config_input = match &self.secrets_config {
+            Some(input) => input,
+            None => {
+                return if std::path::Path::new("./secrets.yaml")
+                    .try_exists()
+                    .into_diagnostic()?
+                {
+                    Ok(Some(
+                        std::fs::read_to_string("./secrets.yaml")
+                            .into_diagnostic()
+                            .wrap_err("Failed to read ./secrets.yaml")?,
+                    ))
+                } else if std::path::Path::new("./secrets.yml")
+                    .try_exists()
+                    .into_diagnostic()?
+                {
+                    Ok(Some(
+                        std::fs::read_to_string("./secrets.yml")
+                            .into_diagnostic()
+                            .wrap_err("Failed to read ./secrets.yml")?,
+                    ))
+                } else {
+                    Ok(None)
+                }
+            }
+        };
+
+        // Try to read as file first, if it fails treat as inline content
+        let contents = if std::path::Path::new(config_input).exists() {
+            std::fs::read_to_string(config_input)
+                .into_diagnostic()
+                .wrap_err(format!("Failed to read secrets file at {}", config_input))?
+        } else {
+            config_input.clone()
+        };
+
+        Ok(Some(contents))
+    }
 }
 
 #[derive(Clone, Debug, Args, Default)]
@@ -260,6 +304,107 @@ mod tests {
 
             // Should fail when no config is provided and no default files exist
             assert!(result.is_err());
+        }
+    }
+
+    mod secrets_config_arg {
+        use super::*;
+
+        #[test]
+        fn test_contents_from_inline_string() {
+            let yaml_content = r#"
+pg_username: testuser
+pg_password: testpass
+"#;
+            let secrets_config = SecretsConfigArg {
+                secrets_config: Some(yaml_content.to_string()),
+            };
+
+            let result = secrets_config.contents().unwrap();
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), yaml_content);
+        }
+
+        #[test]
+        fn test_contents_from_file_path() {
+            let temp_dir = TempDir::new().unwrap();
+            let config_file_path = temp_dir.path().join("secrets.yaml");
+            let yaml_content = r#"
+pg_username: fileuser
+pg_password: filepass
+"#;
+            fs::write(&config_file_path, yaml_content).unwrap();
+
+            let secrets_config = SecretsConfigArg {
+                secrets_config: Some(config_file_path.to_string_lossy().to_string()),
+            };
+
+            let result = secrets_config.contents().unwrap();
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), yaml_content);
+        }
+
+        #[test]
+        fn test_contents_nonexistent_file_returns_inline() {
+            let nonexistent_path = "/path/that/does/not/exist.yaml";
+            let secrets_config = SecretsConfigArg {
+                secrets_config: Some(nonexistent_path.to_string()),
+            };
+
+            let result = secrets_config.contents().unwrap();
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), nonexistent_path);
+        }
+
+        #[test]
+        fn test_contents_no_config_checks_default_files() {
+            let secrets_config = SecretsConfigArg {
+                secrets_config: None,
+            };
+
+            let result = secrets_config.contents().unwrap();
+            // Should return None if no default files exist
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_contents_finds_default_secrets_yaml() {
+            let temp_dir = TempDir::new().unwrap();
+            let original_dir = std::env::current_dir().unwrap();
+            std::env::set_current_dir(&temp_dir).unwrap();
+
+            let yaml_content = "default_secret: value";
+            fs::write("./secrets.yaml", yaml_content).unwrap();
+
+            let secrets_config = SecretsConfigArg {
+                secrets_config: None,
+            };
+
+            let result = secrets_config.contents().unwrap();
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), yaml_content);
+
+            std::env::set_current_dir(original_dir).unwrap();
+        }
+
+        #[test]
+        fn test_contents_finds_default_secrets_yml() {
+            let temp_dir = TempDir::new().unwrap();
+            let original_dir = std::env::current_dir().unwrap();
+            std::env::set_current_dir(&temp_dir).unwrap();
+
+            let yaml_content = "default_secret: value";
+            fs::write("./secrets.yml", yaml_content).unwrap();
+
+            let secrets_config = SecretsConfigArg {
+                secrets_config: None,
+            };
+
+            let result = secrets_config.contents().unwrap();
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), yaml_content);
+
+            std::env::set_current_dir(original_dir).unwrap();
         }
     }
 }
