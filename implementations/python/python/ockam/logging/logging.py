@@ -85,22 +85,6 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
         },
         "loggers": {
             "asyncio": {"handlers": ["default"], "level": levels.get("asyncio", "WARNING"), "propagate": False},
-            "uvicorn": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
-            "uvicorn.error": {
-                "handlers": ["default"],
-                "level": levels.get("uvicorn.error", "WARNING"),
-                "propagate": False,
-            },
-            "uvicorn.access": {
-                "handlers": ["default"],
-                "level": levels.get("uvicorn.access", "WARNING"),
-                "propagate": False,
-            },
-            "uvicorn.asgi": {
-                "handlers": ["default"],
-                "level": levels.get("uvicorn.asgi", "WARNING"),
-                "propagate": False,
-            },
             "httpcore": {"handlers": ["default"], "level": levels.get("httpcore", "WARNING"), "propagate": False},
             "httpx": {"handlers": ["default"], "level": levels.get("httpx", "WARNING"), "propagate": False},
             "LiteLLM": {"handlers": ["default"], "level": levels.get("LiteLLM", "WARNING"), "propagate": False},
@@ -114,32 +98,31 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
                 "level": levels.get("LiteLLM Proxy", "WARNING"),
                 "propagate": False,
             },
+            "uvicorn": {"handlers": ["default"], "level": levels.get("uvicorn", "WARNING"), "propagate": False},
+            "uvicorn.access": {
+                "handlers": ["default"],
+                "level": levels.get("uvicorn.access", "WARNING"),
+                "propagate": False,
+            },
+            "uvicorn.asgi": {
+                "handlers": ["default"],
+                "level": levels.get("uvicorn.asgi", "WARNING"),
+                "propagate": False,
+            },
+            "uvicorn.error": {
+                "handlers": ["default"],
+                "level": levels.get("uvicorn.error", "WARNING"),
+                "propagate": False,
+            },
             "agent": {
                 "handlers": ["ockam"],
                 "level": levels.get("agent") or levels.get("default"),
                 "propagate": False,
             },
-            "model": {
-                "handlers": ["default"],
-                "level": levels.get("model") or levels.get("default"),
-                "propagate": False,
-            },
             "http": {"handlers": ["ockam"], "level": levels.get("http") or levels.get("default"), "propagate": False},
-            "memory": {
-                "handlers": ["ockam"],
-                "level": levels.get("memory") or levels.get("default"),
-                "propagate": False,
-            },
-            "node": {"handlers": ["ockam"], "level": levels.get("node") or levels.get("default"), "propagate": False},
-            "tool": {"handlers": ["ockam"], "level": levels.get("tool") or levels.get("default"), "propagate": False},
             "knowledge": {
                 "handlers": ["ockam"],
                 "level": levels.get("knowledge") or levels.get("default"),
-                "propagate": False,
-            },
-            "searchable_knowledge": {
-                "handlers": ["ockam"],
-                "level": levels.get("searchable_knowledge") or levels.get("default"),
                 "propagate": False,
             },
             "mem0.memory.main": {
@@ -147,6 +130,24 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
                 "level": levels.get("mem0.memory.main") or levels.get("default"),
                 "propagate": False,
             },
+            "memory": {
+                "handlers": ["ockam"],
+                "level": levels.get("memory") or levels.get("default"),
+                "propagate": False,
+            },
+            "model": {
+                "handlers": ["default"],
+                "level": levels.get("model") or levels.get("default"),
+                "propagate": False,
+            },
+            "node": {"handlers": ["ockam"], "level": levels.get("node") or levels.get("default"), "propagate": False},
+            "searchable_knowledge": {
+                "handlers": ["ockam"],
+                "level": levels.get("searchable_knowledge") or levels.get("default"),
+                "propagate": False,
+            },
+            "squad": {"handlers": ["ockam"], "level": levels.get("squad") or levels.get("default"), "propagate": False},
+            "tool": {"handlers": ["ockam"], "level": levels.get("tool") or levels.get("default"), "propagate": False},
             "user": {"handlers": ["ockam"], "level": levels.get("user") or levels.get("default"), "propagate": False},
         },
         "root": {"level": levels.get("default"), "handlers": ["default"]},

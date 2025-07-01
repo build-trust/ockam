@@ -17,7 +17,7 @@ async def main(node):
         squad.add(agent, "Write a haiku")
 
     results = await squad.run()
-    info(results)
+    info(f"The squad results are: {results}")
 
 
 Node.start(main, wait_until_interrupted=False)
