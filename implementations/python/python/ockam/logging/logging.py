@@ -147,6 +147,7 @@ def create_logging_config(levels: dict, log_format: str) -> dict[str, int | bool
                 "level": levels.get("mem0.memory.main") or levels.get("default"),
                 "propagate": False,
             },
+            "user": {"handlers": ["ockam"], "level": levels.get("user") or levels.get("default"), "propagate": False},
         },
         "root": {"level": levels.get("default"), "handlers": ["default"]},
     }
@@ -184,22 +185,22 @@ def get_logger(logger_name):
 
 
 def info(msg, *args, **kwargs):
-    logger = logging.getLogger("node")
+    logger = logging.getLogger("user")
     logger.info(msg, stacklevel=2, *args, **kwargs)
 
 
 def warning(msg, *args, **kwargs):
-    logger = logging.getLogger("node")
+    logger = logging.getLogger("user")
     logger.warning(msg, stacklevel=2, *args, **kwargs)
 
 
 def debug(msg, *args, **kwargs):
-    logger = logging.getLogger("node")
+    logger = logging.getLogger("user")
     logger.debug(msg, stacklevel=2, *args, **kwargs)
 
 
 def error(msg, *args, **kwargs):
-    logger = logging.getLogger("node")
+    logger = logging.getLogger("user")
     logger.error(msg, stacklevel=2, *args, **kwargs)
 
 

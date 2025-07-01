@@ -11,6 +11,7 @@ async def main(node):
         model=Model("ollama/nomic-embed-text"),
         max_knowledge_size=4096,
     )
+    
     await restaurants.add_text(
         "Tony's Pizzeria Menu",
         """

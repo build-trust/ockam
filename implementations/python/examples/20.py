@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node
+from ockam import Agent, Model, Node, info
 
 """
     This example shows how a thinking model shows the reasoning process.

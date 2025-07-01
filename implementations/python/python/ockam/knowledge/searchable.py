@@ -23,15 +23,15 @@ class SearchableKnowledge(KnowledgeProvider):
             return cls._logger
 
     def __init__(
-        self,
-        name: str,
-        model: Model = None,
-        storage: Storage = InMemory(),
-        text_extractor: TextExtractor = None,
-        chunker: Chunker = NaiveChunker(),
-        max_results: int = 10,
-        max_distance: float = 0.2,
-        max_knowledge_size: int = 4096,
+            self,
+            name: str,
+            model: Model = None,
+            storage: Storage = InMemory(),
+            text_extractor: TextExtractor = None,
+            chunker: Chunker = NaiveChunker(),
+            max_results: int = 10,
+            max_distance: float = 0.2,
+            max_knowledge_size: int = 4096,
     ):
         """
         This class allows to store and search for text documents using vector search.
@@ -76,8 +76,8 @@ class SearchableKnowledge(KnowledgeProvider):
     async def add_text(self, document_name: str, text: str, content_type: Optional[str] = None):
         text_type = f"({content_type})" if content_type else ""
         with self.info(
-            f"Adding document text: '{document_name}' {text_type}",
-            f"Added document text: '{document_name}' {text_type}",
+                f"Adding document text: '{document_name}' {text_type}",
+                f"Added document text: '{document_name}' {text_type}",
         ):
             whole_document = await self.text_extractor.extract_text(text, content_type)
             text_pieces = self.chunker.chunk(whole_document)
@@ -104,8 +104,8 @@ class SearchableKnowledge(KnowledgeProvider):
         :type document_url: str
         """
         with self.info(
-            f"Adding document: '{document_name}' at: '{document_url}'",
-            f"Added document: '{document_name}' at: '{document_url}'",
+                f"Adding document: '{document_name}' at: '{document_url}'",
+                f"Added document: '{document_name}' at: '{document_url}'",
         ):
             content = await download_url(document_url)
             whole_document = await self.text_extractor.extract_text(content, content_type)
@@ -143,8 +143,6 @@ class SearchableKnowledge(KnowledgeProvider):
         if not query or len(query) == 0:
             return None
 
-        self.logger.info(f"Searching knowledge with query: '{query}'")
-
         hits = await self.search(query)
         # TODO: Should it be cleared here at some point?
         self.search_results.add(hits)
@@ -164,6 +162,4 @@ class SearchableKnowledge(KnowledgeProvider):
                 break
             self.search_results.reduce_size()
 
-        self.logger.debug(f"Found knowledge with query: '{query}'. The result is: {contextual_knowledge}")
-        self.logger.info(f"Found knowledge with query: '{query}'")
         return contextual_knowledge
