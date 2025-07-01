@@ -6,7 +6,6 @@ use async_trait::async_trait;
 use base64ct::Encoding;
 use clap::Args;
 use colorful::Colorful;
-use miette::{IntoDiagnostic, WrapErr};
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
 use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
@@ -215,16 +214,6 @@ impl Secrets {
         }
     }
 
-    fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self> {
-        let content = std::fs::read_to_string(&path)
-            .into_diagnostic()
-            .wrap_err(format!(
-                "Failed to read secrets file at {}",
-                path.as_ref().display()
-            ))?;
-        Self::from_contents(&content)
-    }
-
     fn from_parsed_yaml(parsed_yaml: SecretsYaml) -> Result<Self> {
         let mut secrets = Vec::new();
         let mut secret = Secret {
@@ -251,6 +240,7 @@ impl Secrets {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use miette::{IntoDiagnostic, WrapErr};
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -270,8 +260,7 @@ mod tests {
             pg_username: u
             pg_password: p
             "#;
-            let file = create_temp_file_with_content(yaml_content)?;
-            let secrets = Secrets::from_file(file.path())?;
+            let secrets = Secrets::from_contents(yaml_content)?;
             let _secrets_as_str = serde_yaml::to_string(&secrets)
                 .into_diagnostic()
                 .wrap_err("Failed to serialize secrets to YAML")?;
@@ -296,8 +285,7 @@ mod tests {
                 username: u
                 password: p
             "#;
-            let file = create_temp_file_with_content(yaml_content)?;
-            let secrets = Secrets::from_file(file.path())?;
+            let secrets = Secrets::from_contents(yaml_content)?;
 
             assert_eq!(secrets.0.len(), 1);
             assert_eq!(secrets.0[0].name, "pg");
@@ -325,8 +313,7 @@ mod tests {
                 host: localhost
                 port: 6379
             "#;
-            let file = create_temp_file_with_content(yaml_content)?;
-            let secrets = Secrets::from_file(file.path())?;
+            let secrets = Secrets::from_contents(yaml_content)?;
 
             assert_eq!(secrets.0.len(), 2);
 
@@ -356,8 +343,7 @@ mod tests {
                 }
               }
             ]"#;
-            let file = create_temp_file_with_content(json_content)?;
-            let secrets = Secrets::from_file(file.path())?;
+            let secrets = Secrets::from_contents(json_content)?;
 
             assert_eq!(secrets.0.len(), 1);
             assert_eq!(secrets.0[0].name, "pg");
@@ -377,8 +363,7 @@ mod tests {
     #[test]
     fn test_parse_invalid_yaml() -> Result<()> {
         let invalid_yaml = "this is not valid yaml";
-        let file = create_temp_file_with_content(invalid_yaml)?;
-        let result = Secrets::from_file(file.path());
+        let result = Secrets::from_contents(invalid_yaml);
         assert!(result.is_err());
         Ok(())
     }

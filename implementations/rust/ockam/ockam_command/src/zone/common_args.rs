@@ -13,7 +13,7 @@ const ZONE_NAME_HELP: &str = "The name of the Zone";
 
 #[derive(Clone, Debug, Args, Default)]
 pub struct ZoneConfigArg {
-    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]
+    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP, env = "OCKAM_ZONE_CONFIG")]
     pub zone_config: Option<String>,
 }
 
@@ -82,7 +82,7 @@ pub struct ZoneNameOrConfigArg {
     #[arg(value_parser = alphanumeric_parser, help = ZONE_NAME_HELP)]
     pub zone_name: Option<String>,
 
-    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]
+    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP, env = "OCKAM_ZONE_CONFIG")]
     pub zone_config: Option<String>,
 }
 
@@ -132,7 +132,7 @@ pub struct ZoneNameLongOrConfigArg {
     #[arg(long = "zone", value_parser = alphanumeric_parser, help = ZONE_NAME_HELP)]
     pub zone_name: Option<String>,
 
-    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP)]
+    #[arg(long, visible_alias = "config", help = ZONE_CONFIG_HELP, env = "OCKAM_ZONE_CONFIG")]
     pub zone_config: Option<String>,
 }
 
@@ -146,7 +146,7 @@ impl ZoneNameLongOrConfigArg {
 pub struct SecretsConfigArg {
     /// The path to the secrets file, in yaml or json format, or the inline content of the secrets.
     /// If not set, the `./secrets.yaml` file from the current directory will be used.
-    #[arg(long, visible_alias = "secrets")]
+    #[arg(long, visible_alias = "secrets", env = "OCKAM_ZONE_SECRETS")]
     pub secrets_config: Option<String>,
 }
 
@@ -305,6 +305,27 @@ mod tests {
             // Should fail when no config is provided and no default files exist
             assert!(result.is_err());
         }
+
+        #[test]
+        fn test_zone_config_from_env_var() {
+            let yaml_content = serde_yaml::to_string(&ZoneConfig::default()).unwrap();
+            std::env::set_var("OCKAM_ZONE_CONFIG", &yaml_content);
+
+            use clap::Parser;
+            #[derive(Parser)]
+            struct TestArgs {
+                #[command(flatten)]
+                zone_config: ZoneConfigArg,
+            }
+
+            let args = TestArgs::parse_from(&[] as &[&str]);
+            let result = args.zone_config.zone_config();
+            std::env::remove_var("OCKAM_ZONE_CONFIG");
+
+            assert!(result.is_ok());
+            let config = result.unwrap();
+            assert_eq!(config.name, "zone");
+        }
     }
 
     mod secrets_config_arg {
@@ -405,6 +426,29 @@ pg_password: filepass
             assert_eq!(result.unwrap(), yaml_content);
 
             std::env::set_current_dir(original_dir).unwrap();
+        }
+
+        #[test]
+        fn test_contents_from_env_var() {
+            let yaml_content = r#"
+env_username: envuser
+env_password: envpass
+"#;
+            std::env::set_var("OCKAM_ZONE_SECRETS", yaml_content);
+
+            use clap::Parser;
+            #[derive(Parser)]
+            struct TestArgs {
+                #[command(flatten)]
+                secrets: SecretsConfigArg,
+            }
+
+            let args = TestArgs::parse_from(&[] as &[&str]);
+            let result = args.secrets.contents().unwrap();
+            std::env::remove_var("OCKAM_ZONE_SECRETS");
+
+            assert!(result.is_some());
+            assert_eq!(result.unwrap(), yaml_content);
         }
     }
 }
