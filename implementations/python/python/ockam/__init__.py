@@ -37,6 +37,13 @@ warnings.filterwarnings(
     "ignore",
     category=DeprecationWarning,
 )
+
+# We can remove this setting when this issue is fixed: https://github.com/BerriAI/litellm/issues/11657
+warnings.filterwarnings(
+    "ignore",
+    category=ResourceWarning,
+)
+
 __doc__ = ""
 __all__ = [
     # from .agents
