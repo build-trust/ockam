@@ -1,6 +1,6 @@
 import sys
 
-from ockam import AgentReference, Node, RemoteNode
+from ockam import AgentReference, Node, RemoteNode, info
 
 """
     This example shows how to reference an agent started remotely (see 10-server.py, where the agent is created
@@ -14,7 +14,7 @@ async def main(node):
     remote_node = RemoteNode(node, sys.argv[1])
     agent = AgentReference("history-teacher", remote_node)
     reply = await agent.send("Who was Gandhi?")
-    print(reply)
+    info(f"The reply is: {reply}")
 
 
 Node.start(main, wait_until_interrupted=False)

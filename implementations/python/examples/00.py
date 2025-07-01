@@ -1,4 +1,4 @@
-from ockam import Agent, Flow, Node, START, END, FlowOperation
+from ockam import Agent, Flow, Node, START, END, FlowOperation, info
 
 
 async def main(node):
@@ -154,22 +154,22 @@ async def main(node):
     )
 
     flow = await Flow.start(node, flow)
-    print(flow.name)
+    info(f"The flow name is: {flow.name}")
 
     identifier = await flow.identifier()
-    print(identifier)
+    info(f"The flow identifier is: {identifier}")
 
     reply = await flow.send("where is the empire state building?")
-    print(reply)
+    info(f"The reply is: {reply}")
 
     reply = await flow.send("kya ho raha hai")
-    print(reply)
+    info(f"The reply is: {reply}")
 
     reply = await flow.send("que se passe-t-il")
-    print(reply)
+    info(f"The reply is: {reply}")
 
     reply = await flow.send("qué pasa")
-    print(reply)
+    info(f"The reply is: {reply}")
 
 
 Node.start(main, wait_until_interrupted=False)

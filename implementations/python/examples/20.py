@@ -16,9 +16,9 @@ async def main(node):
     messages = await agent.send("Create python code that prints 'Hello World'.")
     for message in messages:
         if message.thinking:
-            print(f"\033[3;94m{message.content}\033[0m", end="")
+            info(f"\033[3;94m{message.content}\033[0m", end="")
         else:
-            print(f"{message.content}", end="")
+            info(f"{message.content}", end="")
 
 
 Node.start(main, wait_until_interrupted=False)

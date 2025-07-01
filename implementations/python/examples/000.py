@@ -1,4 +1,4 @@
-from ockam import Agent, Flow, Node, START, END, Repl, FlowOperation
+from ockam import Agent, Flow, Node, START, END, Repl, FlowOperation, info
 
 
 async def main(node):
@@ -105,7 +105,7 @@ Examples:
     flow = await Flow.start(node, flow)
 
     reply = await flow.send("is it safe to allow traffic from `0.0.0.0/0` on all ec2 machines on AWS?")
-    print(reply)
+    info(f"The reply is: {reply}")
 
     reply = await flow.send("""
 ```
@@ -154,7 +154,7 @@ print("Decrypted:", decrypted.decode())
 ```
 """)
 
-    print(reply)
+    info(f"The reply is: {reply}")
 
     await Repl.start(flow)
 

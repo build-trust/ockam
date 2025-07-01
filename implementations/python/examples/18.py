@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node
+from ockam import Agent, Model, Node, info
 
 """
     This example shows how a local agent can use another agent as a tool.
@@ -22,7 +22,7 @@ async def main(node):
         tools=[random_generator],
     )
     reply = await agent.send("Give me a random number.")
-    print(reply)
+    info(f"The reply is: {reply}")
 
 
 Node.start(main, wait_until_interrupted=False)

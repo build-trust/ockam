@@ -1,6 +1,7 @@
 from ockam import Agent, Model, Node, CoTPlanner, info, set_log_level
 from ockam.nodes.message import Phase
 
+# Suppress the log messages showing all the streamed messages
 set_log_level("node", "WARN")
 
 """
@@ -12,7 +13,7 @@ set_log_level("node", "WARN")
 async def main(node):
     agent = await Agent.start(
         node=node,
-        name="Assistant",
+        name="assistant",
         instructions="Assistant to solve some complex task ...",
         model=Model(name="deepseek-r1"),
         planner=CoTPlanner(model=Model(name="deepseek-r1")),

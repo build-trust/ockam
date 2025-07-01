@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, SearchableKnowledge
+from ockam import Agent, Model, Node, SearchableKnowledge, info
 
 """
     This example shows how a model can be enriched with knowledge coming from documents retrieved online.
@@ -38,10 +38,10 @@ async def main(node):
     )
 
     reply = await agent.send("What's ockam?", scope="a", conversation="1")
-    print(reply)
+    info(f"The reply is: {reply}")
 
     reply = await agent.send("What's a relay, and when should I use it?", scope="a", conversation="1")
-    print(reply)
+    info(f"The reply is: {reply}")
 
 
 Node.start(main, wait_until_interrupted=False)

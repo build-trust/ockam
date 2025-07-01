@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, SearchableKnowledge, HttpServer
+from ockam import Agent, Model, Node, SearchableKnowledge, HttpServer, info
 
 """
     This example shows how a model can be enriched with knowledge coming from inlined documents.
@@ -42,10 +42,10 @@ async def main(node):
     )
 
     reply = await agent.send("What's the price of a pepperoni pizza?", scope="a", conversation="1")
-    print(reply)
+    info(f"The reply is: {reply}")
 
     reply = await agent.send("How do you know?", scope="a", conversation="1")
-    print(reply)
+    info(f"The reply is: {reply}")
 
 
 Node.start(main, wait_until_interrupted=False, http_server=HttpServer())

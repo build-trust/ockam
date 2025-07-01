@@ -1,4 +1,4 @@
-from ockam import Agent, Model, Node, Squad
+from ockam import Agent, Model, Node, Squad, info
 
 """
     This example shows how squads work
@@ -17,7 +17,7 @@ async def main(node):
         squad.add(agent, "Write a haiku")
 
     results = await squad.run()
-    print(results)
+    info(results)
 
 
 Node.start(main, wait_until_interrupted=False)
