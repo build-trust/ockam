@@ -37,7 +37,7 @@ class Tool(InvokableTool, InfoContext):
         return self._spec
 
     async def invoke(self, json_argument: Optional[str]) -> str:
-        with self.info(f"Invoke tool: '{self.name}'", f"invoked tool: '{self.name}'"):
+        with self.info(f"Invoking tool: '{self.name}'", f"invoked tool: '{self.name}'"):
             self.logger.debug(f"The tool arguments are: {json_argument}")
             try:
                 if json_argument is None or json_argument == "":

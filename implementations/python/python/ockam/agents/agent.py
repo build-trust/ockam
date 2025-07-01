@@ -161,7 +161,8 @@ class AgentStateMachine(InfoContext):
 
         if len(steps) > 0:
             self.logger.debug(
-                f"The agent '{self.agent.name}' plan has {len(steps)} messages to execute\n{[s.content for s in steps]}")
+                f"The agent '{self.agent.name}' plan has {len(steps)} messages to execute\n{[s.content for s in steps]}"
+            )
         if plan_completed:
             # We executed the whole plan
             self.logger.info(f"The agent '{self.agent.name}' plan is now completed")
@@ -179,7 +180,8 @@ class AgentStateMachine(InfoContext):
         if self.iteration == self.agent.maximum_iterations:
             yield Error(str(RuntimeError("Reached maximum_iterations")))
             self.logger.info(
-                f"The agent '{self.agent.name}' execution is now finished due to maximum iterations reached ({self.agent.maximum_iterations})")
+                f"The agent '{self.agent.name}' execution is now finished due to maximum iterations reached ({self.agent.maximum_iterations})"
+            )
             self.state = AgentState.FINISHED
 
         self.tool_calls = []
@@ -188,20 +190,26 @@ class AgentStateMachine(InfoContext):
         ):
             if err:
                 yield err
-                self.logger.info(
-                    f"The agent '{self.agent.name}' execution is now finished due to a model error: {err}")
+                self.logger.info(f"The agent '{self.agent.name}' execution is now finished due to a model error: {err}")
                 self.state = AgentState.FINISHED
                 return
 
             # Remember the model response
             if not self.stream:
-                self.logger.info(
-                    f"The agent '{self.agent.name}' is remembering the model response for scope '{self.scope}' and conversation '{self.conversation}'")
+                self.logger.debug(
+                    f"The agent '{self.agent.name}' is remembering the model response for scope '{self.scope}' and conversation '{self.conversation}'"
+                )
             await self.agent.remember(self.scope, self.conversation, model_response)
 
             if len(model_response.tool_calls) > 0:
-                self.logger.info(
-                    f"The model response returned to agent '{self.agent.name}' contains {len(model_response.tool_calls)} tool calls, processing them now.")
+                if len(model_response.tool_calls) == 1:
+                    self.logger.info(
+                        f"The model response returned to agent '{self.agent.name}' contains one tool call, processing it now."
+                    )
+                else:
+                    self.logger.info(
+                        f"The model response returned to agent '{self.agent.name}' contains {len(model_response.tool_calls)} tool calls, processing them now."
+                    )
                 # Record the event of the tool being called
                 if self.stream:
                     yield self.streaming_response.make_snippet(model_response)
@@ -226,8 +234,7 @@ class AgentStateMachine(InfoContext):
                         self.logger.info(f"The agent '{self.agent.name}' has now finished its execution")
                         self.state = AgentState.FINISHED
                     else:
-                        self.logger.info(
-                            f"The agent '{self.agent.name}' is going back to the Planning mode now")
+                        self.logger.info(f"The agent '{self.agent.name}' is going back to the Planning mode now")
                         self.state = AgentState.PLANNING
                     return
             else:
@@ -242,12 +249,14 @@ class AgentStateMachine(InfoContext):
 
         for tool_call in self.tool_calls:
             with self.info(
-                    f"The agent '{self.agent.name}' is calling tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}'",
-                    f"The agent '{self.agent.name}' called tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}'"):
+                    f"The agent '{self.agent.name}' is calling the tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}'",
+                    f"The agent '{self.agent.name}' called the tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}'",
+            ):
                 error, tool_call_response = await self.agent.call_tool(tool_call)
                 if error:
                     self.logger.warning(
-                        f"The agent {self.agent.name} called a tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}', but the call failed: {error}")
+                        f"The agent {self.agent.name} called a tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}', but the call failed: {error}"
+                    )
 
                 # the tool_call_response contains the error message if the tool call failed
                 await self.agent.remember(self.scope, self.conversation, tool_call_response)
@@ -258,7 +267,8 @@ class AgentStateMachine(InfoContext):
 
         # after processing tool calls, we need another model call
         self.logger.info(
-            f"The agent {self.agent.name} made all the necessary tool calls. It is going back to the Model Calling mode")
+            f"The agent '{self.agent.name}' has finished making tool calls. It is going back to the Model Calling mode"
+        )
         self.state = AgentState.MODEL_CALLING
 
     async def _handle_finished_state(self):

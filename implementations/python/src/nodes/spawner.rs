@@ -104,7 +104,7 @@ impl Spawner {
                 Python::with_gil(|py| {
                     py_debug(
                         py,
-                        format!("create a new worker for agent '{}'", agent_name),
+                        format!("The agent '{}' is creating a new worker", agent_name),
                     )?;
                     worker_constructor.call0(py)
                 })

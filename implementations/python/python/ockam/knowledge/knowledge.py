@@ -25,20 +25,20 @@ class Knowledge(KnowledgeProvider, InfoContext):
             return cls._logger
 
     def __init__(
-            self,
-            name: str,
-            searchable=False,
-            # shared
-            storage: Storage = InMemory(),
-            text_extractor: TextExtractor = None,
-            max_knowledge_size: int = 4096,
-            # searchable-specific
-            model: Model = None,
-            chunker: Chunker = NaiveChunker(),
-            max_results: int = 10,
-            max_distance: float = 0.2,
-            # unsearchable-specific
-            document_name: Optional[str] = None,
+        self,
+        name: str,
+        searchable=False,
+        # shared
+        storage: Storage = InMemory(),
+        text_extractor: TextExtractor = None,
+        max_knowledge_size: int = 4096,
+        # searchable-specific
+        model: Model = None,
+        chunker: Chunker = NaiveChunker(),
+        max_results: int = 10,
+        max_distance: float = 0.2,
+        # unsearchable-specific
+        document_name: Optional[str] = None,
     ):
         self.logger = Knowledge.class_logger()
         self.searchable = searchable
@@ -64,14 +64,18 @@ class Knowledge(KnowledgeProvider, InfoContext):
             )
 
     async def add_document(self, document_name: str, document_url: str, content_type: Optional[str] = None):
-        with self.info(f"Adding document: '{document_name}' at: '{document_url}'",
-                f"Added document: '{document_name}' at: '{document_url}'"):
+        with self.info(
+            f"Adding document: '{document_name}' at: '{document_url}'",
+            f"Added document: '{document_name}' at: '{document_url}'",
+        ):
             return await self.knowledge.add_document(document_name, document_url, content_type)
 
     async def add_text(self, document_name: str, text: str, content_type: Optional[str] = None):
         text_type = f"({content_type})" if content_type else ""
-        with self.info(f"Adding document text: '{document_name}' {text_type}",
-                f"Added document text: '{document_name}' {text_type}"):
+        with self.info(
+            f"Adding document text: '{document_name}' {text_type}",
+            f"Added document text: '{document_name}' {text_type}",
+        ):
             return await self.knowledge.add_text(document_name, text, content_type)
 
     async def search_knowledge(self, scope: Optional[str], conversation: Optional[str], query: str) -> Optional[str]:

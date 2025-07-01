@@ -734,7 +734,8 @@ impl PyNode {
                 ReturnTiming::AfterConnection,
             )
             .await?;
-        info!("Successfully created a relay for the node");
+        let node_name = node_manager.node_name();
+        info!("Successfully created a relay for the node {node_name}");
         Ok(relay_name)
     }
 
@@ -748,7 +749,10 @@ impl PyNode {
         exposed_as: Option<String>,
     ) -> PyResult<Bound<'a, PyAny>> {
         let name = name.to_string();
-        py_debug(py, format!("starting worker '{name}'"))?;
+        py_debug(
+            py,
+            format!("The node {} is starting worker '{name}'", self.name),
+        )?;
 
         let address: Address = name.clone().into();
         if let Some(api_sc_listener) = self.node_manager.api_sc_listener() {

@@ -23,15 +23,15 @@ class SearchableKnowledge(KnowledgeProvider):
             return cls._logger
 
     def __init__(
-            self,
-            name: str,
-            model: Model = None,
-            storage: Storage = InMemory(),
-            text_extractor: TextExtractor = None,
-            chunker: Chunker = NaiveChunker(),
-            max_results: int = 10,
-            max_distance: float = 0.2,
-            max_knowledge_size: int = 4096,
+        self,
+        name: str,
+        model: Model = None,
+        storage: Storage = InMemory(),
+        text_extractor: TextExtractor = None,
+        chunker: Chunker = NaiveChunker(),
+        max_results: int = 10,
+        max_distance: float = 0.2,
+        max_knowledge_size: int = 4096,
     ):
         """
         This class allows to store and search for text documents using vector search.
@@ -55,6 +55,7 @@ class SearchableKnowledge(KnowledgeProvider):
         # the InfoContext.info method is added at runtime to the instance because it cannot be added to the class
         # due to a cyclic import issue.
         from ..logging.logging import InfoContext
+
         self.info = InfoContext.info.__get__(self)
         if model is None:
             model = Model("ollama/nomic-embed-text")
@@ -74,8 +75,10 @@ class SearchableKnowledge(KnowledgeProvider):
 
     async def add_text(self, document_name: str, text: str, content_type: Optional[str] = None):
         text_type = f"({content_type})" if content_type else ""
-        with self.info(f"Adding document text: '{document_name}' {text_type}",
-                f"Added document text: '{document_name}' {text_type}"):
+        with self.info(
+            f"Adding document text: '{document_name}' {text_type}",
+            f"Added document text: '{document_name}' {text_type}",
+        ):
             whole_document = await self.text_extractor.extract_text(text, content_type)
             text_pieces = self.chunker.chunk(whole_document)
 
@@ -100,8 +103,10 @@ class SearchableKnowledge(KnowledgeProvider):
         :param document_url: Url to the document to be processed
         :type document_url: str
         """
-        with self.info(f"Adding document: '{document_name}' at: '{document_url}'",
-                f"Added document: '{document_name}' at: '{document_url}'"):
+        with self.info(
+            f"Adding document: '{document_name}' at: '{document_url}'",
+            f"Added document: '{document_name}' at: '{document_url}'",
+        ):
             content = await download_url(document_url)
             whole_document = await self.text_extractor.extract_text(content, content_type)
             text_pieces = self.chunker.chunk(whole_document)
@@ -128,8 +133,7 @@ class SearchableKnowledge(KnowledgeProvider):
         :return: A list of search results that match the criteria.
         :rtype: list
         """
-        with self.info(f"Searching knowledge with query: '{query}'",
-                f"Retrieved knowledge with query: '{query}'"):
+        with self.info(f"Searching knowledge with query: '{query}'", f"Retrieved knowledge with query: '{query}'"):
             embeddings = await self.model.embeddings([query])
             hits = await self.storage.search_text(self.name, embeddings[0], self.max_results, self.max_distance)
             self.logger.debug(f"Search results for query '{query}': {len(hits)} hits found in knowledge '{self.name}'")

@@ -1,4 +1,6 @@
-from ockam import Agent, Model, Node, Tool, info
+from ockam import Agent, Model, Node, Tool, info, set_log_level
+
+set_log_level("node", "DEBUG")
 
 """
     This example shows the difference between querying a model using local tools and
@@ -27,25 +29,25 @@ async def main(node):
         tools=[Tool(divide), Tool(multiply)],
     )
     reply = await agent.send("What is 56 divided by 27?", scope="a", conversation="1")
-    info(f"What is 56 divided by 27? {reply}")
+    info(f"What is 56 divided by 27? {" ".join([r.content for r in reply])}")
 
     reply = await agent.send("What is 214 multiplied by 63?", scope="a", conversation="1")
-    info(f"What is 214 multiplied by 63? {reply}")
+    info(f"What is 214 multiplied by 63? {" ".join([r.content for r in reply])}")
 
     reply = await agent.send(
         "Answer only yes or no: have I asked you what is 56 divided by 27?", scope="a", conversation="1"
     )
-    info(f"Answer only yes or no: have I asked you what is 56 divided by 27? {reply}")
+    info(f"Answer only yes or no: have I asked you what is 56 divided by 27? {" ".join([r.content for r in reply])}")
 
     reply = await agent.send(
         "Answer only yes or no: have I asked you what is 56 divided by 3?", scope="a", conversation="1"
     )
-    info(f"Answer only yes or no: have I asked you what is 56 divided by 3? {reply}")
+    info(f"Answer only yes or no: have I asked you what is 56 divided by 3? {" ".join([r.content for r in reply])}")
 
     reply = await agent.send(
         "Answer only yes or no: have I asked you what is 56 divided by 27?", scope="a", conversation="2"
     )
-    info(f"Answer only yes or no: have I asked you what is 56 divided by 27? {reply}")
+    info(f"Answer only yes or no: have I asked you what is 56 divided by 27? {" ".join([r.content for r in reply])}")
 
 
 Node.start(main, wait_until_interrupted=False)
