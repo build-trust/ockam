@@ -123,7 +123,8 @@ teardown_home_dir() {
   done
 
   if [[ -n "$FAILED_DIRS" ]]; then
-    echo "   Failed test dirs: $FAILED_DIRS" >&3
+    echo "   Test failed (max_retries=$BATS_TEST_RETRIES): $BATS_TEST_NAME" >&3
+    echo "   Temp dirs used: $FAILED_DIRS" >&3
   fi
 
   export OCKAM_HOME=$OCKAM_HOME_BASE
