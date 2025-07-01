@@ -1,5 +1,7 @@
-from ockam import Agent, Model, Node, CoTPlanner
+from ockam import Agent, Model, Node, CoTPlanner, info, set_log_level
 from ockam.nodes.message import Phase
+
+set_log_level("node", "WARN")
 
 """
     This example shows how to use a planning strategy ("Chain of Thought" or COT) to solve a complex task.
@@ -27,14 +29,14 @@ async def main(node):
         # reasoning is always in italic
         if phase == Phase.PLANNING:  # planning: green
             if thinking:
-                print(f"\033[3;92m{text}\033[0m", end="")
+                info(f"\033[3;92m{text}\033[0m")
             else:
-                print(f"\033[92m{text}\033[0m", end="")
+                info(f"\033[92m{text}\033[0m")
         elif phase == Phase.EXECUTING:  # executing: grey
             if thinking:
-                print(f"\033[3;90m{text}\033[0m", end="")
+                info(f"\033[3;90m{text}\033[0m")
             else:
-                print(f"\033[90m{text}\033[0m", end="")
+                info(f"\033[90m{text}\033[0m")
         else:
             raise RuntimeError(f"unknown phase {phase}")
 

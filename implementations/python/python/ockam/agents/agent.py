@@ -40,8 +40,6 @@ from ..nodes.message import (
 )
 from .names import validate_name
 
-from ..ockam_in_rust_for_python import warn
-
 
 class AgentState(Enum):
     """
@@ -95,7 +93,7 @@ class AgentState(Enum):
     FINISHED = "finished"
 
 
-class AgentStateMachine:
+class AgentStateMachine(InfoContext):
     """
     State machine for managing agent conversation flow.
 
@@ -107,6 +105,7 @@ class AgentStateMachine:
 
     def __init__(self, agent, scope, conversation, stream, response, contextual_knowledge=None):
         self.agent = agent
+        self.logger = agent.class_logger()
         self.scope = scope
         self.conversation = conversation
         self.stream = stream
@@ -124,8 +123,10 @@ class AgentStateMachine:
         match self.state:
             case AgentState.INIT:
                 if self.agent.planner is not None:
+                    self.logger.info(f"The agent '{self.agent.name}' is in Planning mode")
                     self.state = AgentState.PLANNING
                 else:
+                    self.logger.info(f"The agent '{self.agent.name}' is in Model Calling mode")
                     self.state = AgentState.MODEL_CALLING
             case AgentState.PLANNING:
                 async for result in self._handle_planning_state():
@@ -145,10 +146,12 @@ class AgentStateMachine:
             await self.agent.get_messages_only(self.conversation, self.scope), self.contextual_knowledge
         )
 
+        steps = []
         async for next_step in next_steps:
             if next_step is None:
                 break
             plan_completed = False
+            steps.append(next_step)
             if next_step.phase == Phase.PLANNING:
                 await self.agent.remember(self.scope, self.conversation, next_step)
             if self.stream:
@@ -156,11 +159,17 @@ class AgentStateMachine:
             else:
                 self.whole_response.messages.append(next_step)
 
+        if len(steps) > 0:
+            self.logger.debug(
+                f"The agent '{self.agent.name}' plan has {len(steps)} messages to execute\n{[s.content for s in steps]}")
         if plan_completed:
             # We executed the whole plan
+            self.logger.info(f"The agent '{self.agent.name}' plan is now completed")
             self.state = AgentState.FINISHED
         else:
             # The model will execute the next plan step
+            self.logger.info(f"The agent '{self.agent.name}' is executing the next step of the plan")
+            self.logger.info(f"The agent '{self.agent.name}' is in now in Model Calling mode")
             self.state = AgentState.MODEL_CALLING
 
     async def _handle_model_calling_state(self):
@@ -169,21 +178,30 @@ class AgentStateMachine:
         self.iteration += 1
         if self.iteration == self.agent.maximum_iterations:
             yield Error(str(RuntimeError("Reached maximum_iterations")))
+            self.logger.info(
+                f"The agent '{self.agent.name}' execution is now finished due to maximum iterations reached ({self.agent.maximum_iterations})")
             self.state = AgentState.FINISHED
 
         self.tool_calls = []
         async for err, finished, model_response in self.agent.complete_chat(
-            self.scope, self.conversation, self.contextual_knowledge, stream=self.stream
+                self.scope, self.conversation, self.contextual_knowledge, stream=self.stream
         ):
             if err:
                 yield err
+                self.logger.info(
+                    f"The agent '{self.agent.name}' execution is now finished due to a model error: {err}")
                 self.state = AgentState.FINISHED
                 return
 
             # Remember the model response
+            if not self.stream:
+                self.logger.info(
+                    f"The agent '{self.agent.name}' is remembering the model response for scope '{self.scope}' and conversation '{self.conversation}'")
             await self.agent.remember(self.scope, self.conversation, model_response)
 
             if len(model_response.tool_calls) > 0:
+                self.logger.info(
+                    f"The model response returned to agent '{self.agent.name}' contains {len(model_response.tool_calls)} tool calls, processing them now.")
                 # Record the event of the tool being called
                 if self.stream:
                     yield self.streaming_response.make_snippet(model_response)
@@ -191,6 +209,7 @@ class AgentStateMachine:
                     self.whole_response.messages.append(model_response)
                 # Store tool calls for later processing
                 self.tool_calls.extend(model_response.tool_calls)
+                self.logger.info(f"The agent '{self.agent.name}' is in now in Tool Calling mode")
                 self.state = AgentState.TOOL_CALLING
             elif finished:
                 # either we are streaming and we finished, or we are expecting a single response
@@ -204,8 +223,11 @@ class AgentStateMachine:
                     return
                 else:
                     if self.agent.planner is None:
+                        self.logger.info(f"The agent '{self.agent.name}' has now finished its execution")
                         self.state = AgentState.FINISHED
                     else:
+                        self.logger.info(
+                            f"The agent '{self.agent.name}' is going back to the Planning mode now")
                         self.state = AgentState.PLANNING
                     return
             else:
@@ -219,18 +241,24 @@ class AgentStateMachine:
         """Handle the TOOL_CALLING state: Process tool calls from the model response."""
 
         for tool_call in self.tool_calls:
-            error, tool_call_response = await self.agent.call_tool(tool_call)
-            if error:
-                warn(f"MCP call failed: {error}")
+            with self.info(
+                    f"The agent '{self.agent.name}' is calling tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}'",
+                    f"The agent '{self.agent.name}' called tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}'"):
+                error, tool_call_response = await self.agent.call_tool(tool_call)
+                if error:
+                    self.logger.warning(
+                        f"The agent {self.agent.name} called a tool '{tool_call.function.name}' with arguments: '{tool_call.function.arguments}', but the call failed: {error}")
 
-            # the tool_call_response contains the error message if the tool call failed
-            await self.agent.remember(self.scope, self.conversation, tool_call_response)
-            if self.stream:
-                yield self.streaming_response.make_snippet(tool_call_response)
-            else:
-                self.whole_response.messages.append(tool_call_response)
+                # the tool_call_response contains the error message if the tool call failed
+                await self.agent.remember(self.scope, self.conversation, tool_call_response)
+                if self.stream:
+                    yield self.streaming_response.make_snippet(tool_call_response)
+                else:
+                    self.whole_response.messages.append(tool_call_response)
 
         # after processing tool calls, we need another model call
+        self.logger.info(
+            f"The agent {self.agent.name} made all the necessary tool calls. It is going back to the Model Calling mode")
         self.state = AgentState.MODEL_CALLING
 
     async def _handle_finished_state(self):
@@ -248,6 +276,7 @@ class AgentStateMachine:
             for message in messages:
                 await self.agent.remember(self.scope, self.conversation, message)
         else:
+            self.logger.info(f"The agent '{self.agent.name}' is now planning the next steps")
             # When a planner is provided, the input messages will be handled solely by the planner
             self.plan = await self.agent.planner.plan(messages, self.contextual_knowledge, self.stream)
 
@@ -278,19 +307,19 @@ class Agent(InfoContext, DebugContext):
             return cls._logger
 
     def __init__(
-        self,
-        node: LocalNodeProtocol,
-        name: str,
-        instructions: str,
-        model: Model,
-        memory_model: Optional[Model],
-        memory_embeddings_model: Optional[Model],
-        tool_specs: List[dict],
-        tools: Dict[str, InvokableTool],
-        planner: Planner,
-        memory: Memory,
-        knowledge: KnowledgeProvider,
-        maximum_iterations: int,
+            self,
+            node: LocalNodeProtocol,
+            name: str,
+            instructions: str,
+            model: Model,
+            memory_model: Optional[Model],
+            memory_embeddings_model: Optional[Model],
+            tool_specs: List[dict],
+            tools: Dict[str, InvokableTool],
+            planner: Planner,
+            memory: Memory,
+            knowledge: KnowledgeProvider,
+            maximum_iterations: int,
     ):
         self.logger = Agent.class_logger()
         with self.info(f"Starting agent '{name}'", f"Started agent '{name}'"):
@@ -356,7 +385,7 @@ class Agent(InfoContext, DebugContext):
         return GetConversationsResponse(self.memory.get_messages_only(message.scope, message.conversation))
 
     async def handle__conversation_snippet(
-        self, snippet: StreamedConversationSnippet | ConversationSnippet
+            self, snippet: StreamedConversationSnippet | ConversationSnippet
     ) -> AsyncGenerator[StreamedConversationSnippet | ConversationSnippet | Error, None]:
         stream = type(snippet) is StreamedConversationSnippet
         if stream:
@@ -456,9 +485,9 @@ class Agent(InfoContext, DebugContext):
         while True:
             self.memory_knowledge = await AgentMemoryKnowledge.create(self.memory_model, self.memory_embeddings_model)
             for i in range(0, len(skipped_message_history), 2):
-                self.logger.info(f"ADDING MESSAGES to knowledge: {skipped_message_history[i : i + 2]}")
+                self.logger.info(f"ADDING MESSAGES to knowledge: {skipped_message_history[i: i + 2]}")
                 await self.memory_knowledge.add(
-                    scope=scope, conversation=conversation, messages=skipped_message_history[i : i + 2]
+                    scope=scope, conversation=conversation, messages=skipped_message_history[i: i + 2]
                 )
 
             # We should actually clear knowledge in this function each time...
@@ -499,7 +528,7 @@ class Agent(InfoContext, DebugContext):
             iterations += 1
 
     async def complete_chat(
-        self, scope, conversation, contextual_knowledge, stream: bool = False
+            self, scope, conversation, contextual_knowledge, stream: bool = False
     ) -> AsyncGenerator[Tuple[Optional[Exception], bool, AssistantMessage], None]:
         input_context = await self.determine_input_context(scope, conversation, contextual_knowledge)
         self.logger.info(
@@ -617,17 +646,17 @@ class Agent(InfoContext, DebugContext):
 
     @staticmethod
     async def start(
-        node: NodeProtocol,
-        instructions: str,
-        name: Optional[str] = None,
-        model: Model = None,
-        memory_model: Optional[Model] = None,
-        memory_embeddings_model: Optional[Model] = None,
-        tools: Optional[List[InvokableTool]] = None,
-        planner: Planner = None,
-        exposed_as: Optional[str] = None,
-        knowledge: KnowledgeProvider = NoopKnowledge(),
-        max_iterations: int = 14,
+            node: NodeProtocol,
+            instructions: str,
+            name: Optional[str] = None,
+            model: Model = None,
+            memory_model: Optional[Model] = None,
+            memory_embeddings_model: Optional[Model] = None,
+            tools: Optional[List[InvokableTool]] = None,
+            planner: Planner = None,
+            exposed_as: Optional[str] = None,
+            knowledge: KnowledgeProvider = NoopKnowledge(),
+            max_iterations: int = 14,
     ):
         if name is None:
             name = secrets.token_hex(12)
@@ -677,16 +706,16 @@ class Agent(InfoContext, DebugContext):
 
     @staticmethod
     async def start_many(
-        node: NodeProtocol,
-        instructions: str,
-        number_of_agents: int,
-        model: Model = None,
-        memory_model: Optional[Model] = None,
-        memory_embeddings_model: Optional[Model] = None,
-        tools: Optional[list] = None,
-        planner=None,
-        knowledge: Optional[KnowledgeProvider] = None,
-        max_iterations: int = 14,
+            node: NodeProtocol,
+            instructions: str,
+            number_of_agents: int,
+            model: Model = None,
+            memory_model: Optional[Model] = None,
+            memory_embeddings_model: Optional[Model] = None,
+            tools: Optional[list] = None,
+            planner=None,
+            knowledge: Optional[KnowledgeProvider] = None,
+            max_iterations: int = 14,
     ):
         if model is None:
             model = Model(name="llama3.2")
@@ -735,17 +764,17 @@ class Agent(InfoContext, DebugContext):
 
     @staticmethod
     async def start_agent_impl(
-        node: LocalNodeProtocol,
-        instructions: str,
-        name: Optional[str],
-        model: Model,
-        memory_model: Optional[Model],
-        memory_embeddings_model: Optional[Model],
-        tools: Optional[List[InvokableTool]],
-        planner: Planner,
-        exposed_as: Optional[str],
-        knowledge: Optional[KnowledgeProvider],
-        max_iterations: int,
+            node: LocalNodeProtocol,
+            instructions: str,
+            name: Optional[str],
+            model: Model,
+            memory_model: Optional[Model],
+            memory_embeddings_model: Optional[Model],
+            tools: Optional[List[InvokableTool]],
+            planner: Planner,
+            exposed_as: Optional[str],
+            knowledge: Optional[KnowledgeProvider],
+            max_iterations: int,
     ):
         tools_specs, tools = await prepare_tools(node, tools)
         # the memory is shared between all the agent workers
