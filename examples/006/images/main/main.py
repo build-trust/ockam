@@ -1,9 +1,5 @@
-from datetime import datetime, UTC
-from ockam import set_log_levels
-
-set_log_levels("agent=debug,ockam_node=info,ockam=info")
-
 from ockam import Agent, Model, Node, Tool
+from datetime import datetime, UTC
 
 
 def current_iso8601_utc_time():
@@ -18,7 +14,7 @@ async def main(node):
         node=node,
         name="henry",
         instructions="You are Henry, an expert legal assistant",
-        model=Model("claude-3-7-sonnet-v1"),
+        model=Model("claude-sonnet-4-v1"),
         tools=[Tool(current_iso8601_utc_time)],
     )
 
