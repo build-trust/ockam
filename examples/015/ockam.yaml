@@ -1,4 +1,4 @@
-name: hello
+name: example015
 pods:
   - name: main-pod
     public: true
