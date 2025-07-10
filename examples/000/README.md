@@ -84,19 +84,11 @@ Whenever you push updates to the main branch, the action will trigger and
 redeploy your Zone, to ensure that your production environment
 is always up to date.
 
-> [!IMPORTANT]
-> Ensure you have [Github CLI](https://cli.github.com/manual/) installed and
-> running on your workstation before running the following commands.
+Create a github actions environment secret called `OCKAM_IDENTITY` and
+set its value copied to your clipboard by
+running `ockam identity export | pbcopy` on your workstation.
 
-```sh
-gh repo create YOUR_REPO_NAME --private --confirm
-gh secret set OCKAM_IDENTITY --env production --body "$(ockam identity export)"
-gh secret set OCKAM_ZONE_SECRETS --env production --body "$(cat secrets.yaml)"
+Create a github actions environment secret called `OCKAM_ZONE_SECRETS` and
+set its value copied to your clipboard by
+running `cat secrets.yaml | pbcopy` on your workstation.
 
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin "git@github.com:YOUR_ORG_NAME/YOUR_REPO_NAME.git"
-git push -u origin main
-```
