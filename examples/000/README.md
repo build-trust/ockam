@@ -81,7 +81,7 @@ with your main-pod's URL. Replace the API KEY header with the API KEY that was
 generated in your `secrets.yaml` file.
 
 The example app that we've deployed accepts a list of items. Each item can
-be simple word or a complex document. The app uses an Ockam Agent to analyize
+be a simple word or a complex document. The app uses an Ockam Agent to analyze
 each item in parallel and responds with a translation of that item.
 
 ### Make a permanent deployment
