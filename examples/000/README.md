@@ -20,7 +20,9 @@ curl -sSfL install.command.ockam.io | bash && source "$HOME/.ockam/env"
 ### Get code from a template
 
 To help you hit the ground running, we provide pre-configured
-templates to bootstrap your development. Run the following to initialize
+templates to bootstrap your development.
+
+Run the following, in a new empty directory to initialize
 the code for your Zone:
 
 ```sh
@@ -64,6 +66,24 @@ will be immediately deleted.
 ockam --rm --watch
 ```
 
+This will output a URL to the http server on the main-pod in your zone.
+Use this URL to send a query to the deployed app.
+
+```sh
+curl -s -X POST https://fccdfd97526a97da0f0262da60861ce8-example000.ai.ockam.network/analyses \
+  -H "X-API-KEY: 2344fe90d2d706d8a4495fdcb517fbcbefe901f12424a33efa920a0bef26aed0" \
+  -H "Content-Type: application/json" \
+  -d '{"items":["hello", "bye"]}'
+```
+
+Replace the URL in `URL/analyses` in the curl command above
+with your main-pod's URL. Replace the API KEY header with the API KEY that was
+generated in your `secrets.yaml` file.
+
+The example app that we've deployed accepts a list of items. Each item can
+be simple word or a complex document. The app uses an Ockam Agent to analyize
+each item in parallel and responds with a translation of that item.
+
 ### Make a permanent deployment
 
 Once your Zone is ready for production, deploy it permanently:
@@ -91,4 +111,3 @@ running `ockam identity export | pbcopy` on your workstation.
 Create a github actions environment secret called `OCKAM_ZONE_SECRETS` and
 set its value copied to your clipboard by
 running `cat secrets.yaml | pbcopy` on your workstation.
-

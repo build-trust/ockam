@@ -5,7 +5,6 @@ from fastapi.security.api_key import APIKeyHeader
 
 from asyncio import gather, create_task
 from dataclasses import dataclass
-from json import loads
 from os import environ
 from typing import List, Dict
 
@@ -21,25 +20,11 @@ async def analyze_item(node: Node, item: str) -> Dict[str, str]:
                 output the corresponding translation in hindi written
                 using the latin alphabet.
             """,
-            model=Model(
-                name="llama4-maverick",
-                response_format={
-                    "type": "json_object",
-                    "response_schema": {
-                        "type": "object",
-                        "properties": {
-                            "translation": {"type": "string"},
-                        },
-                        "required": [
-                            "translation",
-                        ],
-                    },
-                },
-            ),
+            model=Model(name="llama4-maverick"),
         )
 
         response = await agent.send(f"English:\n\n{item}", timeout=1000)
-        analysis = loads(response[0].content)
+        analysis = response[0].content
 
         return {"item": item, "analysis": analysis}
     except Exception as e:
