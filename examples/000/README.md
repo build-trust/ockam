@@ -66,19 +66,22 @@ will be immediately deleted.
 ockam --rm --watch
 ```
 
-This will output a URL to the http server on the main-pod in your zone.
-Use this URL to send a query to the deployed app.
+This will output a URL to the http server on the main-pod in your zone. Define
+the following variables in your shell and put in the suggested values.
 
 ```sh
-curl -s -X POST https://fccdfd97526a97da0f0262da60861ce8-example000.ai.ockam.network/analyses \
-  -H "X-API-KEY: 2344fe90d2d706d8a4495fdcb517fbcbefe901f12424a33efa920a0bef26aed0" \
+export URL='put the url to your main-pod here'
+export API_KEY='put the api key from your secrets.yaml file here'
+```
+
+Invoke the API using curl:
+
+```sh
+curl -s -X POST "$URL/analyses" \
+  -H "X-API-KEY: $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"items":["hello", "bye"]}'
 ```
-
-Replace the URL in `URL/analyses` in the curl command above
-with your main-pod's URL. Replace the API KEY header with the API KEY that was
-generated in your `secrets.yaml` file.
 
 The example app that we've deployed accepts a list of items. Each item can
 be a simple word or a complex document. The app uses an Ockam Agent to analyze
