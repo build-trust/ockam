@@ -1,4 +1,4 @@
-from typing import Optional, AsyncGenerator
+from typing import Optional, AsyncGenerator, List
 
 from ockam.nodes.message import ConversationRole, UserMessage, AssistantMessage
 
@@ -25,9 +25,9 @@ class CotPlan(Plan):
             yield step
 
     async def _next_step(
-        self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
+        self, messages: List[ConversationMessage], contextual_knowledge: Optional[str]
     ) -> AsyncGenerator[ConversationMessage, None]:
-        step_messages: list[ConversationMessage] = []
+        step_messages: List[ConversationMessage] = []
         if contextual_knowledge:
             step_messages.append(
                 SystemMessage(f"This information could be useful for proper planning:\n{contextual_knowledge}")

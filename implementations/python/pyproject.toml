@@ -25,6 +25,7 @@ dependencies = [
   "uvicorn>=0.24.0",
   "pypdfium2>=4.30",
   "filetype>=1.2.0",
+  "pillow>=11.3.0",
 ]
 
 authors = [{ name = "Ockam Team", email = "support@ockam.io" }]

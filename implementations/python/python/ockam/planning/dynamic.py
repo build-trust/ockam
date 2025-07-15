@@ -109,7 +109,7 @@ The task is asking for the result of the expression (3*5) + 2. The provided info
             temperature=0,
         )
 
-        text = is_completed.choices[0].message.content
+        text = is_completed.choices[0].message.content.text
         if "</think>" in text:
             # deepseek uses <think> and </think> tags to indicate the reasoning
             text = text.split("</think>")[1]

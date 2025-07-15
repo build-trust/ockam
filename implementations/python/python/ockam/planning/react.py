@@ -1,4 +1,4 @@
-from typing import Optional, AsyncGenerator
+from typing import Optional, AsyncGenerator, List
 
 from .protocol import Planner, Plan
 from ..nodes.message import SystemMessage, ConversationMessage, UserMessage, ConversationRole, Phase
@@ -12,7 +12,7 @@ class ReActPlan(Plan):
         self.step_index = 0
 
     async def next_step(
-        self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]
+        self, messages: List[ConversationMessage], contextual_knowledge: Optional[str]
     ) -> AsyncGenerator[ConversationMessage | None, None]:
         if self.step_index >= len(self.steps):
             yield None
@@ -31,15 +31,15 @@ class ReActPlanner(Planner):
         self.model = model
 
     async def plan(
-        self, messages: list[ConversationMessage], contextual_knowledge: Optional[str], stream: bool = False
+        self, messages: List[ConversationMessage], contextual_knowledge: Optional[str], stream: bool = False
     ) -> Plan:
         return ReActPlan(await self._plan(messages, contextual_knowledge))
 
-    async def _plan(self, messages: list[ConversationMessage], contextual_knowledge: Optional[str]) -> list[str]:
+    async def _plan(self, messages: List[ConversationMessage], contextual_knowledge: Optional[str]) -> list[str]:
         if len(messages) == 0:
             return []
 
-        step_messages: list[ConversationMessage] = []
+        step_messages: List[ConversationMessage] = []
         if contextual_knowledge:
             step_messages.append(
                 SystemMessage(f"This information could be useful for proper planning:\n{contextual_knowledge}")

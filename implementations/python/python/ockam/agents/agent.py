@@ -37,6 +37,8 @@ from ..nodes.message import (
     GetConversationsResponse,
     Phase,
     ToolCallResponseMessage,
+    TextContent,
+    SystemMessage,
 )
 from .names import validate_name
 
@@ -195,7 +197,7 @@ class AgentStateMachine:
             elif finished:
                 # either we are streaming and we finished, or we are expecting a single response
                 if self.stream:
-                    if model_response.content or model_response.tool_calls:
+                    if model_response.content.text or model_response.tool_calls:
                         yield self.streaming_response.make_snippet(model_response)
                 else:
                     self.whole_response.messages.append(model_response)
@@ -291,6 +293,7 @@ class Agent(InfoContext, DebugContext):
         memory: Memory,
         knowledge: KnowledgeProvider,
         maximum_iterations: int,
+        converter: MessageConverter,
     ):
         self.logger = Agent.class_logger()
         with self.info(f"Starting agent '{name}'", f"Started agent '{name}'"):
@@ -306,14 +309,14 @@ class Agent(InfoContext, DebugContext):
         self.memory_knowledge = None
 
         self.memory = memory
-        memory.set_instructions(system_message(instructions))
+        memory.set_instructions(SystemMessage(instructions))
 
         self.planner = planner
         self.maximum_iterations = maximum_iterations
 
         self.knowledge = knowledge
 
-        self.converter = MessageConverter.create(node)
+        self.converter = converter
 
     async def handle_message(self, context, message):
         try:
@@ -399,31 +402,25 @@ class Agent(InfoContext, DebugContext):
         async for result in state_machine.run():
             yield result
 
-    async def get_messages_only(self, conversation, scope) -> list[ConversationMessage]:
-        messages: list[dict] = self.memory.get_messages_only(scope, conversation)
-        return [self.converter.conversation_message_from_dict(m) for m in messages]
+    async def get_messages_only(self, conversation, scope) -> List[ConversationMessage]:
+        return self.memory.get_messages_only(scope, conversation)
 
     async def remember(self, scope: str, conversation: str, message: ConversationMessage):
         # TODO: at some point memory becomes bigger than context window and we need to start pusing memories
         # into Knowledge
         # self.history_knowledge.add(messages=[model_response], user_id=scope)
-        if not isinstance(message, dict):
-            message = self.converter.message_to_dict(message)
         self.memory.add_message(scope, conversation, message)
 
-    async def message_history(self, scope: str, conversation: str) -> list[dict]:
+    async def message_history(self, scope: str, conversation: str) -> List[ConversationMessage]:
         return self.memory.get_messages(scope, conversation)
 
-    async def determine_input_context(self, scope, conversation, contextual_knowledge):
+    async def determine_input_context(self, scope, conversation, contextual_knowledge) -> List[ConversationMessage]:
         # Try to use full history and reduce it until it fits into the context window
         prompt_size = 1
         if contextual_knowledge:
             prompt_size += 1
             contextual_knowledge = [
-                {
-                    "role": "system",
-                    "content": "The following knowledge could be useful to answer properly:\n" + contextual_knowledge,
-                }
+                SystemMessage("The following knowledge could be useful to answer properly:\n" + contextual_knowledge)
             ]
         else:
             contextual_knowledge = []
@@ -567,9 +564,13 @@ class Agent(InfoContext, DebugContext):
                 response = {"role": role}
             else:
                 if hasattr(delta, "reasoning_content") and delta.reasoning_content:
-                    response = {"role": role, "content": delta.reasoning_content, "thinking": True}
+                    response = {
+                        "role": role,
+                        "content": {"type": "text", "text": delta.reasoning_content},
+                        "thinking": True,
+                    }
                     yield None, False, self.converter.conversation_message_from_dict(response)
-                response = {"role": role, "content": delta.content}
+                response = {"role": role, "content": {"type": "text", "text": delta.content}}
             message = delta
         else:
             finished = True
@@ -579,12 +580,16 @@ class Agent(InfoContext, DebugContext):
                     None,
                     False,
                     self.converter.conversation_message_from_dict(
-                        {"role": message.role, "content": message.reasoning_content, "thinking": True}
+                        {
+                            "role": message.role,
+                            "content": {"type": "text", "text": message.reasoning_content},
+                            "thinking": True,
+                        }
                     ),
                 )
                 message.reasoning_content = ""
 
-            response = {"role": message.role, "content": message.content}
+            response = {"role": message.role, "content": {"type": "text", "text": message.content}}
 
         if message.tool_calls:
             response["tool_calls"] = []
@@ -594,7 +599,7 @@ class Agent(InfoContext, DebugContext):
                 args = tool_call.function.arguments
                 response["tool_calls"].append({"id": id, "function": {"name": name, "arguments": args}})
 
-        if response.get("content") or response.get("tool_calls") or finished:
+        if response.get("content", {}).get("text", "") or response.get("tool_calls") or finished:
             yield None, finished, self.converter.conversation_message_from_dict(response)
 
     async def call_tool(self, tool_call: ToolCall) -> Tuple[Optional[Error], ToolCallResponseMessage]:
@@ -749,7 +754,8 @@ class Agent(InfoContext, DebugContext):
     ):
         tools_specs, tools = await prepare_tools(node, tools)
         # the memory is shared between all the agent workers
-        memory = Memory()
+        converter = MessageConverter.create(node)
+        memory = Memory(converter)
 
         def agent_creator():
             return Agent(
@@ -765,6 +771,7 @@ class Agent(InfoContext, DebugContext):
                 memory,
                 knowledge,
                 max_iterations,
+                converter,
             )
 
         await node.start_spawner(name, agent_creator, key_extractor, None, exposed_as)
@@ -795,7 +802,3 @@ async def prepare_tools(node, tools) -> Tuple[List[dict], Dict[str, InvokableToo
         specs.append(spec)
 
     return specs, prepared
-
-
-def system_message(message: str) -> dict:
-    return {"role": "system", "content": message}
