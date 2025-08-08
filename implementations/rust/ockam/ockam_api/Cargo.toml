@@ -126,7 +126,7 @@ utoipa = { version = "^5.3", features = ["yaml", "openapi_extensions", "non_stri
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.71.0", features = ["cbor", "serde"] }
 ockam_transport_core = { path = "../ockam_transport_core", version = "^0.104.0" }
 ockam_transport_tcp = { path = "../ockam_transport_tcp", version = "^0.140.0", default-features = false, features = ["std"] }
-tonic = { version = "0.12", features = ["default", "gzip"] }
+tonic = { version = "0.14", features = ["default", "gzip"] }
 
 [dependencies.ockam_core]
 version = "0.126.0"
