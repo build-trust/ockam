@@ -56,7 +56,7 @@ sqlx-core = { version = "0.8.3", optional = true, default-features = false }
 str-buf = "3.0.3"
 tokio = { version = "1.43", default-features = false, optional = true, features = ["sync", "time", "rt", "rt-multi-thread", "macros"] }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
-wast = { version = "220.0.0", default-features = false, optional = true }
+wast = { version = "237.0.0", default-features = false, optional = true }
 winnow = { version = "0.6.25", default-features = false, optional = true, features = ["alloc"] }
 
 [dev-dependencies]
