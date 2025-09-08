@@ -25,17 +25,17 @@ const UNSAFE_TAG: &str = include_str!("../static/unsafe_tag.txt");
 #[derive(Clone, Debug, Args)]
 #[command(
 before_help = docs::before_help(UNSAFE_TAG),
-about = docs::about("Removes the local Ockam configuration including all Identities and Nodes"),
+about = docs::about("Delete all local state and configuration."),
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP)
 )]
 pub struct ResetCommand {
-    /// Confirm the reset without prompting
+    /// Confirm the reset, skip the confirmation prompt
     #[arg(long, short)]
     yes: bool,
 
     /// Remove your spaces from the Orchestrator
-    #[arg(long)]
+    #[arg(long, hide = true)]
     all: bool,
 }
 
@@ -58,7 +58,7 @@ impl ResetCommand {
             let msg = if delete_orchestrator_resources {
                 "This will delete the local Ockam configuration and remove your spaces from the Orchestrator. Are you sure?"
             } else {
-                "This will delete the local Ockam configuration. Are you sure?"
+                "This will delete all local state and configuration. Are you sure?"
             };
             match opts.terminal.confirm(msg)? {
                 ConfirmResult::Yes => {}
@@ -93,7 +93,7 @@ impl ResetCommand {
 
         opts.terminal
             .to_stdout()
-            .plain(fmt_ok!("Local Ockam configuration deleted"))
+            .plain(fmt_ok!("All local state and configuration was deleted."))
             .write_line()?;
         Ok(())
     }

@@ -121,7 +121,7 @@ impl InMemoryNodeCommand for EnrollHandler {
 
         // Output
         let mut plain = fmt_log!(
-            "Your Identity {}, with Identifier {} is now enrolled with Ockam Orchestrator.\n",
+            "Your Identity {}, with Identifier {} is now enrolled with Autonomy.\n",
             color_primary(identity.name()),
             color_primary(identity.identifier().to_string())
         );
@@ -189,7 +189,7 @@ impl EnrollHandler {
                         let name = named_identity.name();
                         let identifier = named_identity.identifier();
                         let message = format!(
-                            "Your {} Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
+                            "Your {} Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Autonomy account.",
                             "default".to_string().dim(),
                             color_primary(name),
                             color_primary(identifier.to_string())
@@ -205,7 +205,7 @@ impl EnrollHandler {
                     let name = named_identity.name();
                     let identifier = named_identity.identifier();
                     let message = format!(
-                        "Your Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Ockam account.",
+                        "Your Identity {}\nwith Identifier {}\nis already enrolled as one of the Identities associated with your Autonomy account.",
                         color_primary(name),
                         color_primary(identifier.to_string())
                     );
@@ -242,7 +242,7 @@ impl EnrollHandler {
         }
 
         self.opts.terminal.write_line(fmt_log!(
-            "Enrolling your Identity with Ockam Orchestrator..."
+            "Enrolling your Identity with Autonomy..."
         ))?;
 
         // Run OIDC service
@@ -263,7 +263,7 @@ impl EnrollHandler {
         let controller = node.create_controller().await?;
         self.enroll_with_node(node.ctx(), &controller, token)
             .await
-            .wrap_err("Failed to enroll your local Identity with Ockam Orchestrator")?;
+            .wrap_err("Failed to enroll your local Identity with Autonomy")?;
         self.opts
             .state
             .set_identifier_as_enrolled(&node.identifier(), &user_info.email)
@@ -310,14 +310,14 @@ impl EnrollHandler {
             if is_confirmation.load(Ordering::Relaxed) {
                 let message = fmt_ok!(
                 "Received Ctrl+C again. Canceling {}. Please try again.",
-                "ockam enroll".bold().light_yellow()
+                "autonomy cluster enroll".bold().light_yellow()
             );
                 let _ = terminal.write_line(format!("\n{}", message).as_str());
                 process::exit(2);
             } else {
                 let message = fmt_warn!(
                 "{} is still in progress. Please press Ctrl+C again to stop the enrollment process.",
-                "ockam enroll".bold().light_yellow()
+                "autonomy cluster enroll".bold().light_yellow()
             );
                 let _ = terminal.write_line(format!("\n{}", message).as_str());
                 is_confirmation.store(true, Ordering::Relaxed);

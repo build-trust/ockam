@@ -12,8 +12,8 @@ pub struct GlobalArgs {
     global = true,
     long,
     short,
-    help("Print help information (-h compact, --help extensive)"),
-    long_help("Print help information (-h displays compact help summary, --help displays extensive help summary)"),
+    help("Print help (-h compact, --help detailed)"),
+    long_help("Print help (-h displays compact help, --help displays help in detail)"),
     help_heading("Global Options"),
     action = ArgAction::Help
     )]
@@ -21,27 +21,28 @@ pub struct GlobalArgs {
 
     /// Do not write messages to stderr and disable confirmation prompts.
     /// This is useful for scripting and automation, where you don't want the process to block on stdin.
-    #[arg(global = true, long, short, env = "QUIET")]
+    #[arg(global = true, long, short, env = "QUIET", hide = true)]
     pub quiet: bool,
 
-    /// Increase verbosity of trace messages
+    /// Increase verbosity of output (-v, -vv, -vvv, -vvvv)
     #[arg(
     global = true,
     long,
     short,
-    long_help("Increase verbosity of trace messages by repeating the flag. Use `-v` to show command's \
-    info messages, `-vv` will broaden the scope to all ockam crates. Use `-vvv` and `-vvvv` to \
-    increase the verbosity to debug and trace respectively"),
+    long_help("Increase the verbosity of output by repeating this flag. \
+      Use `-v` to show info level trace messages, `-vv` to broaden scope \
+      of messages to all crates. Use `-vvv` and `-vvvv` to increase the \
+      verbosity to debug and trace respectively."),
     action = ArgAction::Count
     )]
     pub verbose: u8,
 
     /// Disable colors in output
-    #[arg(global = true, long, env = "NO_COLOR")]
+    #[arg(global = true, long, env = "NO_COLOR", hide = true)]
     pub no_color: bool,
 
     /// Disable tty functionality, like interactive prompts.
-    #[arg(global = true, long, env = "NO_INPUT")]
+    #[arg(global = true, long, env = "NO_INPUT", hide = true)]
     pub no_input: bool,
 
     /// Specifies the output format of the command. Defaults to 'plain' if not explicitly set.
@@ -50,15 +51,15 @@ pub struct GlobalArgs {
     /// is usually an identifier that can be used as input for other commands. If stdout is a tty,
     /// the output will contain human-readable information about the command execution.
     /// The 'json' format can be customized with the `--jq` and `--compact-output` options.
-    #[arg(global = true, long = "output", value_enum)]
+    #[arg(global = true, long = "output", value_enum, hide = true)]
     pub(crate) output_format: Option<OutputFormatArg>,
 
     /// jq query to apply to the JSON output of the command
-    #[arg(global = true, long = "jq")]
+    #[arg(global = true, long = "jq", hide = true)]
     jq_query: Option<String>,
 
     /// Compact the JSON output of the command
-    #[arg(global = true, long)]
+    #[arg(global = true, long, hide = true)]
     compact_output: bool,
 
     /// [DEPRECATED] Use `--compact-output` instead

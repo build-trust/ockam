@@ -70,7 +70,7 @@ impl OidcServiceExt for OidcService {
         // Otherwise, write the instructions at stderr as normal
         else {
             opts.terminal.write_line(fmt_log!(
-                "Please sign into your Ockam Account to activate this machine:\n"
+                "Please sign in to your Autonomy account to activate this machine:\n"
             ))?;
 
             clipboard = Clipboard::new();
@@ -157,7 +157,7 @@ impl OidcServiceExt for OidcService {
                 }
                 terminal.map(|terminal| {
                     terminal.write_line(fmt_ok!(
-                        "Signed into account {} and activated this machine.",
+                        "Signed in to account {} and activated this machine.",
                         color_email(user_info.email.to_string())
                     ))
                 });

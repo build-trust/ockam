@@ -1,0 +1,11 @@
+Enroll with your cluster in autonomy.
+
+This command enrolls the default identity of this machine with your cluster
+in autonomy. Running it will give you the ability to manage your cluster from
+this machine. Once this machine is enrolled, it can deploy new zones.
+
+If no default identity exists on this machine, this command will first create
+a new vault and a new identity. It will store the secrets of that identity in
+the new vault. It will also mark that new identity as the default identity of
+this machine. Finally, it will use that is new identity to enroll this machine
+with your cluster in autonomy.

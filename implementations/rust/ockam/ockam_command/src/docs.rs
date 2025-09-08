@@ -39,11 +39,12 @@ If you have questions, as you explore, join us on the Discord channel https://di
             "
 Learn More:
 
-Use `ockam <SUBCOMMAND> --help` for more information about a subcommand (e.g., 'cluster' or 'zone').
+Use `ockam <SUBCOMMAND> --help` for more information about a subcommand.
+Learn more at: `https://autonomy.computer/docs`
 
 Feedback:
 
-If you have questions, please email us on {}",
+If you have questions, please email us at `{}`",
             BrandingCompileEnvVars::support_email()
         )
     }
