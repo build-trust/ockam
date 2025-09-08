@@ -1,4 +1,0 @@
-```sh
-# To delete an identity given its name
-$ ockam identity delete i
-```

@@ -1,1 +1,0 @@
-This command will export the identity in a format that can be imported using `ockam identity import`.

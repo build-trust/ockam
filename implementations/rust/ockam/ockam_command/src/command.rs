@@ -40,7 +40,7 @@ use crate::util::exitcode;
 #[derive(Debug, Parser, Default)]
 #[command(
 name = BrandingCompileEnvVars::bin_name(),
-term_width = 100,
+term_width = 80,
 about = docs::about(ABOUT),
 long_about = docs::about(LONG_ABOUT),
 after_long_help = docs::after_help(AFTER_LONG_HELP),

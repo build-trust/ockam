@@ -70,8 +70,8 @@ use crate::Result;
 #[derive(Clone, Debug, Subcommand)]
 #[command(about = docs::about("List of commands which can be executed with `ockam`"))]
 pub enum OckamSubcommand {
-    #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
-    Enroll(EnrollCommand),
+    // #[command(name = command::name("enroll"), hide = command::hide("enroll"))]
+    // Enroll(EnrollCommand),
 
     #[command(name = command::name("cluster"), hide = command::hide("cluster"))]
     Cluster(ClusterCommand),
@@ -170,7 +170,7 @@ impl OckamSubcommand {
     /// Run the subcommand
     pub async fn run(self, ctx: &Context, opts: CommandGlobalOpts) -> miette::Result<()> {
         match self {
-            OckamSubcommand::Enroll(c) => c.run(ctx, opts).await,
+            // OckamSubcommand::Enroll(c) => c.run(ctx, opts).await,
             OckamSubcommand::Cluster(c) => c.run(ctx, opts).await,
             OckamSubcommand::Zone(c) => c.run(ctx, opts).await,
 
@@ -330,7 +330,7 @@ impl OckamSubcommand {
     /// Return the subcommand name
     pub fn name(&self) -> String {
         match self {
-            OckamSubcommand::Enroll(c) => c.name(),
+            // OckamSubcommand::Enroll(c) => c.name(),
             OckamSubcommand::Cluster(c) => c.name(),
             OckamSubcommand::Zone(c) => c.name(),
             OckamSubcommand::Node(c) => c.name(),

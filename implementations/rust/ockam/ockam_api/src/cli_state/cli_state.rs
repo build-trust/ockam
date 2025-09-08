@@ -345,10 +345,10 @@ impl CliState {
     /// If $OCKAM_HOME is not defined, then $HOME is used instead
     pub(super) fn default_dir() -> Result<PathBuf> {
         Ok(get_env_with_default::<PathBuf>(
-            "OCKAM_HOME",
+            "AUTONOMY_HOME",
             home::home_dir()
                 .ok_or_else(|| CliStateError::InvalidPath("$HOME".to_string()))?
-                .join(".ockam"),
+                .join(".autonomy"),
         )?)
     }
 }

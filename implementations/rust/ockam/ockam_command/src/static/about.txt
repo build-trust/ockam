@@ -1,2 +1,1 @@
-Build, Run, Connect, Secure, Manage, Scale to billions of agents that are interoperable with
-everything, everywhere, all-at-once — with one platform.
+Ship autonomous products.

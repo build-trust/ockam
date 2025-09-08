@@ -133,12 +133,12 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         no_color: bool,
         no_input: bool,
         output_format: OutputFormat,
-        branding: OutputBranding,
+        _branding: OutputBranding,
     ) -> Self {
         let no_color = Self::should_disable_color(no_color);
         let no_input = Self::should_disable_user_input(no_input);
-        let stdout = W::stdout(no_color, branding.clone());
-        let stderr = W::stderr(no_color, branding);
+        let stdout = W::stdout(no_color, OutputBranding::default());
+        let stderr = W::stderr(no_color, OutputBranding::default());
         let max_width_col_count = get_size().map(|it| it.col_count).unwrap_or(ch!(80)).into();
         Self {
             stdout,

@@ -1,3 +1,0 @@
-```sh
-$ ockam identity list
-```

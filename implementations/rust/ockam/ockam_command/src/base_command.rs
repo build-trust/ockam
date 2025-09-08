@@ -13,7 +13,7 @@ use ockam_node::Context;
 #[derive(Clone, Debug, Args, Default)]
 pub struct BaseCommand {
     /// Whether to use a public AWS ECR
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub use_public_ecr: bool,
 
     #[command(flatten)]
