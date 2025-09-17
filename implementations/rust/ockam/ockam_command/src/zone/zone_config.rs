@@ -390,7 +390,7 @@ impl ZoneConfig {
     pub fn get_http_url(&self, cluster_name: &str) -> Option<String> {
         if self.get_main_pod().ok()?.public {
             Some(format!(
-                "https://{}-{}.ai.ockam.network",
+                "https://{}-{}.cluster.autonomy.computer",
                 cluster_name, self.name
             ))
         } else {

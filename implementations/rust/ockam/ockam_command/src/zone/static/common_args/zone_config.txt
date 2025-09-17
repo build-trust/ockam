@@ -1,2 +1,2 @@
 The path to the Zone configuration file, in yaml or json format.
-If not set, the `./ockam.yaml` file from the current directory will be used.
+If not set, will look for config files in this order: `./autonomy.yaml`, `./autonomy.yml`.

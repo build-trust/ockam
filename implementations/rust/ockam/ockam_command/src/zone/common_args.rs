@@ -36,7 +36,12 @@ impl ZoneConfigArg {
                 }
             }
             None => {
-                let paths = vec![PathBuf::from("./ockam.yaml"), PathBuf::from("./ockam.yml")];
+                let paths = vec![
+                    PathBuf::from("./autonomy.yaml"),
+                    PathBuf::from("./autonomy.yml"),
+                    PathBuf::from("./ockam.yaml"),
+                    PathBuf::from("./ockam.yml"),
+                ];
                 for path in paths {
                     if path.try_exists().into_diagnostic()? {
                         return Ok(path);

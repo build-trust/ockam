@@ -112,8 +112,21 @@ impl Command<ZoneConfig> for DeployCommand {
 
 impl DeployCommand {
     fn parse_zone_config(&self) -> Result<ZoneConfig> {
-        let zone_config_path = self.zone.zone_config.as_deref().unwrap_or("./ockam.yaml");
-        ZoneConfig::from_file(zone_config_path)
+        let zone_config_path = match self.zone.zone_config.as_deref() {
+            Some(path) => path.to_string(),
+            None => {
+                let paths = vec!["./autonomy.yaml", "./autonomy.yml", "./ockam.yaml", "./ockam.yml"];
+                let mut found_path = "./autonomy.yaml"; // default preferred
+                for path in paths {
+                    if std::path::Path::new(path).exists() {
+                        found_path = path;
+                        break;
+                    }
+                }
+                found_path.to_string()
+            }
+        };
+        ZoneConfig::from_file(&zone_config_path)
     }
 
     async fn process_images(
