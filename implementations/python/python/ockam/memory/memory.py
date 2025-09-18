@@ -1,4 +1,6 @@
 import json
+from typing import List
+
 import psycopg
 import threading
 
@@ -7,6 +9,8 @@ from psycopg.rows import dict_row
 from collections import defaultdict
 
 from urllib.parse import quote
+
+from ockam.nodes.message import ConversationMessage, SystemMessage, MessageConverter
 
 
 class Memory:
@@ -22,12 +26,13 @@ class Memory:
             cls._logger = get_logger("memory")
             return cls._logger
 
-    def __init__(self):
+    def __init__(self, converter: MessageConverter):
         self.logger = Memory.class_logger()
         self.tenant_id = None
         self.db_url = None
         self.connection = None
         self.lock = threading.RLock()
+        self.converter = converter
 
         self.instructions = []
         self.conversations = defaultdict(lambda: defaultdict(list[dict]))
@@ -54,29 +59,30 @@ class Memory:
                 cur.execute("SELECT scope, conversation, message FROM conversation")
                 rows = cur.fetchall()
                 for row in rows:
-                    message = json.loads(row["message"])
+                    message = self.converter.message_from_json(row["message"])
                     self.conversations[row["scope"]][row["conversation"]].append(message)
 
-    def set_instructions(self, instructions: dict):
+    def set_instructions(self, instructions: SystemMessage):
         with self.lock:
             self.instructions = [instructions]
 
-    def add_message(self, scope: str, conversation: str, message: dict):
+    def add_message(self, scope: str, conversation: str, message: ConversationMessage):
         with self.lock:
             self.conversations[scope][conversation].append(message)
+            message = self.converter.message_to_json(message)
             if self.connection:
                 with self.connection.cursor() as cur:  # pylint: disable=E1101
                     cur.execute(
                         "INSERT INTO conversation (tenant_id, scope, conversation, message) VALUES (%s, %s, %s, %s)",
-                        (self.tenant_id, scope, conversation, json.dumps(message)),
+                        (self.tenant_id, scope, conversation, message),
                     )
                     self.connection.commit()  # pylint: disable=E1101
 
-    def get_messages(self, scope: str, conversation: str) -> list[dict]:
+    def get_messages(self, scope: str, conversation: str) -> List[ConversationMessage]:
         with self.lock:
             return self.instructions + self.get_messages_only(scope, conversation)
 
-    def get_messages_only(self, some_scope: str, some_conversation: str) -> list[dict]:
+    def get_messages_only(self, some_scope: str, some_conversation: str) -> List[ConversationMessage]:
         with self.lock:
             if some_conversation is None:
                 if some_scope is None:
@@ -97,11 +103,12 @@ class Memory:
 
             # add the scope and conversation fields if they are defined
             result = []
+            # TODO: messages should not carry scope and conversation fields
             for message in messages:
                 if some_scope is not None:
-                    message["scope"] = some_scope
+                    message.scope = some_scope
                 if some_conversation is not None:
-                    message["conversation"] = some_conversation
+                    message.conversation = some_conversation
                 result.append(message)
             return result
 

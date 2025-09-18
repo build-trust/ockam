@@ -1,5 +1,5 @@
 from ockam import Agent, Model, Node, CoTPlanner
-from ockam.nodes.message import Phase
+from ockam.nodes.message import Phase, MessageContentType
 
 """
     This example shows how to use a planning strategy ("Chain of Thought" or COT) to solve a complex task.
@@ -22,7 +22,7 @@ async def main(node):
 
         phase = chunk.snippet.messages[-1].phase
         thinking = chunk.snippet.messages[-1].thinking
-        text = chunk.snippet.messages[-1].content
+        text = chunk.snippet.messages[-1].content.text
 
         # reasoning is always in italic
         if phase == Phase.PLANNING:  # planning: green

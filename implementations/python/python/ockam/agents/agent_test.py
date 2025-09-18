@@ -5,7 +5,7 @@ import pytest
 
 from .agent import Agent
 from .. import Node, Tool, CoTPlanner, HttpServer
-from ..nodes.message import Message, ConversationRole, Phase, ToolCall, FunctionToolCall
+from ..nodes.message import Message, ConversationRole, Phase, ToolCall, FunctionToolCall, TextContent
 
 
 async def test_agent_name():
@@ -156,18 +156,18 @@ async def _test_full_flow(node):
     assert len(messages) == 6
 
     assert messages[0].role == ConversationRole.USER
-    assert messages[0].content == "I'm thinking a lot..."
+    assert messages[0].content == TextContent("I'm thinking a lot...")
     assert messages[0].phase == Phase.PLANNING
     assert messages[0].thinking
 
     assert messages[1].role == ConversationRole.USER
     assert messages[1].phase == Phase.PLANNING
-    assert messages[1].content == "The plan is to query the weather tool!"
+    assert messages[1].content == TextContent("The plan is to query the weather tool!")
     assert messages[1].thinking is False
 
     assert messages[2].role == ConversationRole.ASSISTANT
     assert messages[2].phase == Phase.EXECUTING
-    assert messages[2].content == ""
+    assert messages[2].content == TextContent()
     assert messages[2].tool_calls == [
         ToolCall(
             id="tool_call_0",
@@ -179,17 +179,17 @@ async def _test_full_flow(node):
     assert messages[3].role == ConversationRole.TOOL
     assert messages[3].phase == Phase.EXECUTING
     assert messages[3].name == "weather_tool"
-    assert messages[3].content == "sunny"
+    assert messages[3].content == TextContent("sunny")
     assert messages[3].tool_call_id == "tool_call_0"
 
     assert messages[4].role == ConversationRole.ASSISTANT
     assert messages[4].phase == Phase.EXECUTING
-    assert messages[4].content == "I'm thinking that the result is sunny, so I should answer sunny..."
+    assert messages[4].content == TextContent("I'm thinking that the result is sunny, so I should answer sunny...")
     assert messages[4].thinking
 
     assert messages[5].role == ConversationRole.ASSISTANT
     assert messages[5].phase == Phase.EXECUTING
-    assert messages[5].content == "The weather in Paris is sunny!"
+    assert messages[5].content == TextContent("The weather in Paris is sunny!")
     assert messages[5].thinking is False
 
 
@@ -274,18 +274,18 @@ async def _test_full_flow_streaming(node):
     assert len(messages) == 6
 
     assert messages[0].role == ConversationRole.USER
-    assert messages[0].content == "I'm thinking a lot..."
+    assert messages[0].content == TextContent("I'm thinking a lot...")
     assert messages[0].phase == Phase.PLANNING
     assert messages[0].thinking
 
     assert messages[1].role == ConversationRole.USER
     assert messages[1].phase == Phase.PLANNING
-    assert messages[1].content == "The plan is to query the weather tool!"
+    assert messages[1].content == TextContent("The plan is to query the weather tool!")
     assert messages[1].thinking is False
 
     assert messages[2].role == ConversationRole.ASSISTANT
     assert messages[2].phase == Phase.EXECUTING
-    assert messages[2].content == ""
+    assert messages[2].content == TextContent()
     assert messages[2].tool_calls == [
         ToolCall(
             id="tool_call_0",
@@ -297,15 +297,15 @@ async def _test_full_flow_streaming(node):
     assert messages[3].role == ConversationRole.TOOL
     assert messages[3].phase == Phase.EXECUTING
     assert messages[3].name == "weather_tool"
-    assert messages[3].content == "sunny"
+    assert messages[3].content == TextContent("sunny")
     assert messages[3].tool_call_id == "tool_call_0"
 
     assert messages[4].role == ConversationRole.ASSISTANT
     assert messages[4].phase == Phase.EXECUTING
-    assert messages[4].content == "I'm thinking that the result is sunny, so I should answer sunny..."
+    assert messages[4].content == TextContent("I'm thinking that the result is sunny, so I should answer sunny...")
     assert messages[4].thinking
 
     assert messages[5].role == ConversationRole.ASSISTANT
     assert messages[5].phase == Phase.EXECUTING
-    assert messages[5].content == "The weather in Paris is sunny!"
+    assert messages[5].content == TextContent("The weather in Paris is sunny!")
     assert messages[5].thinking is False

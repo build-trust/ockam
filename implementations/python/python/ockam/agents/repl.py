@@ -3,7 +3,7 @@ import secrets
 import re
 import os
 
-from ockam.nodes.message import StreamedConversationSnippet
+from ockam.nodes.message import StreamedConversationSnippet, MessageContentType
 from ockam.agents.socket_address import parse_host_and_port
 
 DEFAULT_HOST = os.environ.get("DEFAULT_HOST_REPL", "127.0.0.1")
@@ -165,7 +165,10 @@ class Repl:
                         # agent does not support streaming
                         if type(response) is StreamedConversationSnippet:
                             if len(response.snippet.messages) > 0:
-                                received = response.snippet.messages[0].content
+                                if response.snippet.messages[0].type == MessageContentType.TEXT:
+                                    received = response.snippet.messages[0].content
+                                else:
+                                    received = ""
                                 buffer += received
                                 if len(buffer) > 20:
                                     await self.write(writer, buffer)
@@ -177,7 +180,10 @@ class Repl:
                                 await writer.drain()
                                 break
                         else:
-                            received = response.messages[0].content
+                            if response.messages[0].content.type == MessageContentType.TEXT:
+                                received = response.messages[0].content.type
+                            else:
+                                received = ""
                             await self.write(writer, received)
                             # indicate the end of the stream
                             writer.write(b"0\n")
@@ -187,7 +193,8 @@ class Repl:
                     reply = await self.agent_reference.send(
                         message, scope=self.scope, conversation=self.conversation, timeout=self.timeout
                     )
-                    await self.write(writer, reply[0].content)
+                    if reply[0].content.type == MessageContentType.TEXT:
+                        await self.write(writer, reply[0].content)
                     # indicate that there are no more messages
                     writer.write(b"0\n")
                     await writer.drain()
