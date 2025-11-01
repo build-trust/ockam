@@ -8,16 +8,24 @@ pub const MIETTE_PADDING: &str = "  ";
 pub const INDENTATION: &str = "  ";
 
 pub fn get_separator_width() -> usize {
-    // If we can't get the terminal width, use the default width
-    let mut terminal_width = r3bl_tuify::get_terminal_width();
-    if terminal_width == 0 {
-        terminal_width = r3bl_tuify::DEFAULT_WIDTH;
+    // When the full UI feature is enabled, use dynamic terminal sizing from r3bl_tuify.
+    #[cfg(feature = "ui")]
+    {
+        let mut terminal_width = r3bl_tuify::get_terminal_width();
+        if terminal_width == 0 {
+            terminal_width = r3bl_tuify::DEFAULT_WIDTH;
+        }
+        let terminal_width = std::cmp::max(terminal_width, 2 * PADDING.len());
+        return std::cmp::min(terminal_width - PADDING.len(), r3bl_tuify::DEFAULT_WIDTH);
     }
-    // Make sure the separator width is at least twice the length of the padding.
-    // We want to show a small separator even if the terminal is too narrow.
-    let terminal_width = std::cmp::max(terminal_width, 2 * PADDING.len());
-    // Limit the separator width to the default width
-    std::cmp::min(terminal_width - PADDING.len(), r3bl_tuify::DEFAULT_WIDTH)
+
+    // Fallback when `ui` feature (and thus r3bl_tuify) is disabled: use a fixed width.
+    #[cfg(not(feature = "ui"))]
+    {
+        // Pick a sane default (80 cols) minus left padding, but never under 10.
+        let width = 80usize.saturating_sub(PADDING.len());
+        std::cmp::max(width, 10)
+    }
 }
 
 #[test]

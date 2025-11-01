@@ -1,11 +1,28 @@
 mod branding;
+#[cfg(feature = "encode_format")]
 mod encode_format;
 mod ockam_abac;
 mod output_format;
 mod utils;
 
 pub use branding::OutputBranding;
+#[cfg(feature = "encode_format")]
 pub use encode_format::EncodeFormat;
+
+#[cfg(not(feature = "encode_format"))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EncodeFormat {
+    Plain,
+    Hex,
+}
+
+#[cfg(not(feature = "encode_format"))]
+impl EncodeFormat {
+    pub fn encode_value<T: Output>(&self, value: &T) -> crate::Result<String> {
+        // Fallback: without the encode_format feature, both variants just return the plain item.
+        value.item()
+    }
+}
 pub use output_format::OutputFormat;
 pub use utils::*;
 

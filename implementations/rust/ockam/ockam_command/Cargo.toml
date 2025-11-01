@@ -77,6 +77,7 @@ ockam = { path = "../ockam", version = "^0.157.0", features = [
 ockam_abac = { path = "../ockam_abac", version = "0.84.0", features = ["std"] }
 ockam_api = { path = "../ockam_api", version = "0.100.0", default-features = false, features = [
   "std",
+  "ui",
 ] }
 ockam_core = { path = "../ockam_core", version = "^0.126.0" }
 ockam_multiaddr = { path = "../ockam_multiaddr", version = "0.71.0", features = [
@@ -130,6 +131,7 @@ zip-extract = "0.2.3"
 assert_cmd = "2"
 mockito = "1.5.0"
 ockam_api = { path = "../ockam_api", version = "0.100.0", default-features = false, features = [
+  "ui",
   "test-utils",
 ] }
 ockam_macros = { path = "../ockam_macros", version = "^0.39.0" }

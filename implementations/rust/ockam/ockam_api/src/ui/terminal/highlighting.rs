@@ -10,7 +10,7 @@ use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
 pub static SYNTAX_SET_NEWLINES: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 
 pub static THEME: Lazy<Theme> = Lazy::new(|| {
-    let mut theme_set = ThemeSet::load_defaults();
+    let mut theme_set = ThemeSet::default();
     let default_theme = theme_set.themes.remove("base16-ocean.dark").unwrap_or(
         theme_set.themes.remove("base16-ocean.light").unwrap_or(
             theme_set

@@ -15,8 +15,24 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
 use miette::{miette, IntoDiagnostic};
 use ockam_core::env::get_env_with_default;
+#[cfg(feature = "ui")]
+#[allow(unused_imports)]
 use r3bl_rs_utils_core::{ch, ChUnit};
+
+
+#[cfg(feature = "ui")]
 use r3bl_tuify::{get_size, select_from_list, SelectionMode, StyleSheet};
+#[cfg(not(feature = "ui"))]
+#[allow(dead_code)]
+pub(crate) fn get_size() -> (usize, usize) {
+    (80, 24)
+}
+#[cfg(not(feature = "ui"))]
+#[allow(dead_code)]
+pub(crate) fn select_from_list<T: Clone>(_: &str, items: &[T]) -> Option<T> {
+    items.first().cloned()
+}
+
 use serde::Serialize;
 use std::fmt::Write as _;
 use std::fmt::{Debug, Display};
@@ -139,7 +155,13 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         let no_input = Self::should_disable_user_input(no_input);
         let stdout = W::stdout(no_color, OutputBranding::default());
         let stderr = W::stderr(no_color, OutputBranding::default());
-        let max_width_col_count = get_size().map(|it| it.col_count).unwrap_or(ch!(80)).into();
+        #[cfg(feature = "ui")]
+        let max_width_col_count: usize = get_size().map(|it| it.col_count.into()).unwrap_or(80);
+        #[cfg(not(feature = "ui"))]
+        let max_width_col_count = {
+            let (cols, _rows) = get_size();
+            cols
+        };
         Self {
             stdout,
             stderr,
@@ -186,6 +208,7 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         }
     }
 
+    #[cfg(feature = "ui")]
     pub fn confirm_interactively(&self, header: String) -> bool {
         let user_input = select_from_list(
             header,
@@ -202,8 +225,15 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         }
     }
 
+    #[cfg(not(feature = "ui"))]
+    pub fn confirm_interactively(&self, header: String) -> bool {
+        let user_input = select_from_list(&header, &["YES".to_string(), "NO".to_string()]);
+        matches!(user_input, Some(ref it) if it == "YES")
+    }
+
     /// Returns the selected items by the user, or an empty `Vec` if the user did not select any item
     /// or if the user is not able to select an item (e.g. not a TTY, `--no-input` flag, etc.).
+    #[cfg(feature = "ui")]
     pub fn select_multiple(&self, header: String, items: Vec<String>) -> Vec<String> {
         if !self.can_ask_for_user_input() {
             return Vec::new();
@@ -219,6 +249,12 @@ impl<W: TerminalWriter + Debug> Terminal<W> {
         );
 
         user_selected_list.unwrap_or_default()
+    }
+
+    #[cfg(not(feature = "ui"))]
+    pub fn select_multiple(&self, _header: String, _items: Vec<String>) -> Vec<String> {
+        // Fallback: interactive multi-selection unavailable without `ui` feature.
+        Vec::new()
     }
 
     pub fn can_ask_for_user_input(&self) -> bool {
