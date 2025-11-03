@@ -43,7 +43,7 @@ default-features = false
 features = ["no_std", "alloc"]
 
 [dev-dependencies]
-bincode = "1.1.3"
+bincode = "2.0.1"
 multiaddr = "0.18"
 ockam_multiaddr = { path = ".", features = ["cbor", "std", "serde"] }
 quickcheck = "1.0.3"
