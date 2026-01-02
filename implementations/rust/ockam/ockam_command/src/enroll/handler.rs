@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use colorful::Colorful;
 use miette::{miette, IntoDiagnostic, WrapErr};
+#[cfg(feature = "ui")]
 use r3bl_rs_utils_core::UnicodeString;
+#[cfg(feature = "ui")]
 use r3bl_tui::{
     ColorWheel, ColorWheelConfig, ColorWheelSpeed, GradientGenerationPolicy, TextColorizationPolicy,
 };
@@ -273,6 +275,7 @@ impl EnrollHandler {
         Ok(user_info)
     }
 
+    #[cfg(feature = "ui")]
     fn display_header(&self) {
         let ockam_header = include_str!("../../static/ockam_ascii.txt").trim();
         let gradient_steps = Vec::from(
@@ -299,6 +302,15 @@ impl EnrollHandler {
             .write_line(format!("{}\n", colored_header));
     }
 
+    #[cfg(not(feature = "ui"))]
+    fn display_header(&self) {
+        let ockam_header = include_str!("../../static/ockam_ascii.txt").trim();
+        let _ = self
+            .opts
+            .terminal
+            .write_line(format!("{}\n", ockam_header));
+    }
+
     fn ctrlc_handler(&self) {
         if !self.enable_ctrlc_signal {
             return;
@@ -309,21 +321,21 @@ impl EnrollHandler {
         ctrlc::set_handler(move || {
             if is_confirmation.load(Ordering::Relaxed) {
                 let message = fmt_ok!(
-                "Received Ctrl+C again. Canceling {}. Please try again.",
-                "autonomy cluster enroll".bold().light_yellow()
-            );
+                    "Received Ctrl+C again. Canceling {}. Please try again.",
+                    "autonomy cluster enroll".bold().light_yellow()
+                );
                 let _ = terminal.write_line(format!("\n{}", message).as_str());
                 process::exit(2);
             } else {
                 let message = fmt_warn!(
-                "{} is still in progress. Please press Ctrl+C again to stop the enrollment process.",
-                "autonomy cluster enroll".bold().light_yellow()
-            );
+                    "{} is still in progress. Please press Ctrl+C again to stop the enrollment process.",
+                    "autonomy cluster enroll".bold().light_yellow()
+                );
                 let _ = terminal.write_line(format!("\n{}", message).as_str());
                 is_confirmation.store(true, Ordering::Relaxed);
             }
         })
-            .expect("Error setting Ctrl-C handler");
+        .expect("Error setting Ctrl-C handler");
     }
 
     #[instrument(skip_all, level = Level::TRACE)]
