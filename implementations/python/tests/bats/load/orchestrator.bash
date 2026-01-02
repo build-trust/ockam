@@ -1,1 +1,0 @@
-../../../../rust/ockam/ockam_command/tests/bats/load/orchestrator.bash

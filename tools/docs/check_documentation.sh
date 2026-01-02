@@ -7,7 +7,7 @@ fi
 
 # Hello Ockam ReadMe
 export HELLO_DOC="$OCKAM_HOME/README.md"
-export HELLO_EXAMPLE="$OCKAM_HOME/examples/rust/get_started/examples"
+export HELLO_EXAMPLE="$OCKAM_HOME/implementations/rust/examples/get_started/examples"
 
 # Tools home
 export TOOLS_DIR="$OCKAM_HOME/tools/docs"

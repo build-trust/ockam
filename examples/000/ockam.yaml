@@ -1,9 +1,0 @@
-name: example000
-pods:
-  - name: main-pod
-    public: true
-    containers:
-      - name: main
-        image: main
-        env:
-          API_KEY: secrets.API_KEY

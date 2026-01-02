@@ -1,1 +1,0 @@
-# Ockam in Python

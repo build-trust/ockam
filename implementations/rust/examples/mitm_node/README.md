@@ -11,7 +11,7 @@
     127.0.0.1       k8s-hub-nginxing-2df5f8bd32-50456abbf63cd63c.elb.us-west-1.amazonaws.com
     ```
 1. Clone ockam repo again to a separate directory using the branch you are currently reading these instructions from
-1. Build and run `examples/rust/mitm_node/src/bin/tcp_mitm.rs`
+1. Build and run `implementations/rust/examples/mitm_node/src/bin/tcp_mitm.rs`
     ```
     cargo run --package mitm_node --bin tcp_mitm
     ```

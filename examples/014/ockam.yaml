@@ -1,7 +1,0 @@
-name: example014
-pods:
-  - name: main-pod
-    public: true
-    containers:
-      - name: main
-        image: main

@@ -10,13 +10,11 @@ on:
     paths:
       - ".github/workflows/docs_checks.yml"
       - ".github/actions/**"
-      - "examples/rust/**"
       - "tools/nix/**"
   push:
     paths:
       - ".github/workflows/docs_checks.yml"
       - ".github/actions/**"
-      - "examples/rust/**"
       - "tools/nix/**"
     branches:
       - develop
@@ -39,11 +37,11 @@ on:
         description: SHA or branch to run ockam docs test
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 env:
-    CI: true
+  CI: true
 
 jobs:
   # Checks our rust example against a version of ockam library
@@ -118,12 +116,11 @@ jobs:
 
       - name: Build Example Blocks
         working-directory: ockam
-        run:
-          nix develop ./tools/nix#rust --keep CI --ignore-environment --command cargo install --path ./tools/docs/example_blocks
+        run: nix develop ./tools/nix#rust --keep CI --ignore-environment --command cargo install --path ./tools/docs/example_blocks
 
       - name: Check Rust Documentation
         run: |
-          CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" CHECK_MD_DIR_RUST_EXAMPLE="ockam/examples/rust/get_started" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
+          CHECK_MD_DIR="ockam-documentation/reference/libraries/rust" OCKAM_HOME="ockam" ockam/tools/docs/check_documentation.sh
 
       - name: Nix Upload Store
         uses: ./ockam/.github/actions/nix_upload_store

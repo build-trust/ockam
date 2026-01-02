@@ -47,7 +47,7 @@ _: {
       name = "shfmt-all";
       runtimeInputs = with pkgs; [findutils gitMinimal shfmt];
       text = ''
-        git ls-files ':!:./examples/command/**' '*\.sh' '*\.bash' '*\.bats' | xargs shfmt --diff
+        git ls-files '*\.sh' '*\.bash' '*\.bats' | xargs shfmt --diff
       '';
     };
   };
