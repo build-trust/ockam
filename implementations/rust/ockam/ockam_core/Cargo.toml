@@ -95,7 +95,7 @@ tinyvec = { version = "1.8.0", features = ["rustc_1_57"] }
 tracing = { version = "0.1", default-features = false, features = ["log"] }
 tracing-error = { version = "0.2", default-features = false, optional = true }
 tracing-opentelemetry = { version = "0.28", optional = true }
-tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"], optional = true }
+tracing-subscriber = { version = "0.3.20", features = ["fmt", "env-filter"], optional = true }
 # Wasn't tested on no_std
 utcnow = { version = "0.2.5", default-features = false, features = ["fallback"], optional = true }
 
