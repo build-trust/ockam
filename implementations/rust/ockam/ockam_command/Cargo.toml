@@ -60,6 +60,7 @@ colorful = "0.3"
 console = "0.15.11"
 ctrlc = { version = "3.4.4", features = ["termination"] }
 flate2 = "1.0.35"
+futures-util = "0.3"
 hex = "0.4"
 indicatif = "0.17.8"
 indoc = "2.0.5"
@@ -100,6 +101,7 @@ reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "rustls-tls-native-roots",
   "blocking",
+  "stream",
 ] }
 rustls = { version = "0.23.13", default-features = false }
 rustls-native-certs = "0.8.0"

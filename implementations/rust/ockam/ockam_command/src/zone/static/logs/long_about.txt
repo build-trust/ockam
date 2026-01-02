@@ -1,0 +1,8 @@
+Stream logs from containers in a deployed zone.
+
+This command creates a secure portal to the logs server in your zone and
+streams container logs directly to your terminal. It handles connection
+setup and cleanup automatically.
+
+The logs server supports automatic reconnection when containers restart,
+making it easy to monitor applications through deployments and crashes.

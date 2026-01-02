@@ -167,6 +167,11 @@ pub struct CreateCommand {
     /// the parent process
     #[arg(hide = true, long)]
     pub tcp_callback_port: Option<u16>,
+
+    /// Suppress notification output (identity/vault creation messages).
+    /// This is useful when embedding node creation in other commands.
+    #[arg(hide = true, long, default_value_t = false)]
+    pub suppress_notifications: bool,
 }
 
 impl Default for CreateCommand {
@@ -201,6 +206,7 @@ impl Default for CreateCommand {
             },
             in_memory: false,
             tcp_callback_port: None,
+            suppress_notifications: false,
         }
     }
 }
@@ -396,8 +402,11 @@ impl CreateCommand {
         opts: &CommandGlobalOpts,
         identity_name: &Option<String>,
     ) -> Result<String> {
-        let _notification_handler =
-            NotificationHandler::start(opts.state.clone(), opts.terminal.clone());
+        let _notification_handler = if self.suppress_notifications {
+            None
+        } else {
+            Some(NotificationHandler::start(opts.state.clone(), opts.terminal.clone()))
+        };
         Ok(match identity_name {
             Some(name) => {
                 if let Ok(identity) = opts.state.get_named_identity(name).await {

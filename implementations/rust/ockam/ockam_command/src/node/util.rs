@@ -79,6 +79,7 @@ pub fn spawn_node(opts: &CommandGlobalOpts, cmd: CreateCommand) -> miette::Resul
         opentelemetry_context,
         in_memory,
         tcp_callback_port,
+        suppress_notifications: _,
     } = cmd;
 
     let mut args = vec![

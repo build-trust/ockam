@@ -1,0 +1,25 @@
+Examples:
+
+  # Stream logs from the main container (default)
+  $ autonomy zone logs
+
+  # Stream logs from a specific pod and container
+  $ autonomy zone logs --pod runner-pod --container runner
+
+  # Show last 100 lines then follow
+  $ autonomy zone logs --tail 100
+
+  # Show logs from the last 5 minutes
+  $ autonomy zone logs --since 5m
+
+  # Show logs from the last hour with timestamps
+  $ autonomy zone logs --since 1h --timestamps
+
+  # List all available pods and containers
+  $ autonomy zone logs --list
+
+  # Don't follow, just show current logs and exit
+  $ autonomy zone logs --no-follow
+
+  # Disable automatic reconnection on container restart
+  $ autonomy zone logs --no-reconnect

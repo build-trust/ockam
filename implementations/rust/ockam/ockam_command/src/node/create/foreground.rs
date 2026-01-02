@@ -60,9 +60,10 @@ impl CreateCommand {
 
         // Set node_name so that node can isolate its data in the storage from other nodes
         self.get_or_create_identity(&opts, &self.identity).await?;
-        let _notification_handler = if self.foreground_args.child_process {
-            // If enabled, the user's terminal would receive notifications
+        let _notification_handler = if self.foreground_args.child_process || self.suppress_notifications {
+            // If child_process is enabled, the user's terminal would receive notifications
             // from the node after the command exited.
+            // If suppress_notifications is enabled, we don't want any notification output.
             None
         } else {
             // Enable the notifications only on explicit foreground nodes.

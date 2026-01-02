@@ -8,6 +8,7 @@ pub mod get_cluster_name;
 pub(crate) mod init;
 pub(crate) mod inlet;
 pub mod list;
+pub(crate) mod logs;
 mod outlet;
 pub(crate) mod repl;
 pub(crate) mod secret;
@@ -26,6 +27,7 @@ use crate::zone::attach::AttachCommand;
 use crate::zone::delete::DeleteCommand;
 use crate::zone::inlet::InletCommand;
 use crate::zone::list::ListCommand;
+use crate::zone::logs::LogsCommand;
 use crate::zone::outlet::OutletCommand;
 use crate::zone::repl::ReplCommand;
 use crate::zone::secret::SecretCommand;
@@ -64,6 +66,7 @@ impl ZoneCommand {
             ZoneSubcommand::Delete(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Inlet(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Outlet(c) => c.run(ctx, opts).await,
+            ZoneSubcommand::Logs(c) => c.run(ctx, opts).await,
             ZoneSubcommand::Attach(c) => c.run(ctx, opts).await.map(|_| ()),
             ZoneSubcommand::Repl(c) => c.run(ctx, opts).await.map(|_| ()),
         }
@@ -83,6 +86,7 @@ pub enum ZoneSubcommand {
     Delete(DeleteCommand),
     Inlet(InletCommand),
     Outlet(OutletCommand),
+    Logs(LogsCommand),
     #[command(hide = true)]
     Repl(ReplCommand),
     #[command(hide = true)]
@@ -101,6 +105,7 @@ impl ZoneSubcommand {
             ZoneSubcommand::Delete(c) => c.name(),
             ZoneSubcommand::Inlet(c) => c.name(),
             ZoneSubcommand::Outlet(c) => c.name(),
+            ZoneSubcommand::Logs(c) => c.name(),
             ZoneSubcommand::Repl(c) => c.name(),
             ZoneSubcommand::Attach(c) => c.name(),
         }

@@ -57,13 +57,22 @@ impl CreateCommand {
         let identity_name = self
             .get_or_create_identity(&opts, &node_config.node.identity())
             .await?;
+        // Use disabled terminal for foreground mode when suppress_notifications is enabled
+        // to prevent enrollment output from being printed
+        let opts_for_run = if self.suppress_notifications {
+            let mut quiet_opts = opts.clone();
+            quiet_opts.terminal = quiet_opts.terminal.disable();
+            quiet_opts
+        } else {
+            opts.clone()
+        };
         let res = if self.foreground_args.foreground {
             node_config
-                .run_foreground(ctx, &opts, &node_name, &identity_name)
+                .run_foreground(ctx, &opts_for_run, &node_name, &identity_name)
                 .await
         } else {
             node_config
-                .run_background(ctx, &opts, &node_name, &identity_name)
+                .run_background(ctx, &opts_for_run, &node_name, &identity_name)
                 .await
         };
         if res.is_err() {
