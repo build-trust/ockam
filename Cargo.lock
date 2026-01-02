@@ -4928,7 +4928,7 @@ dependencies = [
 
 [[package]]
 name = "ockam_command"
-version = "0.158.0"
+version = "0.159.0"
 dependencies = [
  "arboard",
  "assert_cmd",
