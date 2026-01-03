@@ -1,0 +1,17 @@
+Run an Autonomy zone locally for development and testing.
+
+This command builds your Docker images, creates a local Docker network,
+and runs your containers with secure access to the Autonomy API gateway.
+
+Gateway Access:
+  The command creates an Ockam TCP inlet (portal) that securely tunnels
+  to the gateway service via the Ockam network. This provides authenticated
+  access to AI models without exposing the gateway publicly.
+
+  A gateway token is automatically fetched using your enrolled identity
+  and injected into containers as environment variables.
+
+Prerequisites:
+  1. You must be enrolled with an Ockam identity (run `ockam enroll` first)
+  2. The gateway-outlet pod must be deployed in your cluster
+  3. Docker or Podman must be installed and running

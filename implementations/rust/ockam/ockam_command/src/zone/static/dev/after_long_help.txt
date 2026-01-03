@@ -1,0 +1,40 @@
+Examples:
+
+# Start local development with default settings
+$ autonomy zone dev
+
+# Start on a different app port
+$ autonomy zone dev --port 9000
+
+# Start with file watching (auto-reload on changes)
+$ autonomy zone dev --watch
+
+# Start with cleanup on exit
+$ autonomy zone dev --rm
+
+# Combine watching and cleanup (recommended for development)
+$ autonomy zone dev --watch --rm
+
+# Use a specific gateway portal port
+$ autonomy zone dev --gateway-port 8888
+
+# Skip creating gateway portal (use existing gateway connection)
+$ autonomy zone dev --no-gateway-portal --gateway-url http://localhost:8080
+
+# Use an existing gateway with a specific API key
+$ autonomy zone dev --no-gateway-portal --gateway-url http://gateway:8080 --gateway-api-key $MY_KEY
+
+# Start with custom environment variables
+$ autonomy zone dev -e DEBUG=true -e LOG_LEVEL=debug
+
+# Start with a volume mount for local data
+$ autonomy zone dev -v /path/to/data:/app/data
+
+# Use Podman instead of Docker
+$ autonomy zone dev --runtime podman
+
+# Run in background mode (don't wait for Ctrl+C)
+$ autonomy zone dev --background
+
+# Full example with common development options
+$ autonomy zone dev --port 8080 --watch --rm -e DEBUG=true
