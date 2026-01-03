@@ -177,7 +177,7 @@ impl InMemoryNodeCommand for DevNodeCommand {
         } else {
             // Start the gateway portal node in a background task
             // This creates a TCP inlet that tunnels to the gateway via Ockam relay
-            let relay_name = format!("{}-gateway", cluster);
+            let relay_name = "gateway".to_string();
             let inlet_addr = format!("127.0.0.1:{}", self.gateway_inlet_port);
 
             self.opts.terminal.write_line(fmt_log!(
