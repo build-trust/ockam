@@ -5,7 +5,7 @@ use crate::orchestrator::ai_platform::requests::{
     CreateEnrollmentToken, CreateSecret, CreateZone, DeleteSecret, DeployZone, ProvisionEcr,
 };
 use crate::orchestrator::ai_platform::responses::{
-    Cluster, EcrCredential, Secret, SecretList, Ticket, Zone, ZoneList,
+    Cluster, EcrCredential, GatewayToken, Secret, SecretList, Ticket, Zone, ZoneList,
 };
 use crate::orchestrator::{ControllerClient, HasSecureClient};
 use miette::IntoDiagnostic;
@@ -201,5 +201,22 @@ impl AiPlatformApi for ControllerClient {
             .into_diagnostic()?
             .miette_success("provision ecr")?;
         Ok(ecr_creds)
+    }
+
+    async fn create_gateway_token(
+        &self,
+        ctx: &Context,
+        _cluster: Option<&str>,
+        zone_name: &str,
+    ) -> miette::Result<GatewayToken> {
+        trace!(%zone_name, "creating gateway token");
+        let req = Request::post(format!("/v0/zone/{zone_name}/gateway-token"));
+        let token: GatewayToken = self
+            .get_secure_client()
+            .ask(ctx, "zones", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("create gateway token")?;
+        Ok(token)
     }
 }

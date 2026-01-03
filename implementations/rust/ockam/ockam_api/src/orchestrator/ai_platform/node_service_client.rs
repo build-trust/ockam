@@ -1,7 +1,7 @@
 use crate::nodes::InMemoryNode;
 use crate::orchestrator::ai_platform::api::AiPlatformApi;
 use crate::orchestrator::ai_platform::responses::{
-    Cluster, EcrCredential, Secret, SecretNameList, Ticket, Zone, ZoneNameList,
+    Cluster, EcrCredential, GatewayToken, Secret, SecretNameList, Ticket, Zone, ZoneNameList,
 };
 use miette::{miette, IntoDiagnostic, WrapErr};
 use ockam_core::async_trait;
@@ -453,6 +453,50 @@ impl AiPlatformApi for InMemoryNode {
 
         response
             .json::<EcrCredential>()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to parse response")
+            .wrap_err(base_error())
+    }
+
+    async fn create_gateway_token(
+        &self,
+        ctx: &Context,
+        cluster: Option<&str>,
+        zone_name: &str,
+    ) -> miette::Result<GatewayToken> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
+        let base_error =
+            || miette!("Failed to create gateway token for cluster {cluster} and zone {zone_name}");
+        let url = format!(
+            "{}/api/{}/zone/{}/gateway-token",
+            *AI_API_BASE_URL, cluster, zone_name
+        );
+
+        let client = build_http_client().wrap_err(base_error())?;
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
+
+        if !response.status().is_success() {
+            return Err(miette::miette!(
+                "HTTP {}: {}",
+                response.status(),
+                response.text().await.unwrap_or_default()
+            )
+            .wrap_err(base_error()));
+        }
+
+        response
+            .json::<GatewayToken>()
             .await
             .into_diagnostic()
             .wrap_err("Failed to parse response")

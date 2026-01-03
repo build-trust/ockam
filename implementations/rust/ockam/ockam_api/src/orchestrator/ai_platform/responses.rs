@@ -199,3 +199,23 @@ impl Decodable for Ticket {
         Ok(minicbor::decode(e)?)
     }
 }
+
+#[derive(Encode, Decode, CborLen, Serialize, Deserialize, Debug, Default, Clone, Message)]
+#[rustfmt::skip]
+#[cbor(map)]
+pub struct GatewayToken {
+    #[n(1)] pub token: String,
+    #[n(2)] pub expires_in: u64,
+}
+
+impl Encodable for GatewayToken {
+    fn encode(self) -> ockam_core::Result<Encoded> {
+        cbor_encode_preallocate(self)
+    }
+}
+
+impl Decodable for GatewayToken {
+    fn decode(e: &[u8]) -> ockam_core::Result<Self> {
+        Ok(minicbor::decode(e)?)
+    }
+}

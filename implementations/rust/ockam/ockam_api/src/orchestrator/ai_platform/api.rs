@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredential, Secret, Zone};
+use crate::orchestrator::ai_platform::responses::{Cluster, EcrCredential, GatewayToken, Secret, Zone};
 use ockam_core::async_trait;
 use ockam_core::compat::collections::HashMap;
 use ockam_node::Context;
@@ -74,4 +74,15 @@ pub trait AiPlatformApi {
         image_names: Vec<String>,
         is_public: Option<bool>,
     ) -> miette::Result<EcrCredential>;
+
+    /// Create a gateway JWT token for API authentication.
+    ///
+    /// This token allows zone containers to authenticate with the
+    /// autonomy-external-apis-gateway.
+    async fn create_gateway_token(
+        &self,
+        ctx: &Context,
+        cluster: Option<&str>,
+        zone_name: &str,
+    ) -> miette::Result<GatewayToken>;
 }
