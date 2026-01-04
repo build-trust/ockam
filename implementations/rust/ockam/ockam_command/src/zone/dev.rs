@@ -133,27 +133,6 @@ impl InMemoryNodeCommand for DevNodeCommand {
             color_primary(&cluster),
         ))?;
 
-        // Get enrollment ticket for the gateway portal node
-        let enrollment_ticket = self
-            .command
-            .enrollment_ticket
-            .get(ctx, &*api_client, &cluster, zone_name, None)
-            .await?;
-
-        // Get gateway token for API authentication
-        self.opts.terminal.write_line(fmt_log!(
-            "Fetching gateway token for API authentication..."
-        ))?;
-
-        let gateway_token = api_client
-            .create_gateway_token(ctx, Some(&cluster), zone_name)
-            .await?;
-
-        self.opts.terminal.write_line(fmt_ok!(
-            "Gateway token acquired (expires in {} seconds)",
-            gateway_token.expires_in
-        ))?;
-
         // Create Docker network
         self.command.create_docker_network(&self.opts).await?;
 
@@ -167,14 +146,55 @@ impl InMemoryNodeCommand for DevNodeCommand {
             // Use existing gateway connection (no portal)
             let url = self.command.gateway_url.clone()
                 .unwrap_or_else(|| "http://localhost:8080".to_string());
-            let token = self.command.gateway_api_key.clone()
-                .unwrap_or_else(|| gateway_token.token.clone());
+
+            // If gateway API key is provided, use it directly without fetching from orchestrator
+            let token = if let Some(key) = &self.command.gateway_api_key {
+                self.opts.terminal.write_line(fmt_log!(
+                    "Using provided gateway API key"
+                ))?;
+                key.clone()
+            } else {
+                // Fetch gateway token from orchestrator
+                self.opts.terminal.write_line(fmt_log!(
+                    "Fetching gateway token for API authentication..."
+                ))?;
+                let gateway_token = api_client
+                    .create_gateway_token(ctx, Some(&cluster), zone_name)
+                    .await?;
+                self.opts.terminal.write_line(fmt_ok!(
+                    "Gateway token acquired (expires in {} seconds)",
+                    gateway_token.expires_in
+                ))?;
+                gateway_token.token
+            };
+
             self.opts.terminal.write_line(fmt_log!(
                 "Using existing gateway at {}",
                 color_primary(&url),
             ))?;
             (url, token, None)
         } else {
+            // Get enrollment ticket for the gateway portal node
+            let enrollment_ticket = self
+                .command
+                .enrollment_ticket
+                .get(ctx, &*api_client, &cluster, zone_name, None)
+                .await?;
+
+            // Get gateway token for API authentication
+            self.opts.terminal.write_line(fmt_log!(
+                "Fetching gateway token for API authentication..."
+            ))?;
+
+            let gateway_token = api_client
+                .create_gateway_token(ctx, Some(&cluster), zone_name)
+                .await?;
+
+            self.opts.terminal.write_line(fmt_ok!(
+                "Gateway token acquired (expires in {} seconds)",
+                gateway_token.expires_in
+            ))?;
+
             // Start the gateway portal node in a background task
             // This creates a TCP inlet that tunnels to the gateway via Ockam relay
             let relay_name = "gateway".to_string();
@@ -200,7 +220,7 @@ impl InMemoryNodeCommand for DevNodeCommand {
             let node_cmd = crate::node::create::CreateCommand {
                 name: node_config.to_string(),
                 config_args: ConfigArgs {
-                    enrollment_ticket: Some(enrollment_ticket),
+                    enrollment_ticket: Some(enrollment_ticket.clone()),
                     ..Default::default()
                 },
                 foreground_args: ForegroundArgs {
