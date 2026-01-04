@@ -481,8 +481,11 @@ impl DevCommand {
 
                 args.push(context_path);
 
+                // Use DOCKER_BUILDKIT=0 for better compatibility across different
+                // Docker/Podman setups - avoids issues with buildx caching
                 let output = tokio::process::Command::new(&self.runtime)
                     .args(&args)
+                    .env("DOCKER_BUILDKIT", "0")
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .output()
