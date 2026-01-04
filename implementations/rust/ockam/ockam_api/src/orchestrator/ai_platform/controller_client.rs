@@ -235,4 +235,20 @@ impl AiPlatformApi for ControllerClient {
             .miette_success("create dev token")?;
         Ok(token)
     }
+
+    async fn create_dev_enrollment_ticket(
+        &self,
+        ctx: &Context,
+        _cluster: Option<&str>,
+    ) -> miette::Result<String> {
+        trace!("creating dev enrollment ticket");
+        let req = Request::post("/v0/dev-ticket");
+        let ticket: String = self
+            .get_secure_client()
+            .ask(ctx, "zones", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("create dev enrollment ticket")?;
+        Ok(ticket)
+    }
 }

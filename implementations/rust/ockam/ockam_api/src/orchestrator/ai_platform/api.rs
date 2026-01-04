@@ -99,4 +99,18 @@ pub trait AiPlatformApi {
         ctx: &Context,
         cluster: Option<&str>,
     ) -> miette::Result<GatewayToken>;
+
+    /// Create a development enrollment ticket for local development.
+    ///
+    /// This ticket allows creating a node that can connect to the gateway relay
+    /// without requiring a zone to exist. It's used by `autonomy zone dev` to
+    /// create a portal to the gateway before a zone is created.
+    ///
+    /// The ticket grants access to the "gateway" relay which is set up by the
+    /// gateway-outlet deployment.
+    async fn create_dev_enrollment_ticket(
+        &self,
+        ctx: &Context,
+        cluster: Option<&str>,
+    ) -> miette::Result<String>;
 }

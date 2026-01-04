@@ -541,6 +541,52 @@ impl AiPlatformApi for InMemoryNode {
             .wrap_err("Failed to parse response")
             .wrap_err(base_error())
     }
+
+    async fn create_dev_enrollment_ticket(
+        &self,
+        ctx: &Context,
+        cluster: Option<&str>,
+    ) -> miette::Result<String> {
+        let cluster = match cluster {
+            Some(c) => c.to_string(),
+            None => self.get_cluster(ctx).await?.into_inner(),
+        };
+        let base_error = || miette!("Failed to create dev enrollment ticket for cluster {cluster}");
+        let url = format!("{}/api/{}/dev-ticket", *AI_API_BASE_URL, cluster);
+
+        let client = build_http_client().wrap_err(base_error())?;
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to send request")
+            .wrap_err(base_error())?;
+
+        if !response.status().is_success() {
+            return Err(miette::miette!(
+                "HTTP {}: {}",
+                response.status(),
+                response.text().await.unwrap_or_default()
+            )
+            .wrap_err(base_error()));
+        }
+
+        #[derive(serde::Deserialize)]
+        struct TicketResponse {
+            ticket: String,
+        }
+
+        let ticket_response: TicketResponse = response
+            .json()
+            .await
+            .into_diagnostic()
+            .wrap_err("Failed to parse response")
+            .wrap_err(base_error())?;
+
+        Ok(ticket_response.ticket)
+    }
 }
 
 fn build_http_client() -> miette::Result<reqwest::Client> {

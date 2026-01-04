@@ -300,18 +300,76 @@ impl InMemoryNodeCommand for DevNodeCommand {
                         gateway_token.expires_in
                     ))?;
 
-                    // In dev mode without a zone, we can't create the portal
-                    // because we don't have an enrollment ticket. Use --no-gateway-portal flow.
-                    let url = self.command.gateway_url.clone()
-                        .unwrap_or_else(|| "http://localhost:8080".to_string());
-
-                    self.opts.terminal.write_line(fmt_warn!(
-                        "Gateway portal not available without zone. Using direct gateway at {}.\n\
-                         You may need to set up port-forwarding to the gateway.\n",
-                        color_primary(&url)
+                    // Get dev enrollment ticket for creating the gateway portal
+                    self.opts.terminal.write_line(fmt_log!(
+                        "Fetching development enrollment ticket..."
+                    ))?;
+                    let dev_enrollment_ticket = api_client
+                        .create_dev_enrollment_ticket(ctx, Some(&cluster))
+                        .await?;
+                    self.opts.terminal.write_line(fmt_ok!(
+                        "Development enrollment ticket acquired"
                     ))?;
 
-                    (url, gateway_token.token, None)
+                    // Start the gateway portal node using the dev enrollment ticket
+                    let relay_name = "gateway".to_string();
+                    let inlet_addr = format!("127.0.0.1:{}", self.gateway_inlet_port);
+
+                    self.opts.terminal.write_line(fmt_log!(
+                        "Creating gateway portal at {} via relay {}...",
+                        color_primary(&inlet_addr),
+                        color_primary(&relay_name),
+                    ))?;
+
+                    let node_config = serde_json::json!({
+                        "tcp-inlet": {
+                            "from": format!("tcp://{}", inlet_addr),
+                            "to": "gateway",
+                            "via": relay_name
+                        }
+                    });
+
+                    let in_memory = true;
+                    let is_verbose = self.opts.global_args.verbose > 0;
+
+                    let node_cmd = crate::node::create::CreateCommand {
+                        name: node_config.to_string(),
+                        config_args: ConfigArgs {
+                            enrollment_ticket: Some(dev_enrollment_ticket),
+                            ..Default::default()
+                        },
+                        foreground_args: ForegroundArgs {
+                            foreground: true,
+                            no_ctrlc_handler: true,
+                            ..Default::default()
+                        },
+                        in_memory,
+                        suppress_notifications: !is_verbose,
+                        ..Default::default()
+                    };
+
+                    let opts = self.opts.clone();
+
+                    // Spawn the gateway portal node in the background
+                    let handle = tokio::spawn(async move {
+                        let mut opts_inner = opts.clone();
+                        opts_inner.state = Arc::new(CliState::new(in_memory).await?);
+                        tokio::select! {
+                            _ = DirectoryWatcher::wait_for_message() => Ok(()),
+                            res = node_cmd.run(node.ctx(), opts_inner) => res,
+                        }
+                    });
+
+                    // Wait for the gateway inlet to be ready
+                    let url = format!("http://127.0.0.1:{}", self.gateway_inlet_port);
+                    self.wait_for_gateway_ready(&url).await?;
+
+                    self.opts.terminal.write_line(fmt_ok!(
+                        "Gateway portal ready at {}\n",
+                        color_primary(&url),
+                    ))?;
+
+                    (url, gateway_token.token, Some(handle))
                 }
                 Err(e) => return Err(e),
             }
