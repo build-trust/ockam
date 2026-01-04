@@ -243,12 +243,12 @@ impl AiPlatformApi for ControllerClient {
     ) -> miette::Result<String> {
         trace!("creating dev enrollment ticket");
         let req = Request::post("/v0/dev-ticket");
-        let ticket: String = self
+        let ticket: Ticket = self
             .get_secure_client()
             .ask(ctx, "zones", req)
             .await
             .into_diagnostic()?
             .miette_success("create dev enrollment ticket")?;
-        Ok(ticket)
+        Ok(ticket.ticket)
     }
 }
