@@ -85,4 +85,18 @@ pub trait AiPlatformApi {
         cluster: Option<&str>,
         zone_name: &str,
     ) -> miette::Result<GatewayToken>;
+
+    /// Create a development token for local development.
+    ///
+    /// This token is tied to the user's account (not a specific zone) and can be
+    /// used for local development before a zone is created. It has a shorter TTL
+    /// than production tokens and is intended for development/testing only.
+    ///
+    /// The token allows access to the gateway but usage is tracked at the user
+    /// level rather than zone level.
+    async fn create_dev_token(
+        &self,
+        ctx: &Context,
+        cluster: Option<&str>,
+    ) -> miette::Result<GatewayToken>;
 }

@@ -14,7 +14,6 @@ use colorful::Colorful;
 use miette::IntoDiagnostic;
 use ockam_api::colors::color_primary;
 use ockam_api::nodes::InMemoryNode;
-use ockam_api::orchestrator::ai_platform::api::AiPlatformApi;
 use ockam_api::{fmt_log, fmt_ok, fmt_warn};
 use ockam_api::CliState;
 use ockam_node::Context;
@@ -154,13 +153,29 @@ impl InMemoryNodeCommand for DevNodeCommand {
                 ))?;
                 key.clone()
             } else {
-                // Fetch gateway token from orchestrator
+                // Try to fetch gateway token for the zone, fall back to dev token if zone doesn't exist
                 self.opts.terminal.write_line(fmt_log!(
                     "Fetching gateway token for API authentication..."
                 ))?;
-                let gateway_token = api_client
+                let gateway_token = match api_client
                     .create_gateway_token(ctx, Some(&cluster), zone_name)
-                    .await?;
+                    .await
+                {
+                    Ok(token) => token,
+                    Err(e) if Self::is_zone_not_found_error(&e) => {
+                        self.opts.terminal.write_line(fmt_warn!(
+                            "Zone '{}' does not exist. Using development token instead.\n",
+                            zone_name
+                        ))?;
+                        self.opts.terminal.write_line(fmt_log!(
+                            "Tip: Create the zone with: {} zone create {}\n",
+                            color_primary("autonomy"),
+                            color_primary(zone_name)
+                        ))?;
+                        api_client.create_dev_token(ctx, Some(&cluster)).await?
+                    }
+                    Err(e) => return Err(e),
+                };
                 self.opts.terminal.write_line(fmt_ok!(
                     "Gateway token acquired (expires in {} seconds)",
                     gateway_token.expires_in
@@ -174,88 +189,135 @@ impl InMemoryNodeCommand for DevNodeCommand {
             ))?;
             (url, token, None)
         } else {
-            // Get enrollment ticket for the gateway portal node
-            let enrollment_ticket = self
+            // Try to get enrollment ticket for the gateway portal node
+            // If zone doesn't exist, fall back to dev token mode
+            let enrollment_ticket_result = self
                 .command
                 .enrollment_ticket
                 .get(ctx, &*api_client, &cluster, zone_name, None)
-                .await?;
+                .await;
 
-            // Get gateway token for API authentication
-            self.opts.terminal.write_line(fmt_log!(
-                "Fetching gateway token for API authentication..."
-            ))?;
+            match enrollment_ticket_result {
+                Ok(enrollment_ticket) => {
+                    // Zone exists - use full portal flow
+                    // Get gateway token for API authentication
+                    self.opts.terminal.write_line(fmt_log!(
+                        "Fetching gateway token for API authentication..."
+                    ))?;
 
-            let gateway_token = api_client
-                .create_gateway_token(ctx, Some(&cluster), zone_name)
-                .await?;
+                    let gateway_token = api_client
+                        .create_gateway_token(ctx, Some(&cluster), zone_name)
+                        .await?;
 
-            self.opts.terminal.write_line(fmt_ok!(
-                "Gateway token acquired (expires in {} seconds)",
-                gateway_token.expires_in
-            ))?;
+                    self.opts.terminal.write_line(fmt_ok!(
+                        "Gateway token acquired (expires in {} seconds)",
+                        gateway_token.expires_in
+                    ))?;
 
-            // Start the gateway portal node in a background task
-            // This creates a TCP inlet that tunnels to the gateway via Ockam relay
-            let relay_name = "gateway".to_string();
-            let inlet_addr = format!("127.0.0.1:{}", self.gateway_inlet_port);
+                    // Start the gateway portal node in a background task
+                    // This creates a TCP inlet that tunnels to the gateway via Ockam relay
+                    let relay_name = "gateway".to_string();
+                    let inlet_addr = format!("127.0.0.1:{}", self.gateway_inlet_port);
 
-            self.opts.terminal.write_line(fmt_log!(
-                "Creating gateway portal at {} via relay {}...",
-                color_primary(&inlet_addr),
-                color_primary(&relay_name),
-            ))?;
+                    self.opts.terminal.write_line(fmt_log!(
+                        "Creating gateway portal at {} via relay {}...",
+                        color_primary(&inlet_addr),
+                        color_primary(&relay_name),
+                    ))?;
 
-            let node_config = serde_json::json!({
-                "tcp-inlet": {
-                    "from": format!("tcp://{}", inlet_addr),
-                    "to": "gateway",
-                    "via": relay_name
+                    let node_config = serde_json::json!({
+                        "tcp-inlet": {
+                            "from": format!("tcp://{}", inlet_addr),
+                            "to": "gateway",
+                            "via": relay_name
+                        }
+                    });
+
+                    let in_memory = true;
+                    let is_verbose = self.opts.global_args.verbose > 0;
+
+                    let node_cmd = crate::node::create::CreateCommand {
+                        name: node_config.to_string(),
+                        config_args: ConfigArgs {
+                            enrollment_ticket: Some(enrollment_ticket.clone()),
+                            ..Default::default()
+                        },
+                        foreground_args: ForegroundArgs {
+                            foreground: true,
+                            no_ctrlc_handler: true,
+                            ..Default::default()
+                        },
+                        in_memory,
+                        suppress_notifications: !is_verbose,
+                        ..Default::default()
+                    };
+
+                    let opts = self.opts.clone();
+
+                    // Spawn the gateway portal node in the background
+                    let handle = tokio::spawn(async move {
+                        let mut opts_inner = opts.clone();
+                        opts_inner.state = Arc::new(CliState::new(in_memory).await?);
+                        tokio::select! {
+                            _ = DirectoryWatcher::wait_for_message() => Ok(()),
+                            res = node_cmd.run(node.ctx(), opts_inner) => res,
+                        }
+                    });
+
+                    // Wait for the gateway inlet to be ready
+                    let url = format!("http://127.0.0.1:{}", self.gateway_inlet_port);
+                    self.wait_for_gateway_ready(&url).await?;
+
+                    self.opts.terminal.write_line(fmt_ok!(
+                        "Gateway portal ready at {}\n",
+                        color_primary(&url),
+                    ))?;
+
+                    (url, gateway_token.token.clone(), Some(handle))
                 }
-            });
+                Err(e) if Self::is_zone_not_found_error(&e) => {
+                    // Zone doesn't exist - fall back to dev token mode
+                    self.opts.terminal.write_line(fmt_warn!(
+                        "Zone '{}' does not exist. Running in development mode.\n",
+                        zone_name
+                    ))?;
+                    self.opts.terminal.write_line(fmt_log!(
+                        "Development mode uses a temporary token tied to your account.\n\
+                         To create the zone for production: {} zone create {}\n",
+                        color_primary("autonomy"),
+                        color_primary(zone_name)
+                    ))?;
 
-            let in_memory = true;
-            let is_verbose = self.opts.global_args.verbose > 0;
+                    // Get dev token (doesn't require zone)
+                    self.opts.terminal.write_line(fmt_log!(
+                        "Fetching development token..."
+                    ))?;
+                    let gateway_token = api_client
+                        .create_dev_token(ctx, Some(&cluster))
+                        .await?;
+                    self.opts.terminal.write_line(fmt_ok!(
+                        "Development token acquired (expires in {} seconds)",
+                        gateway_token.expires_in
+                    ))?;
 
-            let node_cmd = crate::node::create::CreateCommand {
-                name: node_config.to_string(),
-                config_args: ConfigArgs {
-                    enrollment_ticket: Some(enrollment_ticket.clone()),
-                    ..Default::default()
-                },
-                foreground_args: ForegroundArgs {
-                    foreground: true,
-                    no_ctrlc_handler: true,
-                    ..Default::default()
-                },
-                in_memory,
-                suppress_notifications: !is_verbose,
-                ..Default::default()
-            };
+                    // In dev mode without a zone, we can't create the portal
+                    // because we don't have an enrollment ticket. Use --no-gateway-portal flow.
+                    let url = self.command.gateway_url.clone()
+                        .unwrap_or_else(|| "http://localhost:8080".to_string());
 
-            let opts = self.opts.clone();
+                    self.opts.terminal.write_line(fmt_warn!(
+                        "Gateway portal not available without zone. Using direct gateway at {}.\n\
+                         You may need to set up port-forwarding to the gateway.\n",
+                        color_primary(&url)
+                    ))?;
 
-            // Spawn the gateway portal node in the background
-            let handle = tokio::spawn(async move {
-                let mut opts_inner = opts.clone();
-                opts_inner.state = Arc::new(CliState::new(in_memory).await?);
-                tokio::select! {
-                    _ = DirectoryWatcher::wait_for_message() => Ok(()),
-                    res = node_cmd.run(node.ctx(), opts_inner) => res,
+                    (url, gateway_token.token, None)
                 }
-            });
-
-            // Wait for the gateway inlet to be ready
-            let url = format!("http://127.0.0.1:{}", self.gateway_inlet_port);
-            self.wait_for_gateway_ready(&url).await?;
-
-            self.opts.terminal.write_line(fmt_ok!(
-                "Gateway portal ready at {}\n",
-                color_primary(&url),
-            ))?;
-
-            (url, gateway_token.token.clone(), Some(handle))
+                Err(e) => return Err(e),
+            }
         };
+
+
 
         let zone_config_clone = zone_config.clone();
 
@@ -308,6 +370,20 @@ impl InMemoryNodeCommand for DevNodeCommand {
 }
 
 impl DevNodeCommand {
+    /// Check if an error indicates that the zone was not found (404).
+    ///
+    /// This is used to detect when a zone doesn't exist so we can fall back
+    /// to dev token mode with helpful guidance.
+    fn is_zone_not_found_error(err: &miette::Report) -> bool {
+        let err_string = format!("{:?}", err);
+        // Check for HTTP 404 or "does not exist" message from provisioner
+        err_string.contains("HTTP 404")
+            || err_string.contains("404")
+            || err_string.contains("does not exist")
+            || err_string.contains("not found")
+            || err_string.contains("Not Found")
+    }
+
     /// Wait for the gateway inlet to be ready by polling the health endpoint
     async fn wait_for_gateway_ready(&self, gateway_url: &str) -> miette::Result<()> {
         let max_retries = 120; // 120 * 500ms = 60 seconds

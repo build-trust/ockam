@@ -219,4 +219,20 @@ impl AiPlatformApi for ControllerClient {
             .miette_success("create gateway token")?;
         Ok(token)
     }
+
+    async fn create_dev_token(
+        &self,
+        ctx: &Context,
+        _cluster: Option<&str>,
+    ) -> miette::Result<GatewayToken> {
+        trace!("creating dev token");
+        let req = Request::post("/v0/dev-token");
+        let token: GatewayToken = self
+            .get_secure_client()
+            .ask(ctx, "zones", req)
+            .await
+            .into_diagnostic()?
+            .miette_success("create dev token")?;
+        Ok(token)
+    }
 }
