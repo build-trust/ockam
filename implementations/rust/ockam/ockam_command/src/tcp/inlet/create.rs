@@ -41,7 +41,7 @@ use tracing::trace;
 
 const AFTER_LONG_HELP: &str = include_str!("./static/create/after_long_help.txt");
 
-/// Create TCP Inlets
+/// Create a TCP Inlet
 #[derive(Clone, Debug, Args)]
 #[command(after_long_help = docs::after_help(AFTER_LONG_HELP))]
 pub struct CreateCommand {
