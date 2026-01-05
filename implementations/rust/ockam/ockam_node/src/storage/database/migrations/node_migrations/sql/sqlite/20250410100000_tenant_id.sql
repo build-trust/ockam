@@ -267,8 +267,7 @@ CREATE TABLE tcp_outlet_status_new
     socket_addr TEXT NOT NULL,
     worker_addr TEXT NOT NULL,
     payload     TEXT,
-    privileged  INTEGER DEFAULT 0,
-    PRIMARY KEY (tenant_id, node_name, socket_addr)
+    privileged  INTEGER DEFAULT 0
 );
 
 INSERT INTO tcp_outlet_status_new (tenant_id, node_name, socket_addr, worker_addr, payload, privileged)
@@ -278,6 +277,8 @@ DROP TABLE tcp_outlet_status;
 ALTER TABLE tcp_outlet_status_new
     RENAME TO tcp_outlet_status;
 
+CREATE INDEX tcp_outlet_status_tenant_id_index ON tcp_outlet_status (tenant_id);
+
 -- tcp_inlet
 CREATE TABLE tcp_inlet_new
 (
@@ -286,8 +287,7 @@ CREATE TABLE tcp_inlet_new
     bind_addr   TEXT NOT NULL,
     outlet_addr TEXT NOT NULL,
     alias       TEXT NOT NULL,
-    privileged  INTEGER DEFAULT 0,
-    PRIMARY KEY (tenant_id, node_name, bind_addr)
+    privileged  INTEGER DEFAULT 0
 );
 
 INSERT INTO tcp_inlet_new (tenant_id, node_name, bind_addr, outlet_addr, alias, privileged)
@@ -296,6 +296,8 @@ FROM tcp_inlet;
 DROP TABLE tcp_inlet;
 ALTER TABLE tcp_inlet_new
     RENAME TO tcp_inlet;
+
+CREATE INDEX tcp_inlet_tenant_id_index ON tcp_inlet (tenant_id);
 
 -- node
 CREATE TABLE node_new
