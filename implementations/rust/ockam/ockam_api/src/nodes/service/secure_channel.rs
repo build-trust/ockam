@@ -420,7 +420,7 @@ impl NodeManager {
                 ockam_core::Error::new(
                     Origin::Api,
                     Kind::Internal,
-                    format!("Error while deleting secure channel with addrress {}", addr,),
+                    format!("Error while deleting secure channel with address {}", addr,),
                 )
             })
     }

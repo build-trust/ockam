@@ -87,7 +87,7 @@ impl Connection {
                         Origin::Node,
                         Kind::Internal,
                         format!(
-                            "Failed to delete secure channnel with address {address}. {error}",
+                            "Failed to delete secure channel with address {address}. {error}",
                             address = encryptor,
                         ),
                     ))?,

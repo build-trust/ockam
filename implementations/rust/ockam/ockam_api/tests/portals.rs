@@ -600,7 +600,7 @@ fn test_portal_payload_transfer(outgoing_disruption: Disruption, incoming_disrup
                 .await
                 .unwrap();
 
-            // we can't send and read the data from a sigle async context
+            // we can't send and read the data from a single async context
             let (mut rx, mut tx) = stream.into_split();
 
             let copied_buffer = random_buffer.clone();
