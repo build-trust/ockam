@@ -1,0 +1,5 @@
+name: redpanda_consumer_node
+ticket: ${ENROLLMENT_TICKET}
+
+kafka-consumer:
+  bootstrap-server: 9092

@@ -1,0 +1,5 @@
+name: redpanda_producer_node
+ticket: ${ENROLLMENT_TICKET}
+
+kafka-producer:
+  bootstrap-server: 9092
