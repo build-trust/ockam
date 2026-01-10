@@ -54,8 +54,11 @@ impl CredentialSqlxDatabase {
 impl CredentialSqlxDatabase {
     /// Return all cached credentials for the given node
     pub async fn get_all(&self) -> Result<Vec<(CredentialAndPurposeKey, String)>> {
-        let query = query_as("SELECT credential, scope FROM credential WHERE node_name = $1")
-            .bind(self.node_name.clone());
+        let query = query_as(
+            "SELECT credential, scope FROM credential WHERE node_name = $1 and tenant_id = $2",
+        )
+        .bind(self.node_name.clone())
+        .bind(self.database.tenant_id());
 
         let cached_credential: Vec<CachedCredentialAndScopeRow> =
             query.fetch_all(&*self.database.pool).await.into_core()?;
@@ -81,12 +84,13 @@ impl CredentialRepository for CredentialSqlxDatabase {
         scope: &str,
     ) -> Result<Option<CredentialAndPurposeKey>> {
         let query = query_as(
-            "SELECT credential FROM credential WHERE subject_identifier = $1 AND issuer_identifier = $2 AND scope = $3 AND node_name = $4"
+            "SELECT credential FROM credential WHERE subject_identifier = $1 AND issuer_identifier = $2 AND scope = $3 AND node_name = $4 and tenant_id = $5"
             )
             .bind(subject)
             .bind(issuer)
             .bind(scope)
-            .bind(self.node_name.clone());
+            .bind(self.node_name.clone())
+            .bind(self.database.tenant_id());
         let cached_credential: Option<CachedCredentialRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -117,11 +121,12 @@ impl CredentialRepository for CredentialSqlxDatabase {
     }
 
     async fn delete(&self, subject: &Identifier, issuer: &Identifier, scope: &str) -> Result<()> {
-        let query = query("DELETE FROM credential WHERE subject_identifier = $1 AND issuer_identifier = $2 AND scope = $3 AND node_name = $4")
+        let query = query("DELETE FROM credential WHERE subject_identifier = $1 AND issuer_identifier = $2 AND scope = $3 AND node_name = $4 and tenant_id = $5")
             .bind(subject)
             .bind(issuer)
             .bind(scope)
-            .bind(self.node_name.clone());
+            .bind(self.node_name.clone())
+            .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 }

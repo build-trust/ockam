@@ -70,10 +70,11 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, resource_type
             FROM resource
-            WHERE node_name = $1 and resource_name = $2"#,
+            WHERE node_name = $1 and resource_name = $2 and tenant_id = $3"#,
         )
         .bind(&self.node_name)
-        .bind(resource_name);
+        .bind(resource_name)
+        .bind(self.database.tenant_id());
         let row: Option<ResourceRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -86,18 +87,20 @@ impl ResourcesRepository for ResourcesSqlxDatabase {
 
         let query = query(
             r#"DELETE FROM resource
-            WHERE node_name = $1 and resource_name = $2"#,
+            WHERE node_name = $1 and resource_name = $2 and tenant_id = $3"#,
         )
         .bind(&self.node_name)
-        .bind(resource_name);
+        .bind(resource_name)
+        .bind(self.database.tenant_id());
         query.execute(&mut *transaction).await.void()?;
 
         let query = sqlx::query(
             r#"DELETE FROM resource_policy
-            WHERE node_name = $1 and resource_name = $2"#,
+            WHERE node_name = $1 and resource_name = $2 and tenant_id = $3"#,
         )
         .bind(&self.node_name)
-        .bind(resource_name);
+        .bind(resource_name)
+        .bind(self.database.tenant_id());
         query.execute(&mut *transaction).await.void()?;
 
         transaction.commit().await.void()

@@ -60,11 +60,12 @@ impl IdentityAttributesRepository for IdentityAttributesSqlxDatabase {
         attested_by: &Identifier,
     ) -> Result<Option<AttributesEntry>> {
         let query = query_as(
-            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier = $1 AND attested_by = $2 AND node_name = $3"
+            "SELECT identifier, attributes, added, expires, attested_by FROM identity_attributes WHERE identifier = $1 AND attested_by = $2 AND node_name = $3 and tenant_id = $4"
             )
             .bind(identity)
             .bind(attested_by)
-            .bind(&self.node_name);
+            .bind(&self.node_name)
+            .bind(self.database.tenant_id());
         let identity_attributes: Option<IdentityAttributesRow> = query
             .fetch_optional(&*self.database.pool)
             .await

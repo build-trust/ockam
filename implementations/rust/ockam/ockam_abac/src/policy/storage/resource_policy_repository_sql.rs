@@ -77,11 +77,12 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, action, expression
             FROM resource_policy
-            WHERE node_name = $1 and resource_name = $2 and action = $3"#,
+            WHERE node_name = $1 and resource_name = $2 and action = $3 and tenant_id = $4"#,
         )
         .bind(&self.node_name)
         .bind(resource_name)
-        .bind(action);
+        .bind(action)
+        .bind(self.database.tenant_id());
         let row: Option<PolicyRow> = query
             .fetch_optional(&*self.database.pool)
             .await
@@ -93,9 +94,10 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, action, expression
             FROM resource_policy
-            WHERE node_name = $1"#,
+            WHERE node_name = $1 and tenant_id = $2"#,
         )
-        .bind(&self.node_name);
+        .bind(&self.node_name)
+        .bind(self.database.tenant_id());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -109,10 +111,11 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
         let query = query_as(
             r#"SELECT resource_name, action, expression
             FROM resource_policy
-            WHERE node_name = $1 and resource_name = $2"#,
+            WHERE node_name = $1 and resource_name = $2 and tenant_id = $3"#,
         )
         .bind(&self.node_name)
-        .bind(resource_name);
+        .bind(resource_name)
+        .bind(self.database.tenant_id());
         let row: Vec<PolicyRow> = query.fetch_all(&*self.database.pool).await.into_core()?;
         row.into_iter()
             .map(|r| r.try_into())
@@ -122,11 +125,12 @@ impl ResourcePoliciesRepository for ResourcePolicySqlxDatabase {
     async fn delete_policy(&self, resource_name: &ResourceName, action: &Action) -> Result<()> {
         let query = query(
             r#"DELETE FROM resource_policy
-            WHERE node_name = $1 and resource_name = $2 and action = $3"#,
+            WHERE node_name = $1 and resource_name = $2 and action = $3 and tenant_id = $4"#,
         )
         .bind(&self.node_name)
         .bind(resource_name)
-        .bind(action);
+        .bind(action)
+        .bind(self.database.tenant_id());
         query.execute(&*self.database.pool).await.void()
     }
 }
