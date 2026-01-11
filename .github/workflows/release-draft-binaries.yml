@@ -459,3 +459,62 @@ jobs:
           bucket_name: ${{ env.BUCKET_NAME }}
           file_name: sha256sums.txt.sig
           release_version: "v${{ needs.create_release.outputs.version }}"
+
+  benchmark_binary:
+    name: Benchmark Binary
+    needs: [create_release, sign_release]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout To Ockam Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install Nix
+        uses: ./.github/actions/nix_installer_and_cache
+        with:
+          cache-unique-id: 'nix-installer'
+
+      - name: Install TCP Test Tool And Ockam Binary
+        shell: nix develop ./tools/nix#rust --command bash {0}
+        run: |
+          cargo build --release --bin tcp-test
+          curl -LO "https://downloads.ockam.io/command/v0.149.0/ockam.x86_64-unknown-linux-gnu"
+
+          mv ockam.x86_64-unknown-linux-gnu ockam
+          chmod +x ockam
+          sudo mv ockam /usr/bin
+          sudo mv ./target/release/tcp-test /usr/bin
+
+          sudo apt update
+          sudo apt install -y tmux
+
+      - name: Run Benchmark And Fail If Cap Is Not Hit
+        run: |
+          tmux new-session -d -s echo_server 'tcp-test echo 40000; exec bash'
+          tmux new-session -d -s null_server 'tcp-test null 50000; exec bash'
+          sleep 5
+
+          ockam node create "
+            name: server
+            tcp-outlets:
+              echo_outlet:
+                to: 127.0.0.1:40000
+              null_outlet:
+                to: 127.0.0.1:50000
+          "
+
+          ockam node create "
+            name: client
+            tcp-inlets:
+              echo_inlet:
+                from: 127.0.0.1:40001
+                to: /node/server/secure/api/service/echo_outlet
+              null_outlet:
+                from: 127.0.0.1:50001
+                to: /node/server/secure/api/service/null_outlet
+          "
+
+          tcp-test latency 127.0.0.1:40001
+          tcp-test throughput --seconds 10 127.0.0.1:50001
