@@ -30,6 +30,8 @@ contents:
     - openssl
     - make
     - cmake
+    - nodejs-22
+    - pnpm
 
 archs:
   - x86_64
