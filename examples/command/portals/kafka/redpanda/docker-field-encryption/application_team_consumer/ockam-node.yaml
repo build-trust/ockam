@@ -1,0 +1,11 @@
+relay: consumer
+# Declare Kafka Inlet, bind on localhost.
+# The destination is the 'redpanda_outlet_node' node, reachable through
+# the project relay named 'redpanda'.
+kafka-inlet:
+  from: 127.0.0.1:9092
+  to: /project/default/service/forward_to_redpanda/secure/api
+  avoid-publishing: true
+  encrypted-field: pii
+  allow-producer: producer
+  allow: redpanda
