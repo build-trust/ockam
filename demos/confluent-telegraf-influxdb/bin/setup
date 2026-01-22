@@ -1,0 +1,7 @@
+#!/bin/sh
+
+export $(cat .env)
+ockam reset
+ockam enroll
+ockam project addon configure confluent \
+  --bootstrap-server $CONFLUENT_BROKER_HOST
