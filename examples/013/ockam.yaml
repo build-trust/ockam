@@ -1,0 +1,12 @@
+name: example013
+pods:
+  - name: main-pod
+    size: big
+    containers:
+      - name: main
+        image: main
+
+    portals:
+      inlets:
+        - from: 3000
+          name: browser

@@ -1,0 +1,13 @@
+{
+    "name": "headed-playwright-server",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Local Playwright WebSocket server with headed Chromium",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "playwright": "1.52.0"
+    }
+}

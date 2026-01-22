@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            margin: 10%;
+            margin-top: 0;
+            line-height: 1.8;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            font: 21px "Courier New", Courier, monospace;
+            padding: 0;
+        }
+
+        main {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 3rem 1rem;
+        }
+
+        pre {
+            padding-top: 30px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+
+        textarea {
+            width: 100%;
+            max-width: 1080px;
+            box-sizing: border-box;
+            border: 1px solid #e9e9e9;
+            border-radius: 5px;
+            box-shadow: 2px 2px 10px #f4f4f4;
+            font-size: inherit;
+            padding: 1rem;
+            display: block;
+            height: calc(4 * 1.8em + 14.8px);
+        }
+
+        thinking {
+            color: dodgerblue;
+        }
+
+        .think {
+            color: dodgerblue;
+        }
+
+        .plan {
+            color: darkcyan;
+        }
+
+        .execute {
+            color: black;
+        }
+
+        .toolcall {
+            color: green;
+            margin-bottom: 1rem;
+        }
+
+        .plan li,
+        .plan ul,
+        .plan ol,
+        .plan p {
+            color: darkcyan;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+
+        .execute li,
+        .execute ul,
+        .execute ol,
+        .execute p {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+    </style>
+    <title></title>
+</head>
+
+<body>
+    <main>
+        <button onclick="reset()">Reset</button>
+        <input type="checkbox" id="streaming" checked onchange="toggleStreaming(this.checked)">Streaming?
+        <textarea id="in" autofocus placeholder="How can I help you..."></textarea>
+        <pre id="out"></pre>
+    </main>
+
+    <script>
+        let currentPhase = "planning";
+        let currentElement = document.createElement("div");
+        currentElement.className = "plan";
+        let currentBuffer = { "value": "" };
+        let scope = 1
+        let streaming = document.getElementById("streaming")?.checked || false;
+
+        function parseToolResponse(content) {
+            // let parseable = content.replace(/'/g, '\"');
+            // parseable = parseable.replace("True", "true");
+            // parseable = parseable.replace("False", "false");
+            // return JSON.parse(parseable);
+            return `<code>${content.substring(0, 30)}</code>`
+        }
+
+        async function appendCharByChar(text, delay = 5) {
+            for (const char of text) {
+                out.textContent += char;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+
+        async function streamingAppendCharByChar(text, delay = 0.1) {
+            for (const char of text) {
+                currentBuffer.value += char;
+                currentElement.innerHTML = marked.parse(currentBuffer.value, { breaks: true });
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+
+        async function streamingProcessLine(line) {
+            if (line.trim()) {
+                const parsed = JSON.parse(line);
+
+                for (const { content, phase, tool_calls, tool_call_id } of parsed.messages) {
+                    let tool_call = false
+                    if (tool_calls && tool_calls.length > 0) {
+                        tool_call = true;
+                    } else if (tool_call_id) {
+                        tool_call = true;
+                    }
+
+                    if (!content && !tool_call && phase === "executing") {
+                        continue
+                    }
+
+                    if (tool_call) {
+                        if (currentPhase !== "toolcall") {
+                            currentPhase = "toolcall";
+                            currentElement = document.createElement("div");
+                            currentElement.className = "toolcall";
+                            document.getElementById("out").appendChild(currentElement);
+                            window.scrollTo(0, document.body.scrollHeight);
+                            currentBuffer = { "value": "" };
+                        }
+                        if (tool_calls && tool_calls.length > 0) {
+                            for (const { id, function: { name, arguments } } of tool_calls) {
+                                let toolEl = document.createElement("div");
+                                toolEl.className = "toolcall-name";
+                                toolEl.innerHTML = `<strong>Tool Call:</strong> ${name} (${id})`;
+                                currentElement.appendChild(toolEl);
+
+                                let argsEl = document.createElement("div");
+                                argsEl.className = "toolcall-args";
+                                argsEl.innerHTML = `<code>${arguments}</code>`;
+                                currentElement.appendChild(argsEl);
+                            }
+                        } else if (tool_call_id) {
+                            let response = parseToolResponse(content);
+                            let toolEl = document.createElement("div");
+                            toolEl.className = "toolcall-status";
+                            toolEl.innerHTML = `<strong>Tool Call Response:</strong> ${response} (${tool_call_id})`;
+                            currentElement.appendChild(toolEl);
+                        }
+                        continue;
+                    }
+
+
+                    if (currentPhase !== phase) {
+                        currentPhase = phase;
+                        currentElement = document.createElement("div");
+                        switch (phase) {
+                            case "planning":
+                                currentElement.className = "plan";
+                                break;
+                            case "thinking":
+                                currentElement.className = "think";
+                                break;
+                            default:
+                                currentElement.className = "execute";
+                                break;
+                        }
+                        document.getElementById("out").appendChild(currentElement);
+                        window.scrollTo(0, document.body.scrollHeight);
+                        currentBuffer = { "value": "" };
+                    }
+
+                    if (content) {
+                        await streamingAppendCharByChar(content);
+                    }
+                }
+            }
+        }
+
+        async function send(message) {
+            const input = document.getElementById("in");
+            input.disabled = true;
+
+            const out = document.getElementById("out");
+            out.innerHTML = "";
+
+            if (streaming) {
+                out.appendChild(currentElement);
+
+                const response = await fetch("/agents/jack?stream=true&content_size=1000&timeout=300", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: message, scope: scope }),
+                });
+
+                const decoder = new TextDecoder();
+                let decodingBuffer = "";
+
+                for await (const chunk of response.body) {
+                    decodingBuffer += decoder.decode(chunk, { stream: true });
+                    const lines = decodingBuffer.split('\n');
+                    decodingBuffer = lines.pop();
+                    for (const line of lines) await streamingProcessLine(line);
+                }
+
+                await streamingProcessLine(decodingBuffer);
+            } else {
+                const response = await fetch("/agents/jack?timeout=300", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: message }),
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let done = false;
+
+                while (!done) {
+                    const { value, done: doneReading } = await reader.read();
+                    done = doneReading;
+                    if (value) {
+                        const decoded = decoder.decode(value, { stream: false });
+                        const messages = JSON.parse(decoded)
+
+                        console.log(messages)
+                        for (const { content } of messages) {
+                            console.log(content)
+                            if (content) await appendCharByChar(content);
+                        }
+                    }
+                }
+            }
+
+            input.disabled = false;
+            input.focus();
+        }
+
+        function toggleStreaming(checked) {
+            streaming = checked;
+        }
+
+        function reset() {
+            const input = document.getElementById("in");
+            input.value = "";
+            input.disabled = false;
+            input.focus();
+
+            const out = document.getElementById("out");
+            out.innerHTML = "";
+            currentPhase = "planning";
+            currentElement = document.createElement("div");
+            currentElement.className = "plan";
+            currentBuffer = { "value": "" };
+            scope += 1
+        }
+
+
+        document.getElementById("in").addEventListener("keydown", async e => {
+            if (e.key === "Enter" && !e.shiftKey && !e.target.disabled && e.target.value.trim()) {
+                e.preventDefault();
+                await send(e.target.value);
+            }
+        });
+
+    </script>
+</body>
+
+</html>
