@@ -56,7 +56,7 @@ cfg_aliases = "0.2.1"
 
 [dependencies]
 base64-url = "3.0.0"
-bytes = { version = "=1.9.0", default-features = false, features = ["serde"] }
+bytes = { version = "=1.11.1", default-features = false, features = ["serde"] }
 cfg-if = "1.0.0"
 chrono = { version = "0.4" }
 clap = { version = "4.5", default-features = false, features = ["derive", "std"], optional = true }
@@ -112,7 +112,7 @@ syntect = { version = "5.2.0", default-features = false, features = ["default-sy
 sysinfo = "0.32"
 termbg = "0.5.2"
 thiserror = "2.0.9"
-time = { version = "=0.3.39", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
+time = { version = "=0.3.47", default-features = false, features = ["std", "formatting", "local-offset", "macros"] }
 tiny_http = "0.12.0"
 tokio = { version = "1.43.1", features = ["full"] }
 tokio-retry = "0.3.0"
